@@ -1,12 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
-import { playOut, Bot } from '../src/bot.js';
+import { playOut, Bot, MAX_TURNS } from '../src/bot.js';
 import { fingerprint } from '../src/save.js';
 
-test('60 partii gracza automatycznego: zero wywrotek, każda z jawną przyczyną', () => {
+// Próby są tu mniejsze niż w spec-u świadomie: `npm test` ma się kończyć w minutę,
+// a wiążącym pomiarem kryteriów 6-8 jest seria 1000 partii (`node bin/bot.js`).
+// Testy pilnują, żeby wynik nie osunął się między przebiegami serii.
+test('40 partii gracza automatycznego: zero wywrotek, każda z jawną przyczyną', () => {
   const wyniki = [];
-  for (let i = 0; i < 60; i++) wyniki.push(playOut(new Game(`bot-${i}`)));
+  for (let i = 0; i < 40; i++) wyniki.push(playOut(new Game(`bot-${i}`)));
   const wywrotki = wyniki.filter(r => r.outcome === 'crash');
   assert.equal(wywrotki.length, 0, `wywrotki: ${JSON.stringify(wywrotki.slice(0, 3))}`);
   for (const r of wyniki) {
@@ -18,7 +21,7 @@ test('60 partii gracza automatycznego: zero wywrotek, każda z jawną przyczyną
 
 test('gra jest grywalna, ale nie trywialna (odsetek zwycięstw w 5-60%)', () => {
   const wyniki = [];
-  for (let i = 0; i < 120; i++) wyniki.push(playOut(new Game(`grywalnosc-${i}`)));
+  for (let i = 0; i < 40; i++) wyniki.push(playOut(new Game(`grywalnosc-${i}`)));
   const won = wyniki.filter(r => r.outcome === 'won').length;
   const pct = (won / wyniki.length) * 100;
   assert.ok(pct >= 5, `gra nie do przejścia: ${pct.toFixed(1)}% zwycięstw`);
@@ -27,9 +30,23 @@ test('gra jest grywalna, ale nie trywialna (odsetek zwycięstw w 5-60%)', () => 
 
 test('partie kończą się rozstrzygnięciem - zakleszczenia poniżej 5%', () => {
   const wyniki = [];
-  for (let i = 0; i < 120; i++) wyniki.push(playOut(new Game(`rozstrzygniecie-${i}`)));
+  for (let i = 0; i < 40; i++) wyniki.push(playOut(new Game(`rozstrzygniecie-${i}`)));
   const stalled = wyniki.filter(r => r.outcome === 'stalled').length;
-  assert.ok(stalled / wyniki.length < 0.05, `${stalled}/120 partii bez rozstrzygnięcia`);
+  assert.ok(stalled / wyniki.length < 0.05, `${stalled}/40 partii bez rozstrzygnięcia`);
+});
+
+test('KONTROLA PRZYRZĄDU: limit tur poniżej najkrótszej wygranej czyni grę nieprzechodną', () => {
+  // Wada znaleziona 09.09: limit 4000 leżał PONIŻEJ najkrótszej wygranej partii
+  // (4068 tur), więc odsetek zwycięstw wychodził zerowy niezależnie od równowagi
+  // gry. Ten test pilnuje, że limit produkcyjny nie zejdzie z powrotem pod tę
+  // granicę - i pokazuje, jak wygląda pomiar zepsuty przez własne narzędzie.
+  assert.ok(MAX_TURNS > 4068, `limit ${MAX_TURNS} tur czyni grę nieprzechodną`);
+  const zaNisko = playOut(new Game('grywalnosc-0'), { maxTurns: 4000 });
+  assert.equal(zaNisko.outcome, 'stalled',
+    'przy limicie 4000 partia powinna zostać ucięta - inaczej ta kontrola niczego nie mierzy');
+  const normalnie = playOut(new Game('grywalnosc-0'));
+  assert.notEqual(normalnie.outcome, 'stalled',
+    'ta sama partia przy limicie produkcyjnym powinna się rozstrzygnąć');
 });
 
 test('bot jest deterministyczny - ta sama partia dwa razy daje ten sam stan końcowy', () => {

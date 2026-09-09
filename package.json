@@ -6,7 +6,7 @@
   "bin": { "roguelike": "./bin/play.js" },
   "scripts": {
     "start": "node bin/play.js",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "bot": "node bin/bot.js",
     "verify": "node bin/verify.js"
   },

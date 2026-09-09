@@ -27,7 +27,7 @@ if (args.includes('--help') || args.includes('-h')) {
 
   --games N        ile partii rozegrać (domyślnie 100)
   --base <tekst>   przedrostek ziarna, ziarna to <tekst>0, <tekst>1, ... (domyślnie "s")
-  --max-turns N    limit tur na partię (domyślnie 8000)
+  --max-turns N    limit tur na partię (domyślnie MAX_TURNS z src/bot.js)
   --progress <p>   dopisuj postęp do pliku (do podglądu przez tail -f)
   --json           wypisz wynik jako JSON zamiast tabeli
   --watch <ziarno> pokaż JEDNĄ rozgrywkę na ekranie, tura po turze
@@ -57,7 +57,7 @@ if (watchSeed !== null) {
 
 const games = Number(argOf('games', 100));
 const base = argOf('base', 's');
-const maxTurns = Number(argOf('max-turns', 8000));
+const maxTurns = Number(argOf('max-turns', MAX_TURNS));
 const progressPath = argOf('progress', null);
 const asJson = args.includes('--json');
 

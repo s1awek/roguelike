@@ -336,8 +336,22 @@ export class Bot {
  * @returns {{outcome, cause, turns, depth, score, level, kills, error}}
  *   outcome: 'won' | 'dead' | 'stalled' | 'crash'
  */
+/**
+ * Limit tur na partię. JEDNA wartość dla wszystkich wywołań - biblioteki, CLI
+ * i odbioru. Wcześniej każde z tych miejsc miało własną domyślną (4000 tutaj,
+ * 8000 w bin/bot.js), przez co odbiór mierzył co innego niż seria.
+ *
+ * Wartość wynika z pomiaru, nie z wygody: przy limicie 20000 najkrótsza wygrana
+ * partia trwa 4068 tur, mediana 6444, najdłuższa 8448, a partii nierozstrzygniętych
+ * jest ZERO na 150. Limit 12000 leży 1,4x powyżej najdłuższej zaobserwowanej
+ * wygranej, czyli przestaje być czynnikiem wiążącym wynik. Limit 4000 leżał
+ * PONIŻEJ najkrótszej możliwej wygranej - przy nim gra była nie do przejścia
+ * z definicji, a nie z powodu równowagi.
+ */
+export const MAX_TURNS = 12000;
+
 export function playOut(game, opts = {}) {
-  const maxTurns = opts.maxTurns ?? 4000;
+  const maxTurns = opts.maxTurns ?? MAX_TURNS;
   const stallLimit = opts.stallLimit ?? 300;
   const bot = new Bot();
 

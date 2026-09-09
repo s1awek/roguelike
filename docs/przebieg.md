@@ -37,6 +37,34 @@ zejść niżej. Napraw: zbiór pól wyczerpanych plus budżet czasu na poziom.
 miejscu]` Podnoszenie nie miało progu wartości, więc bot natychmiast brał z
 powrotem to, co przed chwilą odłożył jako balast. Napraw: D-008.
 
+## W-5. Piąta wada: przyrząd mierzył co innego niż narzędzie
+
+`[ustalone - pomiar 150 partii przy limicie 20000 tur, 09.09 ok. 18:57]`
+Znaleziona na samym końcu, przy pierwszym uruchomieniu pełnego zestawu testów.
+
+Limit tur na partię miał **trzy różne wartości domyślne w trzech miejscach**:
+4000 w `src/bot.js` (biblioteka), 8000 w `bin/bot.js` (CLI serii), a `bin/verify.js`
+dziedziczył 4000, bo wołał `playOut` bez opcji. Seria 1000 partii chodziła więc
+na 8000, a odbiór akceptacyjny i testy jednostkowe na 4000.
+
+Skutek jest ostrzejszy, niż wygląda: **najkrótsza wygrana partia trwa 4068 tur**,
+czyli limit 4000 leżał PONIŻEJ progu przechodniości gry. Przy nim odsetek zwycięstw
+wychodził zerowy niezależnie od równowagi - zmierzone na trzech niezależnych
+zestawach ziaren (`grywalnosc-` 0/120, `rozstrzygniecie-` 0/120, `bot-` 0/60).
+Kryteria 6-8 spec-a poszłyby na FAIL z powodu, który nie ma nic wspólnego z grą.
+
+**Co to unieważnia w tym dokumencie.** Zapisane wcześniej „partie bez rozstrzygnięcia"
+(26 na 1000, 2,6%) **nie były zakleszczeniami**, tylko obcięciami limitem. Przy limicie
+20000 partii nierozstrzygniętych jest **zero na 150**, a ziarna `s22` i `s142`,
+figurujące na liście zakleszczeń serii, rozstrzygają się normalnie. Hipotezy o
+blokujących potworach i granicy eksploracji dotyczyły zjawiska, które w znacznej
+części generował mój własny limit.
+
+Naprawa: jedna eksportowana stała (D-010) plus kontrola przyrządu w
+`test/bot.test.js` - test przechodzi tylko wtedy, gdy ta sama partia przy limicie
+4000 zostaje ucięta, a przy limicie produkcyjnym się rozstrzyga. Bez tej drugiej
+połowy asercja nie mierzyłaby niczego.
+
 ## Fałszywa diagnoza, którą zapisano zamiast usunąć
 
 Pierwsza hipoteza dla W-3 brzmiała: „śpiący potwór blokuje korytarz, więc cel jest

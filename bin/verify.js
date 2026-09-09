@@ -5,6 +5,7 @@
 // "sprawdzone, nic nie wisi".
 
 import { execFileSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { RNG } from '../src/rng.js';
 import { generateLevel, WALL } from '../src/map.js';
 import { visibleSet } from '../src/fov.js';
@@ -162,7 +163,11 @@ console.log(`\nOdbiór wg docs/acceptance-spec.md${szybko ? '  (tryb skrócony)'
 {
   let ok = null, dowod = 'nie udało się uruchomić testów';
   try {
-    const out = execFileSync('node', ['--test', 'test/'], { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 900000 });
+    // Katalog jako argument NIE działa na Node 22 (traktuje go jak moduł),
+    // więc pliki testów wyliczamy jawnie. Wyszło to dopiero przy odbiorze.
+    const root = new URL('..', import.meta.url).pathname;
+    const pliki = readdirSync(`${root}/test`).filter(f => f.endsWith('.test.js')).map(f => `test/${f}`);
+    const out = execFileSync('node', ['--test', ...pliki], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 1800000 });
     const kontrole = (out.match(/^ok \d+ - KONTROLA PRZYRZĄDU/gm) || []).length;
     const fail = (out.match(/^# fail (\d+)/m) || [])[1];
     ok = kontrole >= 5 && fail === '0';
