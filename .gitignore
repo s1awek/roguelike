@@ -1,0 +1,8 @@
+node_modules/
+.step
+.heartbeat.pid
+.started
+PROGRESS.log
+saves/
+.workspace/
+out/
