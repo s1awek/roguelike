@@ -128,6 +128,32 @@ partii zajmuje 8-9 minut. Dwie decyzje, bez których byłoby wielokrotnie wolnie
 potwory schodzą po jednej mapie odległości zamiast liczyć A\* każdy z osobna,
 a bot zapamiętuje trasę między turami zamiast wyznaczać ją od nowa.
 
+## Wynik końcowy: trzy serie po 1000 partii
+
+Rozdzielenie wpływu obu ostatnich napraw. Ta sama gra, te same ziarna `s0..s999`:
+
+| seria | limit tur | naprawa W-6 | zwycięstwa | zakleszczenia | wywrotki |
+|---|---|---|---|---|---|
+| v1 | 8000 | nie | 300 (30,0%) | 26 (2,6%) | 0 |
+| v2 | 12000 | nie | 319 (31,9%) | 6 (0,6%) | 0 |
+| v3 | 12000 | tak | **318 (31,8%)** | **0** | 0 |
+
+Czyta się to tak: **20 z 26 „zakleszczeń" było obcięciami limitu** (znikają po
+samym podniesieniu limitu, przy niezmienionym kodzie gry), a pozostałe 6 to była
+jedna wada - W-6. Wszystkie sześć ziaren rozstrzyga się po naprawie: `s436`,
+`s627`, `s809`, `s984` zwycięstwem, `s673` i `s695` śmiercią.
+
+Odsetek zwycięstw nie drgnął między v2 a v3 (31,9% -> 31,8%), co jest oczekiwane:
+naprawa dotyczy sytuacji występującej w 6 partiach na 1000 i nie zmienia równowagi.
+
+**Odbiór końcowy poszedł na innym zestawie ziaren** (`odb-bot-0..999`) niż ten,
+na którym strojono grę - 9/9 kryteriów, 29,3% zwycięstw, 0 wywrotek. Została tam
+**1 partia bez rozstrzygnięcia na 1000 (0,1%)**, czyli przypadek, którego naprawa
+W-6 nie obejmuje. `[hipoteza]` to kolejna odmiana tej samej rodziny pułapek
+decyzyjnych bota; nie diagnozowana, bo wyszła po granicy czasu przyjętej dla
+tego przebiegu. **Nie twierdzę, że zakleszczenia są wyeliminowane** - twierdzę,
+że zeszły z 2,6% do rzędu 0,1%.
+
 ## Czego NIE sprawdzono
 
 - `[hipoteza]` Zachowanie na terminalu węższym niż 80 kolumn. Układ zakłada 80x24

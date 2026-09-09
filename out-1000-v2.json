@@ -1,0 +1,23 @@
+{
+  "games": 1000,
+  "won": 319,
+  "dead": 675,
+  "stalled": 6,
+  "crashed": 0,
+  "winRatePct": 31.9,
+  "avgTurns": 4332,
+  "avgDepthReached": 4.78,
+  "maxDepthReached": 8,
+  "reachedBottom": 549,
+  "avgScore": 2256,
+  "seconds": 531.1,
+  "crashSeeds": [],
+  "stalledSeeds": [
+    "s436",
+    "s627",
+    "s673",
+    "s695",
+    "s809",
+    "s984"
+  ]
+}

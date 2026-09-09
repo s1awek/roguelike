@@ -65,7 +65,12 @@ jedynym sposobem na jej złapanie jest odcisk całego stanu -
 
 **Gracz automatyczny zastępuje testera.** Tysiąc partii bez wywrotki to co innego
 niż tysiąc asercji: bot chodzi po ścieżkach, których nikt nie wymyślił.
-Cztery wady blokujące ukończenie gry wyszły właśnie tak, nie z testów.
+**Sześć wad blokujących ukończenie gry** wyszło właśnie tak, nie z testów - w tym
+dwie ostatnie dopiero przy odbiorze, a jedna z nich była wadą samego przyrządu
+pomiarowego (patrz [`docs/przebieg.md`](docs/przebieg.md), W-5 i W-6).
+
+Wynik ostatniej serii: **1000 partii, 318 zwycięstw (31,8%), 682 śmierci,
+zero zakleszczeń, zero wywrotek**, średnio 4321 tur na partię, 552 s.
 
 ## Odbiór
 
@@ -81,6 +86,10 @@ ma przypadek znany-zły**. Test spójności lochu dostaje poziom z zamurowaną
 kieszenią, kontrola wzajemności widzenia dostaje celowo niesymetryczne pole
 widzenia, porównanie tras dostaje trasę o krok za długą. Kontrola, która nigdy
 niczego nie zgłasza, jest nieodróżnialna od zepsutej.
+
+Ostatni pełny odbiór: **9/9 kryteriów**, na zestawie ziaren niezależnym od tego,
+na którym strojono grę (1000 partii: 0 wywrotek, 1 partia bez rozstrzygnięcia,
+29,3% zwycięstw).
 
 Dziennik decyzji podjętych w trakcie: [`docs/decyzje.md`](docs/decyzje.md).
 Przebieg prac i pomiary: [`docs/przebieg.md`](docs/przebieg.md).
