@@ -65,6 +65,39 @@ Naprawa: jedna eksportowana stała (D-010) plus kontrola przyrządu w
 4000 zostaje ucięta, a przy limicie produkcyjnym się rozstrzyga. Bez tej drugiej
 połowy asercja nie mierzyłaby niczego.
 
+## W-6. Szósta wada: lekarstwo na W-4 stworzyło własne zakleszczenie
+
+`[ustalone - instrumentacja partii `grywalnosc-0`, 09.09 ok. 19:08]`
+Znaleziona przez kontrolę przyrządu dopisaną przy naprawie W-5 - test miał
+tylko ilustrować wpływ limitu tur, a wywrócił się na partii, która nie kończy
+się przy ŻADNYM limicie (sprawdzone: 4000, 12000, 30000, 80000 - zawsze postój
+na turze 4096, głębokość 7, pełne HP).
+
+Ślad z instrumentacji: przez ostatnie 400 tur bot wykonuje dokładnie dwa ruchy
+naprzemiennie, `(43,6) -> (44,5) -> (43,6)`, z celem `item`. Stan: plecak pełny
+(16/16), pod nogami zwój, cztery przedmioty w zbiorze `dropped`.
+
+Mechanizm to zderzenie dwóch kroków drabiny decyzyjnej:
+- **krok 5** (`src/bot.js`, „przedmiot pod nogami") nie podnosi, bo plecak pełny,
+  i nie wymienia, bo leżący zwój jest wart mniej niż najgorszy noszony - **nie robi
+  nic i przepuszcza dalej**;
+- **krok 8** („idź po przedmiot") obiera ten sam zwój za cel, bo nie jest w
+  `dropped` i jest wart więcej niż próg - i każe do niego iść, mimo że bot **na
+  nim stoi**.
+
+Bot wychodzi o jedno pole i natychmiast wraca, bo znów jest najbliższy.
+
+Wada jest o tyle pouczająca, że **zrodziło ją lekarstwo na W-4**: zbiór `dropped`
+(D-008) powstał po to, żeby bot nie podnosił z powrotem tego, co przed chwilą
+porzucił. Skutkiem ubocznym jest stan, w którym wszystkie porzucalne przedmioty
+są już w zbiorze, więc żaden nie nadaje się na wymianę - i pułapka się zatrzaskuje.
+
+Naprawa dotyka obu stron pętli: przedmiot, którego nie da się ani podnieść, ani
+wymienić, trafia do `dropped` (przestaje być celem), a krok 8 nie obiera za cel
+pola, na którym bot już stoi. Po naprawie `grywalnosc-0` kończy się śmiercią
+na turze 4041, a partie `grywalnosc-5`, `s22` i `s142` kończą się zwycięstwem
+z identyczną liczbą tur co przed naprawą.
+
 ## Fałszywa diagnoza, którą zapisano zamiast usunąć
 
 Pierwsza hipoteza dla W-3 brzmiała: „śpiący potwór blokuje korytarz, więc cel jest

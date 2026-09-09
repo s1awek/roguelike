@@ -41,12 +41,15 @@ test('KONTROLA PRZYRZĄDU: limit tur poniżej najkrótszej wygranej czyni grę n
   // gry. Ten test pilnuje, że limit produkcyjny nie zejdzie z powrotem pod tę
   // granicę - i pokazuje, jak wygląda pomiar zepsuty przez własne narzędzie.
   assert.ok(MAX_TURNS > 4068, `limit ${MAX_TURNS} tur czyni grę nieprzechodną`);
-  const zaNisko = playOut(new Game('grywalnosc-0'), { maxTurns: 4000 });
+  // `grywalnosc-5` wygrywa na turze 7250. Przy limicie 4000 zostaje ucięta i
+  // wygląda na zakleszczenie, choć gra działa poprawnie - to jest dokładnie ten
+  // fałszywy odczyt, przed którym ta kontrola broni.
+  const zaNisko = playOut(new Game('grywalnosc-5'), { maxTurns: 4000 });
   assert.equal(zaNisko.outcome, 'stalled',
     'przy limicie 4000 partia powinna zostać ucięta - inaczej ta kontrola niczego nie mierzy');
-  const normalnie = playOut(new Game('grywalnosc-0'));
-  assert.notEqual(normalnie.outcome, 'stalled',
-    'ta sama partia przy limicie produkcyjnym powinna się rozstrzygnąć');
+  const normalnie = playOut(new Game('grywalnosc-5'));
+  assert.equal(normalnie.outcome, 'won',
+    'ta sama partia przy limicie produkcyjnym powinna zostać wygrana');
 });
 
 test('bot jest deterministyczny - ta sama partia dwa razy daje ten sam stan końcowy', () => {

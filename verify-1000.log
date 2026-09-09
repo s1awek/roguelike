@@ -1,0 +1,13 @@
+
+Odbiór wg docs/acceptance-spec.md
+================================================================
+  PRZESZŁO  1. Powtarzalność z ziarna
+              50/50 ziaren dało identyczny odcisk stanu
+  PRZESZŁO  2. Spójność lochu
+              1000 poziomów: 0 niespójnych, 0 bez schodów
+  PRZESZŁO  3. Wzajemność widzenia
+              112967 par pól przechodnich, 0 naruszeń
+  PRZESZŁO  4. Droga optymalna
+              400 par porównanych z niezależnym BFS, 0 rozjazdów
+  PRZESZŁO  5. Zapis wierny i odporny
+              20 zapisów: 0 rozjazdów; zapis uszkodzony odrzucany: tak

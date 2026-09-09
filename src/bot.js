@@ -174,6 +174,12 @@ export class Bot {
         this.dropped.add(inv[worst.idx].id);
         return { type: 'drop', index: worst.idx };
       }
+      // Nie da się go podnieść ANI wymienić - z punktu widzenia bota jest
+      // nieosiągalny, więc przestaje być celem. Bez tego kroku bot krążył wokół
+      // niego w nieskończoność: krok 5 nic nie robił, a krok 8 obierał ten sam
+      // przedmiot za cel i kazał do niego iść. Zmierzone na `grywalnosc-0`:
+      // 400 tur oscylacji między (43,6) a (44,5), pełne HP, partia bez końca.
+      this.dropped.add(under.id);
     }
 
     // 6. schody: w dół dopóki nie mamy amuletu, w górę gdy już go mamy
@@ -217,7 +223,10 @@ export class Bot {
     }
     const worst = worstCarried(game);
     if (inv.length < 16 || worst.val < 30) {
-      const worthwhile = game.items.filter(i => !this.dropped.has(i.id) && itemValue(game, i, {}) > 10);
+      // pole, na którym stoimy, nie jest celem podróży - inaczej bot wychodzi
+      // z niego i natychmiast wraca, bo znów jest najbliższe
+      const worthwhile = game.items.filter(i => !this.dropped.has(i.id)
+        && !(i.x === p.x && i.y === p.y) && itemValue(game, i, {}) > 10);
       const goal = this.nearest(game, worthwhile.map(i => ({ x: i.x, y: i.y })), passable);
       if (goal) {
         const step = this.stepToward(game, goal, passable, 'item');

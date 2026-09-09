@@ -7,7 +7,7 @@
 // i gra trywialna są tak samo zepsute.
 
 import { Game } from '../src/game.js';
-import { playOut, Bot } from '../src/bot.js';
+import { playOut, Bot, MAX_TURNS } from '../src/bot.js';
 import { renderFrame, renderGameOver, clearScreen, showCursor } from '../src/render.js';
 import { appendFileSync } from 'node:fs';
 
