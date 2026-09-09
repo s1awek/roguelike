@@ -28,7 +28,7 @@ export const HUNGER_MAX = 2000;
 const PLAYER_START = { hp: 30, str: 6, def: 2 };
 
 /** Próg doświadczenia potrzebny do osiągnięcia danego poziomu postaci. */
-export function xpForLevel(n) { return Math.floor(12 * Math.pow(n - 1, 2.1)); }
+export function xpForLevel(n) { return Math.floor(10 * Math.pow(n - 1, 1.85)); }
 
 export class Game {
   constructor(seed = 'los', opts = {}) {
@@ -97,7 +97,7 @@ export class Game {
     const monsters = [];
     const items = [];
 
-    const count = 4 + Math.floor(depth * 1.5);
+    const count = 4 + depth;
     for (let i = 0; i < count; i++) {
       const p = this.freeTile(level, monsters, items, [level.upPos]);
       if (!p) break;
@@ -113,7 +113,7 @@ export class Game {
       monsters.push(b);
     }
 
-    const itemCount = 3 + this.rng.int(3);
+    const itemCount = 3 + Math.floor(depth / 2) + this.rng.int(3);
     for (let i = 0; i < itemCount; i++) {
       const p = this.freeTile(level, monsters, items);
       if (!p) break;
@@ -209,6 +209,7 @@ export class Game {
     if (spent) {
       this.turn++;
       this.monstersAct();
+      this.tickRegen();
       this.tickHunger();
       this.updateFOV();
       if (this.player.hp <= 0 && this.status === 'playing') this.die(this.deathCause || 'rany');
@@ -277,8 +278,8 @@ export class Game {
     this.player.xp += amount;
     while (this.player.xp >= xpForLevel(this.player.level + 1)) {
       this.player.level++;
-      this.player.maxHp += 8;
-      this.player.hp += 8;
+      this.player.maxHp += 10;
+      this.player.hp += 10;
       this.player.str += 1;
       if (this.player.level % 2 === 0) this.player.def += 1;
       this.message(`Awansujesz na poziom ${this.player.level}!`);
@@ -307,7 +308,9 @@ export class Game {
   dropItem(index) {
     const it = this.player.inventory[index];
     if (!it) return false;
-    if (this.itemAt(this.player.x, this.player.y)) { this.message('Nie ma tu miejsca.'); return false; }
+    // Przedmioty wolno układać w stos. Zakaz odkładania na zajęte pole wyglądał
+    // na porządkujący, a w praktyce czynił grę nieukończalną: z pełnym plecakiem
+    // stojąc na Amulecie nie dało się zrobić NICZEGO - ani podnieść, ani odłożyć.
     this.player.inventory.splice(index, 1);
     if (this.player.weapon === it) this.player.weapon = null;
     if (this.player.armor === it) this.player.armor = null;
@@ -480,6 +483,16 @@ export class Game {
       }
       if (best) { m.x = best[0]; m.y = best[1]; }
     }
+  }
+
+  /** Powolna regeneracja życia. Bez niej partia jest ciągiem strat bez odbicia
+   *  i nie da się jej wygrać niezależnie od umiejętności - patrz D-005. */
+  tickRegen() {
+    const p = this.player;
+    if (p.hp <= 0 || p.hp >= p.maxHp) return;
+    if (p.hunger <= 0) return; // głodujący się nie regeneruje
+    const interval = Math.max(8, 24 - p.level);
+    if (this.turn % interval === 0) p.hp = Math.min(p.maxHp, p.hp + 1);
   }
 
   tickHunger() {

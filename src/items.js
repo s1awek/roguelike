@@ -3,7 +3,7 @@
 // rozgrywki ten sam wygląd znaczy zawsze to samo.
 
 export const POTIONS = [
-  { type: 'heal', name: 'mikstura leczenia', power: 12, weight: 30 },
+  { type: 'heal', name: 'mikstura leczenia', power: 12, weight: 20 },
   { type: 'greaterHeal', name: 'mikstura pełni sił', power: 30, weight: 10 },
   { type: 'strength', name: 'mikstura siły', power: 1, weight: 8 },
   { type: 'poison', name: 'mikstura trucizny', power: 8, weight: 8 },

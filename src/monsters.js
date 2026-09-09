@@ -7,14 +7,14 @@ export const KINDS = [
   { type: 'goblin',   name: 'goblin',        glyph: 'g', hp: 13,  str: 5,  def: 2, xp: 8,   minD: 2, maxD: 6, weight: 18 },
   { type: 'skeleton', name: 'szkielet',      glyph: 's', hp: 18,  str: 6,  def: 3, xp: 13,  minD: 3, maxD: 7, weight: 15 },
   { type: 'orc',      name: 'ork',           glyph: 'o', hp: 24,  str: 8,  def: 4, xp: 20,  minD: 4, maxD: 8, weight: 14 },
-  { type: 'ogre',     name: 'ogr',           glyph: 'O', hp: 34,  str: 11, def: 5, xp: 32,  minD: 5, maxD: 8, weight: 10 },
-  { type: 'troll',    name: 'troll',         glyph: 'T', hp: 46,  str: 14, def: 6, xp: 50,  minD: 6, maxD: 8, weight: 8, regen: 1 },
-  { type: 'wraith',   name: 'zjawa',         glyph: 'W', hp: 38,  str: 16, def: 8, xp: 65,  minD: 7, maxD: 8, weight: 7 },
+  { type: 'ogre',     name: 'ogr',           glyph: 'O', hp: 36,  str: 13, def: 6, xp: 32,  minD: 5, maxD: 8, weight: 10 },
+  { type: 'troll',    name: 'troll',         glyph: 'T', hp: 48,  str: 15, def: 7, xp: 55,  minD: 6, maxD: 8, weight: 8, regen: 1 },
+  { type: 'wraith',   name: 'zjawa',         glyph: 'W', hp: 40,  str: 17, def: 8, xp: 70,  minD: 7, maxD: 8, weight: 7 },
 ];
 
 export const BOSS = {
   type: 'dragon', name: 'Smok Otchłani', glyph: 'D',
-  hp: 120, str: 20, def: 10, xp: 400, boss: true,
+  hp: 130, str: 19, def: 10, xp: 400, boss: true,
 };
 
 let nextId = 1;
