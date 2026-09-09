@@ -6,3 +6,14 @@ PROGRESS.log
 saves/
 .workspace/
 out/
+
+# Artefakty przebiegu: logi serii, wyniki bota, dziennik odbioru.
+# Liczby, ktore cokolwiek znacza, sa przepisane do docs/przebieg.md - plik
+# surowy jest dowodem lokalnym, nie trescia repozytorium.
+out-*.json
+out-*.err
+err-*.log
+verify-*.log
+PROGRESS.log
+.step
+.*.pid
