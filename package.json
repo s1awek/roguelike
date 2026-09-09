@@ -1,0 +1,16 @@
+{
+  "name": "roguelike",
+  "version": "1.0.0",
+  "description": "Terminalowy roguelike - deterministyczny, z graczem automatycznym",
+  "type": "module",
+  "bin": { "roguelike": "./bin/play.js" },
+  "scripts": {
+    "start": "node bin/play.js",
+    "test": "node --test test/",
+    "bot": "node bin/bot.js",
+    "verify": "node bin/verify.js"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT",
+  "private": true
+}
