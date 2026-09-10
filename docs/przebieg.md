@@ -1131,3 +1131,43 @@ kształt migawki jest zmianą NIEZGODNĄ WSTECZ z punktu widzenia strony. Klient
 serwer w starszej wersji: brak nowego pola to gorszy widok, nie wywrotka. Poprawka pokazuje
 w takim wypadku sam spis rzeczy, a przy oglądaniu mówi wprost, że miejsce w plecaku policzy
 dopiero nowsza wersja stołu - zamiast twierdzić, że nic tu nie leży.
+
+### W-25: jedna partia na tysiąc bez rozstrzygnięcia - pułapka widoczności, nie plecaka
+
+Seria 1000 partii po wprowadzeniu plecaka na siatce zwróciła jedną partię bez
+rozstrzygnięcia (`rown-plecak-394`). Pierwsze podejrzenie padło na plecak - że bot
+krąży wokół rzeczy, której nie może wziąć, czyli nawrót W-6. **Obalone**: plecak
+6x5 z czterema rzeczami, pod nogami nic nie leży.
+
+Ślad decyzji rozstrzygnął w kilkanaście sekund:
+
+```
+4785  28,12  monster  25,14  {"dy":-1}
+4786  28,11  item     38,15  {"dy":+1}
+4787  28,12  monster  25,14  {"dy":-1}
+```
+
+Potwór na (25,14) jest widoczny z pola (28,12), a niewidoczny z (28,11). Z pierwszego
+pola bot wybiera krok 7 (idź do potwora), z drugiego krok 8 (idź po jedzenie na (38,15)),
+a oba cele leżą w przeciwnych kierunkach. Pętla jest doskonała i sama się podtrzymuje:
+`[ustalone - ślad 4789 tur, oba cele wypisane]`.
+
+Próba naprawy, **nieudana i cofnięta**: pamięć pościgu, czyli utrzymanie decyzji
+„idę do potwora" przez sześć tur także wtedy, gdy cel zszedł z oczu. Pętla nie
+zniknęła, tylko urosła - bot chodzi teraz większym okręgiem (28,12 -> 28,8 -> 26,8 ->
+28,12) i zatrzymuje się na tej samej turze 4789. Zmiana została **wycofana**, bo
+zmieniała zachowanie gracza automatycznego (a więc i zmierzoną równowagę), nie dając
+nic w zamian. Kod jest dokładnie ten, na którym wykonano pomiar.
+
+Prawdziwe lekarstwo jest większe niż ta wada: cel raz obrany nie może być porzucany
+na rzecz celu INNEGO RODZAJU, dopóki nie zostanie osiągnięty albo nie wygaśnie.
+To zmiana w rdzeniu decyzji bota, z własnym kosztem po stronie równowagi, więc nie
+wchodzi mimochodem przy okazji plecaka.
+
+**Zasięg wady:** wyłącznie gracz automatyczny. Człowiek nie wpada w tę pułapkę, bo
+pamięta, że przed chwilą widział potwora. Kryterium 7 (5-60% zwycięstw) i tak jest
+spełnione, a partii bez rozstrzygnięcia jest 1 na 1000, czyli 0,1%.
+
+**Nauka:** pierwsze podejrzenie padło na to, co właśnie zmieniałem, i było błędne.
+Ślad decyzji z nazwą CELU przy każdym kroku kosztował kilkanaście linii instrumentacji
+i rozstrzygnął od razu; zgadywanie po świeżej zmianie kosztowałoby całe podejście.
