@@ -334,12 +334,21 @@ osobne miejsca (`ludzie=[3,4,5,6,7]`), bo `dosiadz()` nie miał żadnej zapory,
 a `otworzStrumien()` zamykał przy tym strumień poprzedniego miejsca - stąd
 dokładnie jedno miejsce żywe i resztа bez strumienia.
 
-**Czego NIE ustaliłem:** dlaczego człowiek kliknął osiem razy. Naturalne
-wyjaśnienie („przycisk wyglądał na martwy") nie broni się pomiarem: od jednego
-kliknięcia do zniknięcia lobby mija **66 ms**, przy zerze błędów w konsoli.
-Odświeżanie strony też jest niewinne - trzy odświeżenia z rzędu trzymają to samo
-miejsce, tak jak zakładał `sessionStorage`. Przyczyna po stronie człowieka zostaje
-otwarta; naprawa jej nie potrzebuje, bo zamyka skutek.
+**SPROSTOWANIE (po znalezieniu W-15).** Napisane tu wcześniej „naturalne
+wyjaśnienie nie broni się pomiarem: od kliknięcia do zniknięcia lobby mija 66 ms"
+było **fałszywe**, a wraz z nim wniosek, że przyczyna klikania pozostaje nieznana.
+Przyczyna była dokładnie ta odrzucona: **przycisk wyglądał na martwy, bo ekran
+wejścia nie znikał z oczu** (W-15). Mój pomiar czytał `element.hidden`, czyli
+atrybut, i widział jego zmianę po 66 ms - a nie to, czy nakładka zeszła z ekranu.
+Zmierzone poprawnie, stylem wyliczonym: nakładka miała wtedy `display: flex`
+i pole 1 026 200 px², czyli leżała na całym ekranie, podczas gdy gra pod nią
+chodziła normalnie.
+
+Zapisuję to jako wypadek wzorcowy: **hipotezę użytkownika odrzuciłem na podstawie
+przyrządu, który mierzył nie tę rzecz** - i zrobiłem to tym pewniej, że liczba
+wyglądała precyzyjnie. Sześćdziesiąt sześć milisekund brzmi jak pomiar; było
+odczytem z niewłaściwego czujnika. Odświeżanie strony pozostaje niewinne
+(trzy odświeżenia z rzędu trzymają to samo miejsce).
 
 Naprawa dwuwarstwowa, bo warstwa przeglądarki nie jest zaporą, tylko wygodą:
 1. Klient - dosiadanie jednorazowe, przycisk gaszony na czas lotu żądania,
@@ -423,6 +432,43 @@ ale zostawiał otwartą kartę - `chrome.kill()` nie dosięga przeglądarki, kt�
 chodziła już przed jego uruchomieniem. Piętnaście kart z kolejnych prób trzymało
 żywe strumienie, a przez to miejsca przy stole, i zjadało pułap miejsc na adres
 prawdziwemu graczowi. Przyrząd pomiarowy zakłócał mierzony układ.
+
+### W-15: atrybut `hidden` nie ukrywał ekranu wejścia, bo przegrywał z arkuszem
+
+Wada, która wyjaśnia WSZYSTKIE trzy zgłoszenia właściciela z tego dnia - osiem
+zajętych miejsc, „widzę tylko napis Dosiadam", „klikam i nic się nie dzieje" -
+i której nie znalazły ani testy, ani bot, ani sterownik przeglądarki.
+
+Mechanizm jest jednoliniowy. `hidden` daje `display: none` wyłącznie z arkusza
+przeglądarki, więc **każda** reguła autora go przebija. `#lobby` miał
+`display: flex`, żeby wyśrodkować kartę. Ustawienie `el.hidden = true` zmieniało
+więc atrybut i nie zmieniało niczego na ekranie: gra startowała, migawki płynęły,
+tury leciały, a gracz patrzył na nieruchomą nakładkę z przyciskiem i nie miał
+żadnej drogi dalej. Klikanie nic nie dawało, bo miejsce już miał.
+
+Objaw jest wyjątkowo podstępny, bo **wszystko po stronie kodu wygląda dobrze**:
+`el.hidden` zwraca `true`, `mode` jest `map`, konsola pusta, serwer zadowolony,
+migawki dochodzą. Nie ma żadnego błędu do znalezienia - jest tylko piksel, którego
+nikt nie sprawdził.
+
+W arkuszu stała już punktowa łatka `#overlay[hidden] { display: none; }`, czyli
+raz w tę wadę wpadłem i załatałem ją dla jednego elementu, nie wyciągając reguły.
+Dlatego wróciła drugim elementem. Naprawa jest globalna:
+`[hidden] { display: none !important; }`, żeby dotyczyła też elementów dopisanych
+w przyszłości.
+
+**Nauka o przyrządzie, ważniejsza niż sama wada.** Próba sterownikiem czytała
+`document.getElementById('lobby').hidden` i meldowała „lobby schowane" - atrybut
+faktycznie był ustawiony. Przyrząd mierzył stan modelu dokumentu, a pytanie
+dotyczyło tego, co widzi człowiek. Na tej podstawie **odrzuciłem trafną hipotezę
+właściciela** i dwa razy ogłosiłem, że „gra się uruchamia poprawnie".
+Poprawny pomiar to `getComputedStyle(el).display` plus pole prostokąta elementu;
+przy nowej próbie kontrola na przypadku znanym-złym (reguła cofnięta) pokazuje
+`display: flex` i pole 1 026 200 px², a przy naprawionym arkuszu `none` i zero.
+
+Zrzut ekranu byłby tu tańszy niż trzy rundy pomiarów pośrednich - i to jest
+właściwy wniosek na przyszłość: **gdy zgłoszenie dotyczy tego, co widać, dowodem
+jest obraz, a nie odczyt z modelu dokumentu.**
 
 ## Wątek 4: czytelność, minimapa, autozapis (2026-09-10)
 

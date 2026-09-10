@@ -96,7 +96,19 @@ body {
   position: fixed; inset: 0; display: grid; place-items: center;
   background: rgba(4,5,9,.78); backdrop-filter: blur(3px); z-index: 10;
 }
-#overlay[hidden] { display: none; }
+/* Atrybut `hidden` MUSI wygrywać z każdą regułą układu.
+ *
+ * `hidden` daje `display: none` wyłącznie z arkusza przeglądarki, więc dowolna
+ * reguła autora - `display: flex` na nakładce, `display: grid`, `display: block` -
+ * przebija go i element zostaje na ekranie. Objaw jest podstępny, bo w kodzie
+ * wszystko wygląda poprawnie: `el.hidden` zwraca `true`, gra pod spodem działa,
+ * migawki płyną, a gracz widzi nieruchomą nakładkę i nie ma jak przejść dalej.
+ *
+ * Punktowa łatka na `#overlay` stała tu wcześniej i dokładnie dlatego ta wada
+ * wróciła drugim elementem (`#lobby`, wada W-15). Reguła jest więc globalna:
+ * każdy element chowany atrybutem jest chowany naprawdę, także ten dopisany
+ * w przyszłości. */
+[hidden] { display: none !important; }
 #panel {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 22px 26px; min-width: 380px; max-width: min(680px, 92vw);
