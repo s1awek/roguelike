@@ -141,6 +141,7 @@ function otworzStrumien() {
     // Tura zeszła, więc zgłoszenie zostało rozstrzygnięte.
     if (cien.turn !== turaZgloszenia) zgloszone = null;
     if (cien.ja.status !== 'playing' && mode !== 'over') koniec();
+    sprawdzPrzegrana();
     // Otwarty plecak żyje razem z migawką - inaczej po podniesieniu rzeczy
     // gracz patrzyłby na siatkę sprzed zmiany. W trakcie chwytu odświeżenie
     // czeka, bo przerysowanie wyrwałoby rzecz z ręki.
@@ -222,6 +223,10 @@ window.addEventListener('keydown', (e) => {
     if (Number.isInteger(n) && n >= 1 && n <= RULES.length) pokazZasady(n - 1);
     return;
   }
+  // Ekran przegranego starcia gaśnie dowolnym klawiszem - ale dopiero
+  // klawiszem, żeby nie zniknął sam, zanim gracz zdąży przeczytać.
+  if (mode === 'przegrana') { zamknij(); return; }
+
   if (mode === 'obejrzyj') {
     if (k === ',' || k === 'g') { zamknij(); podnies(); return; }
     zamknij();
@@ -301,6 +306,45 @@ function pokazObejrzenie() {
     : obejrzyjHtml(it ? etykieta(it) : '', o);
   panel.innerHTML = tresc
     + `<p class="foot">${it ? '<kbd>,</kbd> podnosi. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+  overlay.hidden = false;
+}
+
+// ---------- przegrane starcie ----------
+
+let ostatniaPrzegrana = null;
+let pierwszaMigawka = true;
+
+/**
+ * Przegrana potyczka z innym uczestnikiem to najdroższa rzecz, jaka może się
+ * przy stole wydarzyć: cały dobytek zostaje na podłodze, a bohater budzi się
+ * piętro wyżej z ćwiartką życia. Do tej pory mówiły o tym trzy linijki
+ * dziennika, które za chwilę znikały - właściciel zgłosił to jako „glitch,
+ * przeniosło mnie i wyczyściło plecak". Ekran zamyka się dopiero na klawisz,
+ * bo to jest wiadomość, której nie wolno przegapić.
+ */
+function sprawdzPrzegrana() {
+  const p = cien.ja;
+  const tura = p.przegranaTura ?? null;
+  // Pierwsza migawka po dosiądnięciu ustawia tylko punkt odniesienia: stara
+  // przegrana nie ma się pokazywać komuś, kto właśnie wrócił do gry. Punkt
+  // odniesienia bierze się z PIERWSZEJ migawki, a nie z pierwszej migawki
+  // niosącej przegraną - inaczej pierwsza w życiu przegrana ustawia punkt
+  // odniesienia zamiast się pokazać, czyli ekran nie zapala się nigdy.
+  if (pierwszaMigawka) { pierwszaMigawka = false; ostatniaPrzegrana = tura; return; }
+  if (tura === null || tura === ostatniaPrzegrana) return;
+  ostatniaPrzegrana = tura;
+  const d = p.przegrana || {};
+  mode = 'przegrana';
+  panel.innerHTML = `<h2 class="zle">Przegrane starcie</h2>
+    <p><b>${escapeHtml(d.kto || 'Ktoś')}</b> położył Cię na deski.</p>
+    <ul class="karta">
+      <li>Cały dobytek (${d.ile ?? 0} ${d.ile === 1 ? 'rzecz' : 'rzeczy'}) został na podłodze tam, gdzie padłeś
+        <span class="muted">- razem z bronią, pancerzem i Amuletem, jeśli go miałeś</span></li>
+      <li>Uciekłeś z głębokości ${d.zPietra ?? '?'} na ${d.naPietro ?? '?'} i stoisz przy schodach</li>
+      <li>Zostało Ci ćwierć życia</li>
+    </ul>
+    <p class="muted">To nie jest koniec partii: po dobytek można wrócić, ale ktoś inny może być tam pierwszy.</p>
+    <p class="foot">Dowolny klawisz wraca do gry.</p>`;
   overlay.hidden = false;
 }
 
@@ -582,34 +626,17 @@ async function odswiezStol() {
   } catch { /* serwer zaraz wróci */ }
 }
 window.addEventListener('resize', () => { if (cien.poziom) renderer.resize(cien); });
+// Płótno idzie za rozmiarem SWOJEGO miejsca, nie tylko za rozmiarem okna.
+// Pasek trybu turowego albo dłuższy dziennik podnoszą stopkę, a wtedy plansza
+// robi się niższa bez zmiany okna - płótno zostawało za duże i dolny pas mapy
+// znikał pod stopką, przycięty przez `overflow: hidden`.
+if (window.ResizeObserver) {
+  new ResizeObserver(() => { if (cien.poziom || cien.level) renderer.resize(cien); })
+    .observe(document.getElementById('stage'));
+}
 
 setInterval(odswiezStol, 2500);
 odswiezStol();
-
-/**
- * Pasek trybu turowego schodzi bohaterowi z drogi.
- *
- * Zgłoszenie właściciela: pasek wisiał na sztywno u góry planszy i przy
- * bohaterze stojącym przy górnej krawędzi zasłaniał kawałek mapy, na którym
- * toczyła się gra. Zasłonięcie grywalnego pola jest gorsze niż brak podpowiedzi.
- *
- * Próg jest DWUSTRONNY (0,42 i 0,58 wysokości), a nie jeden na środku. Przy
- * jednym progu bohater idący dokładnie przez środek ekranu przerzucałby pasek
- * z góry na dół co klatkę - kamera dojeżdża płynnie, więc jego pozycja drga
- * wokół progu nawet gdy gracz stoi.
- */
-let paskiNaDole = false;
-function ustawPasekTurowy() {
-  const pasek = $('turowy');
-  if (pasek.hidden) return;
-  const p = cien.ja;
-  const duch = view.sprites.get('@') || { x: p.x, y: p.y };
-  const { py } = renderer.punktPola(duch.x, duch.y);
-  const wys = renderer.cssH || 1;
-  if (!paskiNaDole && py < wys * 0.42) paskiNaDole = true;
-  else if (paskiNaDole && py > wys * 0.58) paskiNaDole = false;
-  pasek.classList.toggle('nadole', paskiNaDole);
-}
 
 // ---------- pętla klatek ----------
 
@@ -621,7 +648,6 @@ function frame(now) {
   view.step(dt);
   if (cien.ja && cien.kafle && cien.poziom.w > 0) {
     renderer.draw(cien, view, dt);
-    ustawPasekTurowy();
   }
   requestAnimationFrame(frame);
 }
@@ -664,8 +690,17 @@ window.roguelike = {
   get ja() { return ja; },
   get mode() { return mode; },
   get zgloszone() { return zgloszone; },
+  // Rysowanie wystawione po to, żeby dało się ZMIERZYĆ położenie rzeczy na
+  // ekranie - na przykład czy pasek trybu turowego nie zasłania bohatera.
+  // Oba obiekty tylko do odczytu: to warstwa widoku, nie źródło stanu.
+  get view() { return view; },
+  get renderer() { return renderer; },
   zglos,
   odswiezHud,
+  // Ekran przegranego starcia da się zobaczyć tylko wtedy, gdy ktoś naprawdę
+  // przegra potyczkę - czyli nigdy na żądanie. Wystawiony, żeby dało się go
+  // zmierzyć na PODSTAWIONEJ migawce, tym samym kodem, którym rysuje go gra.
+  sprawdzPrzegrana,
 };
 
 

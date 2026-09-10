@@ -36,14 +36,18 @@
 
   <main id="stage">
     <canvas id="map"></canvas>
-    <div id="turowy" hidden>
-      <b id="turowy-tytul">TRYB TUROWY</b>
-      <span id="turowy-powod"></span>
-    </div>
     <p id="notice" hidden></p>
   </main>
 
   <footer id="foot">
+    <!-- Pasek trybu turowego stoi POD planszą, nie na niej. Wisiał wcześniej
+         nad mapą i przy bohaterze blisko górnej krawędzi zasłaniał pole, na
+         którym toczyła się gra. Zasłonięcie grywalnego kawałka mapy jest
+         gorsze niż podpowiedź stojąca kawałek dalej od oczu. -->
+    <div id="turowy" hidden>
+      <b id="turowy-tytul">TRYB TUROWY</b>
+      <span id="turowy-powod"></span>
+    </div>
     <ul id="log"></ul>
     <p id="hint">? zasady &nbsp;·&nbsp; i ekwipunek &nbsp;·&nbsp; w powąchaj &nbsp;·&nbsp; , podnieś &nbsp;·&nbsp; &gt; &lt; schody &nbsp;·&nbsp; m plan &nbsp;·&nbsp; . czekaj<span id="podpis" hidden></span></p>
   </footer>

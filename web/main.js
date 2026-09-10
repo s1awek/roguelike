@@ -599,6 +599,14 @@ window.addEventListener('pagehide', () => flushAuto());
 window.addEventListener('visibilitychange', () => { if (document.hidden) flushAuto(); });
 
 window.addEventListener('resize', () => renderer.resize(game));
+// Płótno idzie za rozmiarem SWOJEGO miejsca, nie tylko za rozmiarem okna.
+// Pasek trybu turowego albo dłuższy dziennik podnoszą stopkę, a wtedy plansza
+// robi się niższa bez zmiany okna - płótno zostawało za duże i dolny pas mapy
+// znikał pod stopką, przycięty przez `overflow: hidden`.
+if (window.ResizeObserver) {
+  new ResizeObserver(() => { if (game.poziom || game.level) renderer.resize(game); })
+    .observe(document.getElementById('stage'));
+}
 updateHud();
 flushAuto();
 if (resumed) say('Wznowiono grę z autozapisu. Nowa gra: Shift+N.');

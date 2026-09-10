@@ -140,14 +140,6 @@ export class Renderer {
     this.oy = Math.round(this.camY);
   }
 
-  /**
-   * Odwrotnie niż `tileAt`: środek pola w pikselach płótna. Potrzebne, gdy coś
-   * rysowanego NAD planszą musi zejść bohaterowi z drogi.
-   */
-  punktPola(x, y) {
-    return { px: this.ox + (x + 0.5) * this.tile, py: this.oy + (y + 0.5) * this.tile };
-  }
-
   /** Pole mapy pod punktem ekranu - potrzebne przy sterowaniu myszą. */
   tileAt(px, py) {
     const x = Math.floor((px - this.ox) / this.tile);

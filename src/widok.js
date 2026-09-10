@@ -72,6 +72,10 @@ export function widokDla(game, hero, opts = {}) {
       atak: game.playerAttack(hero), obrona: game.playerDefense(hero),
       maxDepth: game.maxDepth,
       status: hero.status, cause: hero.cause,
+      // Ostatnie przegrane starcie z innym uczestnikiem. Klient pokazuje na to
+      // osobny ekran, więc pole jedzie w migawce zamiast być odczytywane
+      // z brzmienia komunikatu w dzienniku.
+      przegrana: hero.przegrana || null, przegranaTura: hero.przegranaTura ?? null,
       inventory: hero.inventory.map(i => ({ ...i })),
       plecak: { ...hero.plecak },
       weapon: hero.weapon ? { ...hero.weapon } : null,

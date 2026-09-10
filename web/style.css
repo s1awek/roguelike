@@ -219,15 +219,14 @@ kbd {
  * nie zna gry, pomyśli, że zaczęła ciąć". Znacznik wielkości plakietki tego nie
  * załatwia - komunikat musi stać tam, gdzie oko już patrzy, czyli na planszy.
  */
+/* Pasek trybu turowego: pod planszą, na całą szerokość. Nie nachodzi na mapę
+   w żadnym układzie okna, więc nie ma czego przeliczać przy każdej klatce. */
 #turowy {
-  position: absolute; left: 50%; top: 12px; transform: translateX(-50%);
-  z-index: 5; max-width: min(560px, 92%);
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 8px 16px; border-radius: 8px;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 6px; padding: 7px 14px; border-radius: 8px;
   background: rgba(10, 12, 18, .94);
   border: 1px solid var(--gold);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, .5);
-  text-align: center; pointer-events: none;
+  pointer-events: none;
 }
 #turowy b {
   font-size: 12px; letter-spacing: .16em; color: var(--gold);
@@ -237,10 +236,6 @@ kbd {
 }
 #turowy.czeka { border-color: #4a2026; }
 #turowy.czeka b { color: var(--red); }
-/* Bohater przy górnej krawędzi: pasek schodzi pod planszę, nad linijkę notki.
-   Przeskok jest natychmiastowy - płynne przejście przez środek ekranu
-   przeciągałoby zasłonięcie na kilkanaście klatek. */
-#turowy.nadole { top: auto; bottom: 52px; }
 
 #notice {
   position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
@@ -395,3 +390,7 @@ kbd {
   border-color: var(--red); border-style: solid; color: var(--red);
   background: color-mix(in srgb, var(--red) 12%, transparent);
 }
+
+/* Ekran przegranego starcia: najdroższa wiadomość w grze, więc ma się rzucać
+   w oczy jak ekran końca partii, a nie jak kolejny wpis w dzienniku. */
+#panel h2.zle { color: var(--red); }

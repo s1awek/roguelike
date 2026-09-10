@@ -663,6 +663,12 @@ export class Game {
     hero.lastHitBy = null;
     hero.deathCause = null;
     this.tell(hero, `${cap(winner.name)} kładzie Cię na deski. Gubisz dobytek (${ile}) i uciekasz w górę.`);
+    // Ślad, po którym interfejs pozna, że to się właśnie stało. Trzy znikające
+    // linijki dziennika to za mało na utratę CAŁEGO dobytku i skok o piętro:
+    // właściciel zgłosił to jako „glitch, przeniosło mnie i wyczyściło plecak",
+    // bo z ekranu nie dało się odczytać, co zaszło (W-26).
+    hero.przegranaTura = this.turn;
+    hero.przegrana = { kto: winner.name, ile, zPietra: hero.depth, naPietro: Math.max(1, hero.depth - 1) };
     this.tell(winner, `${cap(hero.name)} pada bez czucia. Dobytek zostaje na ziemi.`);
     this.placeHero(hero, Math.max(1, hero.depth - 1), 'up');
   }
