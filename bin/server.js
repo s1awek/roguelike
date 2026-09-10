@@ -30,7 +30,7 @@ const LIMIT_MIEJSC = Number(arg('--limit', 12));
 const LASKA_MS = Number(arg('--laska', 60000));   // ile czekamy na powrót rozłączonego
 const TICK_MS = 60;
 const ZADAN_NA_SEKUNDE = Number(arg('--limit-zadan', 25));
-const MIEJSC_NA_ADRES = Number(arg('--miejsc-na-adres', 2));
+const MIEJSC_NA_ADRES = Number(arg('--miejsc-na-adres', 3));
 const STRUMIENI_NA_MIEJSCE = 3;
 
 const TYPES = {
@@ -62,8 +62,19 @@ const ludzie = new Map();
 const grajacy = () => [...stol.miejsca.values()]
   .filter(m => game.heroes[m.hid].status === 'playing').length;
 
-/** Ile miejsc trzyma w tej chwili jeden adres. */
-const miejscAdresu = (adres) => [...ludzie.values()].filter(w => w.adres === adres).length;
+/**
+ * Ile miejsc trzyma W TEJ CHWILI jeden adres.
+ *
+ * Miejsce już oznaczone jako rozłączone NIE jest liczone: jest w drodze do botów
+ * (`porzadki`) i tylko czeka na upływ łaski. Liczenie go zamykało właścicielowi
+ * wejście po zamknięciu karty - lokalnie wszystko przychodzi z `::1`, więc pułap
+ * zjadały własne porzucone miejsca zamiast cudzych żywych.
+ *
+ * Obrona z D-031 tego nie traci: miejsce dosiadnięte przed chwilą ma jeszcze
+ * `rozlaczonyOd === null`, więc seria kliknięć nadal liczy się w całości.
+ */
+const miejscAdresu = (adres) => [...ludzie.values()]
+  .filter(w => w.adres === adres && w.rozlaczonyOd === null).length;
 
 /**
  * Dosiadnięcie do stołu, z górnym pułapem miejsc NA JEDEN ADRES.
@@ -91,7 +102,7 @@ function dosiadz(name, adres = '?') {
   const czyste = String(name || '').replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 16) || 'Gość';
   if (miejscAdresu(adres) >= MIEJSC_NA_ADRES) {
     log(`odmowa: adres ${adres} ma juz ${miejscAdresu(adres)} miejsc`);
-    return { blad: `z tego adresu zajęte są już ${MIEJSC_NA_ADRES} miejsca - zamknij starą kartę albo poczekaj` };
+    return { blad: `z tego adresu zajęte są już ${MIEJSC_NA_ADRES} miejsca - zamknij starą kartę albo poczekaj chwilę` };
   }
   if (grajacy() >= LIMIT_MIEJSC) return { blad: 'stół pełny, spróbuj za chwilę' };
   const m = stol.dosiadz(czyste, { rodzaj: 'czlowiek' }).miejsce;

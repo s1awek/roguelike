@@ -100,3 +100,34 @@ test('stół potrafi powiedzieć, czy zapamiętane miejsce jeszcze istnieje', as
     assert.equal(await s.moje(999, r.body.token), 403, 'miejsce spoza stołu uznane za istniejące');
   } finally { s.koniec(); }
 });
+
+test('miejsce porzucone przestaje zajmować pułap adresu, żywe nadal go zajmuje', async () => {
+  // Powód tego testu: lokalnie KAŻDE połączenie przychodzi z tego samego adresu,
+  // więc pułap z D-031 zamykał wejście po zamknięciu karty - własne porzucone
+  // miejsce blokowało właściciela do końca okresu łaski. Miejsce oznaczone jako
+  // rozłączone jest już w drodze do botów i nie ma czego bronić.
+  const s = await serwer(['--miejsc-na-adres', '2']);
+  try {
+    for (let i = 0; i < 4; i++) await s.dosiadz(`Porzucony ${i}`);
+    assert.equal((await s.stol()).uczestnicy.filter(u => u.rodzaj === 'czlowiek').length, 2,
+      'pułap nie zadziałał przy serii - dalszy pomiar byłby bez sensu');
+
+    // Żadne z tych miejsc nie otworzyło strumienia, więc pierwsze porządki (co 3 s)
+    // oznaczą je jako rozłączone. Odpytujemy, zamiast zgadywać moment.
+    let wrocilo = null;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 9000) {
+      const r = await s.dosiadz('Wracam');
+      if (r.code === 200) { wrocilo = r; break; }
+      await new Promise(r => setTimeout(r, 400));
+    }
+    assert.ok(wrocilo, 'po porzuceniu miejsc adres nadal nie mógł wejść - pułap liczy trupy');
+
+    // KONTROLA PRZYRZĄDU: obrona nie zniknęła. Świeże miejsca liczą się w całości,
+    // więc trzecie żywe z tego samego adresu musi zostać odbite.
+    assert.equal((await s.dosiadz('Zywy 2')).code, 200, 'drugie żywe miejsce ma się zmieścić');
+    const odbity = await s.dosiadz('Zywy 3');
+    assert.equal(odbity.code, 503, `pułap przestał bronić przed serią: ${JSON.stringify(odbity.body)}`);
+    assert.match(odbity.body.blad, /z tego adresu/);
+  } finally { s.koniec(); }
+});

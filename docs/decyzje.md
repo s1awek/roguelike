@@ -37,3 +37,17 @@ z uzasadnieniem, żeby dała się później zakwestionować.
 | D-030 | Loch jest zamieszkany przez boty od pierwszej chwili, a wymarłe boty są zastępowane | Pusty stół jest w portfolio martwym eksponatem: pierwszy wchodzący widzi grę jednoosobową i nie ma z czego wywnioskować, że to gra wieloosobowa. Bot ginie od potworów jak każdy, więc bez odnawiania loch po godzinie znów jest pusty. Rachunek jest po stronie odnawiania: gracz automatyczny został wcześniej wystrojony do 28,3% zwycięstw, czyli jest przeciwnikiem mierzalnie porównywalnym z człowiekiem, a nie atrapą. |
 | D-031 | Pułap miejsc NA JEDEN ADRES (domyślnie dwa), zapora także po stronie przeglądarki | Wada zmierzona na żywym stole, nie przewidziana: pierwsze wejście właściciela zajęło osiem z dwunastu miejsc w sześć sekund, bo każde kliknięcie w „Wejdź" prosiło o nowe miejsce, a klient zamykał przy tym strumień poprzedniego. Został jeden gracz i siedem porzuconych ciał, stół zrobił się pełny i nikt inny nie mógł wejść. Zapora w przeglądarce (przycisk gaszony na czas dosiadania, drugie wywołanie odrzucane) usuwa przypadek, ale nie wystarcza, bo przy grze wystawionej publicznie `/api/dosiadz` woła kto chce i czym chce, a przydział z D-brak (25 żądań na sekundę) przepuszcza zapełnienie stołu w pół sekundy. Pułap dwa, a nie jeden, bo za jednym adresem siedzi sieć domowa albo operator komórkowy i pułap jeden odbijałby drugiego prawdziwego gracza. |
 | D-032 | Ekran wejścia znika po PRZYZNANIU MIEJSCA, a strona zgłasza własne wyjątki do stołu | Dwie rzeczy wyszły z jednego zgłoszenia właściciela („widzę tylko napis Dosiadam i trzy kropki"). Po pierwsze, wiązanie ekranu wejścia z pierwszą migawką dawało ślepy zaułek: cokolwiek stanęłoby migawce na drodze, gracz zostawał z napisem „Dosiadam..." bez końca, mając miejsce przy stole już zajęte. Zniknięcie ekranu należy więc do odpowiedzi serwera na dosiadnięcie, a czekanie na pierwszy widok jest osobnym stanem z własnym napisem. Po drugie, diagnoza tamtej usterki oparła się o to, że konsola przeglądarki gracza jest dla nas niewidoczna - jedynym kanałem był człowiek przepisujący ręcznie treść błędu. Strona zgłasza więc nieobsłużone wyjątki do `/api/skarga`, a stół pisze je do swojego logu. Zgłoszenia są dławione po sygnaturze (jedna usterka w pętli rysowania potrafi dać kilkadziesiąt wyjątków na sekundę i zabić dozór własnym sukcesem), treść jest przycinana i pozbawiana znaków sterujących, bo pochodzi z zewnątrz. |
+
+## D-033: pułap miejsc na adres liczy tylko miejsca żywe
+
+Pułap z D-031 liczył wszystkie miejsca danego adresu, także te już porzucone
+i czekające na przejęcie przez bota. Na stanowisku, gdzie każde połączenie
+przychodzi z `::1`, zamykało to wejście właścicielowi: zamknięcie karty zostawiało
+miejsce blokujące pułap do końca okresu łaski, a własna sonda diagnostyczna
+zjadała połowę przydziału. Miejsce oznaczone jako rozłączone nie jest już liczone -
+jest w drodze do botów i nie ma czego bronić. Domyślny pułap podniesiony z 2 na 3.
+
+Obrona przed serią kliknięć (przypadek, który wywołał D-031) nie słabnie, bo
+miejsce dosiadnięte przed chwilą ma jeszcze `rozlaczonyOd === null` i liczy się
+w całości. Test niesie oba bieguny: po porzuceniu miejsc wejście wraca, a trzecie
+ŻYWE miejsce z tego samego adresu nadal jest odbijane (`test/serwer.test.js`).
