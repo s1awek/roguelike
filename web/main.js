@@ -101,9 +101,26 @@ const DIR = {
   ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1],
 };
 
+// Znaki, które na typowej klawiaturze powstają dopiero z Shiftem. Na części
+// układów `e.key` nie donosi o tym wcale i do gry dociera znak spod klawisza -
+// przecinek zamiast '<', kropka zamiast '>'. Wtedy "wejdź po schodach" zamienia
+// się w "podnieś", co wygląda jak wada gry, a jest rozjazdem układu klawiatury.
+// Rozstrzyga `e.code`, czyli POŁOŻENIE klawisza, niezależne od układu.
+const SHIFTED_BY_CODE = {
+  Comma: '<', Period: '>', Slash: '?', KeyS: 'S', KeyL: 'L', KeyQ: 'Q',
+};
+
+/** Ostatnie klawisze - do odczytania w konsoli, gdy sterowanie zachowa się dziwnie. */
+const keyLog = [];
+
 window.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  const k = e.key;
+  let k = e.key;
+  if (e.shiftKey && SHIFTED_BY_CODE[e.code]) k = SHIFTED_BY_CODE[e.code];
+
+  keyLog.push({ key: e.key, code: e.code, shift: e.shiftKey, uzyto: k });
+  if (keyLog.length > 24) keyLog.shift();
+
   if (DIR[k] || ['.', ',', '5', 'g', '>', '<', 'i', 'd', '?', 'S', 'L', 'Escape', ' '].includes(k)) e.preventDefault();
 
   if (walk) { walk = null; return; }   // dowolny klawisz przerywa marsz
@@ -351,6 +368,7 @@ window.roguelike = {
   get view() { return view; },
   get mode() { return mode; },
   get walking() { return !!walk; },
+  get keys() { return keyLog.slice(); },
 };
 
 window.addEventListener('resize', () => renderer.resize(game));

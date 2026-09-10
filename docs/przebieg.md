@@ -244,3 +244,41 @@ strony wprost, co odbiera, zamiast wnioskowania z zachowania.
   kafli mieszczących się na ekranie, więc nie powinno rosnąć z rozmiarem mapy -
   ale liczby klatek nie mierzono.
 
+### W-10: „<" wchodziło do gry jako przecinek, czyli „podnieś" zamiast „wejdź po schodach"
+
+`[ustalone - zgłoszenie właściciela plus odtworzenie zdarzenia klawiatury]`
+Zgłoszenie brzmiało: „naciskam `<`, a widzę »Nie ma tu nic do podniesienia«".
+Ten komunikat pochodzi **wyłącznie** z `pickUp()` ([`src/game.js`](../src/game.js));
+wejście po schodach mówi „Nie ma tu schodów w górę." albo „Nie wrócisz z pustymi
+rękami.". To wystarczyło, żeby wykluczyć wadę w samym wchodzeniu i zawęzić rzecz
+do warstwy wejścia: do gry docierał przecinek, nie `<`.
+
+Przyczyna leży w tym, że `e.key` niesie **znak**, a znak zależy od układu
+klawiatury. Na części układów Shift nie zmienia zgłaszanego znaku, więc pod
+klawiszem przecinka gra widzi przecinek niezależnie od tego, czy Shift jest
+wciśnięty. Wersji terminalowej to nie dotyczy - tam przychodzi gotowy bajt `<`.
+
+Naprawa: gdy Shift jest wciśnięty, o znaczeniu rozstrzyga `e.code`, czyli
+**położenie klawisza**, niezależne od układu (`SHIFTED_BY_CODE`
+w [`web/main.js`](../web/main.js)). Objęte: `<` `>` `?` `S` `L` `Q`.
+
+Kontrola przyrządu - trzy przypadki, wszystkie zmierzone przez odtworzenie
+zdarzenia klawiatury w przeglądarce:
+
+| Przypadek | Co wysłano | Oczekiwane | Zmierzone |
+|---|---|---|---|
+| układ gubi Shift | `key: ','`, `code: Comma`, Shift | wejście w górę | „Wracasz na poziom 1." |
+| układ zwraca znak | `key: '<'`, `code: Comma`, Shift | wejście w górę | „Wracasz na poziom 1." |
+| **kontrola, znany-dobry** | `key: ','`, `code: Comma`, bez Shift | podniesienie | „Nie ma tu nic do podniesienia." |
+
+Ten trzeci wiersz jest tu po to, żeby naprawa nie zjadła zwykłego przecinka.
+Analogicznie sprawdzone: Shift+kropka schodzi w dół, sama kropka czeka,
+Shift+ukośnik otwiera pomoc, Shift+s zapisuje, `i` otwiera plecak.
+
+Przy okazji doszedł dziennik ostatnich klawiszy pod `roguelike.keys` - do
+odczytania w konsoli przeglądarki, gdy sterowanie znów zachowa się nie tak.
+Notuje `key`, `code`, stan Shiftu i to, jak gra ostatecznie klawisz zrozumiała.
+
+`[niezweryfikowane]` Który dokładnie układ klawiatury wywołał to u właściciela.
+Rozstrzygnie to wpis z `roguelike.keys` z jego maszyny; naprawa działa niezależnie
+od odpowiedzi, bo obsługuje oba warianty.
