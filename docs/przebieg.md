@@ -1171,3 +1171,40 @@ spełnione, a partii bez rozstrzygnięcia jest 1 na 1000, czyli 0,1%.
 **Nauka:** pierwsze podejrzenie padło na to, co właśnie zmieniałem, i było błędne.
 Ślad decyzji z nazwą CELU przy każdym kroku kosztował kilkanaście linii instrumentacji
 i rozstrzygnął od razu; zgadywanie po świeżej zmianie kosztowałoby całe podejście.
+
+### W-26: „boty się zablokowały" - blokady nie było, był komunikat wskazujący w złą stronę
+
+**Zgłoszenie.** Po zejściu na poziom drugi wszystkie boty w pokoju przy schodach stały
+nieruchomo, „jakby się tam zablokowały".
+
+**Pierwsze podejście było chybione i warto wiedzieć dlaczego.** Hipoteza brzmiała: tłok.
+Ośmiu uczestników w jednym pokoju to jedna wielka grupa w kontakcie, więc może rozstrzyganie
+tury wspólnej dławi się samo. Pomiar na podstawionym zegarze (`.workspace/proba-tlok.mjs`,
+60 s czasu stołu) tego NIE potwierdził: boty rozrzucone 727 tur na minutę, boty stłoczone
+422 tury - ale **działań na uczestnika identycznie 150 na minutę w obu przypadkach**. Tłok
+zmienia licznik tur stołu, bo tura wspólna liczy się raz dla całej grupy, i nie zmienia
+tempa gry ani jednego uczestnika. Objaw nie został odtworzony, więc hipoteza upadła.
+
+**Rozstrzygnął trzeci przypadek, dołożony do tego samego pomiaru:** ta sama ciasnota, ale
+jeden z uczestników jest CZŁOWIEKIEM, który nic nie deklaruje - czyli dokładnie zgłaszający,
+stojący w tym pokoju i patrzący. Wynik: działań na uczestnika **mediana 4 na minutę** (przy
+150 w obu poprzednich), 93 tury na minutę, największa grupa 7. Objaw odtworzony w całości.
+
+**Przyczyna.** Grupa w kontakcie idzie turą wspólną (D-023), a tura wspólna czeka na
+deklaracje wszystkich uczestników aż do terminu (`CZAS_NA_DEKLARACJE_MS`, 12 s). Gra nie
+była zablokowana ani na moment - po terminie milczący stoi bezczynnie i partia idzie dalej
+(kryterium 18). Ale przez te 12 sekund pięciu botów wokół stoi w miejscu, i to jest właśnie
+to, co widać.
+
+**Wada nie leżała więc w regule, tylko w komunikacie.** Pasek trybu turowego mówił
+„plansza czeka na drugą stronę" - zdanie prawdziwe dla każdego oprócz tego jednego gracza,
+który akurat je czytał. W jedynym przypadku, w którym czytający mógł coś zrobić, komunikat
+wskazywał w przeciwną stronę. Naprawa (D-047): stół liczy, kto wstrzymuje turę, i mówi to
+wprost - „TWÓJ RUCH, cała grupa czeka na Twoje zgłoszenie", z odliczaniem do chwili, w której
+plansza ruszy bez gracza.
+
+**Nauka:** pomiar, który nie odtworzył objawu, nie jest pomiarem nieudanym - jest pomiarem,
+który wyklucza jedną przyczynę. Kosztowało jedno podejście, żeby zauważyć, że w każdym
+z dwóch pierwszych przebiegów brakowało jedynego elementu obecnego w zgłoszeniu: człowieka.
+Zgłaszający był częścią mierzonego układu, a mierzyłem układ bez niego.
+

@@ -597,19 +597,62 @@ function odswiezHud() {
     t.className = zgloszone ? 'tag gold' : 'tag';
   }
 
-  // Pasek na planszy: nazywa stan, podaje powód i mówi, co gracz ma zrobić.
+  // Pasek pod planszą: nazywa stan, podaje powód i mówi, co gracz ma zrobić.
+  //
+  // Najważniejsze jest rozróżnienie, KTO wstrzymuje turę. Poprzednia wersja
+  // mówiła „plansza czeka na drugą stronę" także wtedy, gdy drugą stroną był
+  // czytający - a wtedy wszyscy wokół stoją nieruchomo i wygląda to jak gra,
+  // która się zawiesiła. Pole `tura` przychodzi ze stołu; przy starszym
+  // serwerze go nie ma i pasek zachowuje się jak dotąd (uboższy, nie zepsuty).
   const pasek = $('turowy');
   pasek.hidden = !wKontakcie;
   if (wKontakcie) {
-    pasek.className = zgloszone ? 'czeka' : '';
-    $('turowy-tytul').textContent = zgloszone ? 'CZEKAM NA RUCH' : 'TRYB TUROWY';
-    $('turowy-powod').textContent = zgloszone
-      ? `Ruch zgłoszony. Czekam na ${kto} - obie strony działają w tej samej turze, więc nikt nie dostaje darmowego ciosu.`
-      : `${kto} w zasięgu wzroku. Wasze ruchy rozstrzygają się jednocześnie, więc plansza czeka na drugą stronę. To nie zawieszenie gry.`;
+    const t = cien.tura || null;
+    const toJa = t ? t.wspolna && t.jaMilcze : !zgloszone;
+    terminTury = t && t.zaMs !== null && toJa ? Date.now() + t.zaMs : null;
+    const czekamNa = t && t.milczacy.length ? t.milczacy.join(', ') : kto;
+    if (!toJa && (zgloszone || (t && t.milczacy.length))) {
+      pasek.className = 'czeka';
+      $('turowy-tytul').textContent = 'CZEKAM NA RUCH';
+      $('turowy-powod').textContent =
+        `Ruch zgłoszony. Czekam na ${czekamNa} - obie strony działają w tej samej turze, więc nikt nie dostaje darmowego ciosu.`;
+    } else if (toJa) {
+      pasek.className = 'ty';
+      $('turowy-tytul').textContent = 'TWÓJ RUCH';
+      $('turowy-powod').textContent =
+        `${kto} w zasięgu wzroku - cała grupa czeka na Twoje zgłoszenie i do tego czasu stoi w miejscu.`;
+    } else {
+      pasek.className = '';
+      $('turowy-tytul').textContent = 'TRYB TUROWY';
+      $('turowy-powod').textContent =
+        `${kto} w zasięgu wzroku. Wasze ruchy rozstrzygają się jednocześnie, więc plansza czeka na drugą stronę. To nie zawieszenie gry.`;
+    }
+    odliczTure();
+  } else {
+    terminTury = null;
   }
   const msgs = cien.messages.slice(-3);
   logEl.innerHTML = msgs.map(m => `<li>${escapeHtml(m.text)}</li>`).join('');
 }
+
+/**
+ * Sekundy do chwili, w której stół ruszy bez milczącego.
+ *
+ * Migawki przychodzą przy zmianie stanu, a odliczanie musi iść samo - inaczej
+ * liczba stoi i znowu wygląda to jak zawieszenie. Osobne pole `#turowy-zegar`,
+ * żeby nie przepisywać całego zdania co sekundę.
+ */
+let terminTury = null;
+
+function odliczTure() {
+  const el = $('turowy-zegar');
+  if (!el) return;
+  if (terminTury === null) { el.hidden = true; return; }
+  const zostalo = Math.max(0, Math.ceil((terminTury - Date.now()) / 1000));
+  el.hidden = false;
+  el.textContent = zostalo > 0 ? `plansza ruszy bez Ciebie za ${zostalo} s` : 'plansza rusza bez Ciebie';
+}
+setInterval(odliczTure, 500);
 
 // ---------- przy stole ----------
 

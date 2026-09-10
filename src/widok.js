@@ -87,6 +87,9 @@ export function widokDla(game, hero, opts = {}) {
     dziennik: hero.messages.slice(od).map(m => ({ ...m })),
     dziennikDo: hero.messages.length,
     kontakt: game.contacts(hero).map(o => ({ hid: o.hid, name: o.name })),
+    // Kto wstrzymuje wspólną turę. Wypełnia to stół, bo sama gra nie wie nic
+    // o deklaracjach ani o zegarze; przy grze jednoosobowej pola po prostu nie ma.
+    tura: opts.tura ?? null,
     // Zaludnienie piętra: liczba ZBIORCZA, bez położeń i bez imion. Odpowiada na
     // pytanie „czy jest tu z kim walczyć", a nie „gdzie oni są" - więc nie daje
     // przewagi, której nie dałoby nadstawienie ucha w prawdziwym lochu.

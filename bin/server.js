@@ -196,7 +196,9 @@ function wyslijWidok(hid, w) {
   for (let i = 0; i < pamiec.length; i++) znane += pamiec[i];
   const znak = `${hero.depth}:${znane}`;
   const zKaflami = w.kafelWyslany !== znak || game.turn % 25 === 0;
-  const widok = widokDla(game, hero, { dziennikOd: w.dziennikDo, zKaflami });
+  const widok = widokDla(game, hero, {
+    dziennikOd: w.dziennikDo, zKaflami, tura: stol.oczekiwanie(hid),
+  });
   w.dziennikDo = widok.dziennikDo;
   if (zKaflami) w.kafelWyslany = znak;
   const dane = `data: ${JSON.stringify(widok)}\n\n`;

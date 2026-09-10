@@ -236,6 +236,10 @@ kbd {
 }
 #turowy.czeka { border-color: #4a2026; }
 #turowy.czeka b { color: var(--red); }
+/* „to na Ciebie czekają" - najmocniejszy stan paska, bo wymaga działania gracza. */
+#turowy.ty { border-color: var(--gold); background: rgba(46, 34, 8, .94); }
+#turowy.ty b { color: #ffd479; }
+#turowy #turowy-zegar { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 #notice {
   position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);

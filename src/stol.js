@@ -186,6 +186,38 @@ export class Stol {
     return akcja;
   }
 
+  /**
+   * Na kogo czeka tura tego uczestnika - prawda widziana z jego miejsca.
+   *
+   * Powstało po zgłoszeniu „boty stoją w pokoju przy schodach" (WĄTEK 9).
+   * Zgłoszenie było trafne co do objawu i mylne co do przyczyny: grupa idzie
+   * turą wspólną, więc jeden milczący CZŁOWIEK wstrzymuje wszystkich wokół
+   * aż do terminu. Zmierzone: ośmiu uczestników w jednym pokoju działa
+   * 150 razy na minutę, a z jednym milczącym człowiekiem mediana spada do 4.
+   * Nikt tego nie widział, bo pasek mówił „plansza czeka na drugą stronę"
+   * także wtedy, gdy drugą stroną był czytający.
+   */
+  oczekiwanie(hid, t = this.teraz()) {
+    const hero = this.game.heroes[hid];
+    if (!hero) return null;
+    const grupa = this.grupy().find(g => g.some(h => h.hid === hid)) || [hero];
+    const klucz = grupa.map(h => h.hid).sort((a, b) => a - b).join(',');
+    const mojeM = this.miejsca.get(hid);
+    // Bota dławi tylko tempo (ułamek sekundy), więc nie nazywamy go milczącym -
+    // to nie on każe czekać, a wskazanie go wysyłałoby szukających w złą stronę.
+    const milczacy = grupa
+      .map(h => this.miejsca.get(h.hid))
+      .filter(m => m && m.hid !== hid && !m.bot && !m.deklaracja)
+      .map(m => m.name);
+    const termin = this.terminy.get(klucz) ?? null;
+    return {
+      wspolna: grupa.length > 1,
+      jaMilcze: !mojeM?.deklaracja,
+      milczacy,
+      zaMs: termin === null ? null : Math.max(0, termin - t),
+    };
+  }
+
   /** Krótki stan dla podglądu: kto siedzi, gdzie jest, czy na kogoś czeka. */
   stan() {
     return {
