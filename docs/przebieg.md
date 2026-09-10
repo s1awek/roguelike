@@ -244,7 +244,7 @@ strony wprost, co odbiera, zamiast wnioskowania z zachowania.
   kafli mieszczących się na ekranie, więc nie powinno rosnąć z rozmiarem mapy -
   ale liczby klatek nie mierzono.
 
-### W-10: „<" wchodziło do gry jako przecinek, czyli „podnieś" zamiast „wejdź po schodach"
+### W-10 (WYCOFANE jako wada, zostaje jako utwardzenie): „<" wchodziło do gry jako przecinek
 
 `[ustalone - zgłoszenie właściciela plus odtworzenie zdarzenia klawiatury]`
 Zgłoszenie brzmiało: „naciskam `<`, a widzę »Nie ma tu nic do podniesienia«".
@@ -279,6 +279,23 @@ Przy okazji doszedł dziennik ostatnich klawiszy pod `roguelike.keys` - do
 odczytania w konsoli przeglądarki, gdy sterowanie znów zachowa się nie tak.
 Notuje `key`, `code`, stan Shiftu i to, jak gra ostatecznie klawisz zrozumiała.
 
-`[niezweryfikowane]` Który dokładnie układ klawiatury wywołał to u właściciela.
-Rozstrzygnie to wpis z `roguelike.keys` z jego maszyny; naprawa działa niezależnie
-od odpowiedzi, bo obsługuje oba warianty.
+**SPROSTOWANIE, ten sam dzień, w godzinę po powyższym.** Właściciel zgłosił, że
+z wciśniętym Shiftem dostaje „Nie wrócisz z pustymi rękami. Amulet czeka w głębi.",
+czyli komunikat prawidłowy dla schodów w górę na poziomie 1. **To obala hipotezę
+o układzie klawiatury gubiącym Shift na jego maszynie**: gdyby Shift ginął, ten
+komunikat nie miałby jak się pojawić.
+
+Wynika z tego, że pierwotne naciśnięcie było **samym przecinkiem, bez Shiftu** -
+a więc `[obalone]` „gra źle interpretuje `<`". Wady w grze nie było; był rozjazd
+między tym, co gracz chciał nacisnąć, a tym, co nacisnął.
+
+Zmiana zostaje, ale **przekwalifikowana z naprawy wady na utwardzenie**: obsługuje
+układy, na których Shift faktycznie nie zmienia zgłaszanego znaku, i jest poparta
+kontrolą znanego-dobrego przypadku. Nie wolno jej cytować jako „naprawy zgłoszenia
+z 10.09" - zgłoszenie miało inną przyczynę.
+
+Wniosek metodyczny, bo powtarzalny: **komunikat gry wskazał warstwę (do gry doszedł
+przecinek) i to było `[ustalone]`, ale POWÓD, dla którego doszedł przecinek, wziąłem
+z hipotezy o układzie klawiatury i zacząłem pod nią budować naprawę, zamiast najpierw
+zapytać, czy Shift w ogóle był wciśnięty.** Tańsze pytanie stało przed droższą
+naprawą i zostało pominięte.
