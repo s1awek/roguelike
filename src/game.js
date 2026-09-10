@@ -19,13 +19,13 @@ import { distanceField, neighbors, chebyshev } from './path.js';
 import { randomItem, makeAmulet, makeAppearances, itemLabel, potionPower, SCENTS, POTION_SCENT, scentGroup } from './items.js';
 import { PLECAK_START, dolozDoPlecaka, przepakuj, zmiesciSie, poloz, mozna, ile as sztuk, poleRzeczy, wolnePola, pojemnosc } from './plecak.js';
 import { obejrzyj as obejrzyjRzecz } from './ocena.js';
+import { HUNGER_START, HUNGER_MAX, stopienGlodu } from './stany.js';
 import { spawnMonster, spawnBoss } from './monsters.js';
 import { bytesToBase64, base64ToBytes } from './bytes.js';
 
 export const MAX_DEPTH = 8;
 export const FOV_RADIUS = 8;
-export const HUNGER_START = 1200;
-export const HUNGER_MAX = 2000;
+export { HUNGER_START, HUNGER_MAX } from './stany.js';
 
 const PLAYER_START = { hp: 30, str: 6, def: 2 };
 
@@ -1146,9 +1146,13 @@ export class Game {
   }
 
   tickHunger(hero = this.player) {
+    // Ostrzeżenie odzywa się przy ZEJŚCIU O STOPIEŃ, a stopnie są te same, które
+    // rysuje pasek sytości (`src/stany.js`). Wcześniej były to dwie niezależne
+    // liczby i pasek zmieniał kolor w innym miejscu, niż odzywał się dziennik.
+    const przed = stopienGlodu(hero.hunger);
     hero.hunger--;
-    if (hero.hunger === 200) this.tell(hero, 'Robisz się głodny.');
-    if (hero.hunger === 50) this.tell(hero, 'Jesteś bardzo głodny!');
+    const po = stopienGlodu(hero.hunger);
+    if (po !== przed && po.komunikat) this.tell(hero, po.komunikat);
     if (hero.hunger <= 0) {
       hero.hunger = 0;
       if (this.turn % 3 === 0) {

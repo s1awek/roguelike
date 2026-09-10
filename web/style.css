@@ -349,3 +349,26 @@ kbd {
 #panel .werdykt.plus { color: var(--green); border-left: 3px solid var(--green); }
 #panel .werdykt.minus { color: var(--red); border-left: 3px solid var(--red); }
 #panel .werdykt.rowno { color: var(--dim); border-left: 3px solid var(--line); }
+
+/* ---------- paski stanów (sytość dziś, DayZ-owe stany jutro) ---------- */
+/* Ten sam kształt co pasek życia obok, więc oko czyta oba tak samo. Kolor
+   idzie z tonu wyliczonego w `src/stany.js`, a nie z liczby - dołożenie stanu
+   nie wymaga tu ani jednej nowej reguły, o ile używa znanych tonów. */
+#hud .stany { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+#hud .stan { display: flex; align-items: center; gap: 7px; }
+#hud .stan .lbl { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+#hud .stan .bar { width: 96px; }
+#hud .stan .num { font-size: 12px; min-width: 96px; }
+#hud .stan.dobrze .bar i { background: var(--green); }
+#hud .stan.dobrze .num { color: var(--dim); }
+#hud .stan.uwaga .bar i { background: var(--gold); }
+#hud .stan.uwaga .num { color: var(--gold); }
+#hud .stan.zle .bar i { background: var(--red); }
+#hud .stan.zle .num { color: var(--red); }
+/* Stan krytyczny ma się rzucać w oczy KĄTEM oka, bo właśnie o to prosił
+   właściciel: „samo »syty« bardzo łatwo może umknąć, ktoś może przegapić,
+   umrzeć i nie wiedzieć dlaczego". */
+#hud .stan.krytycznie .bar i { background: var(--red); }
+#hud .stan.krytycznie .num { color: var(--red); font-weight: 700; }
+#hud .stan.krytycznie { animation: pulsStanu 1.1s ease-in-out infinite; }
+@keyframes pulsStanu { 50% { opacity: .45; } }

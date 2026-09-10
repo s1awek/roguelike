@@ -14,6 +14,7 @@
 import { POTIONS, SCROLLS, WEAPONS, ARMORS, FOODS, PACKS, SCENTS, POTION_SCENT, scentGroup } from './items.js';
 import { PLECAK_START, LIMIT_STOSU } from './plecak.js';
 import { KINDS, BOSS } from './monsters.js';
+import { STOPNIE_GLODU } from './stany.js';
 import { MAX_DEPTH, FOV_RADIUS, HUNGER_START, HUNGER_MAX, xpForLevel,
   zwrotZaZabicie, PROG_ZMECZENIA, REGEN_MNOZNIK } from './game.js';
 
@@ -161,11 +162,22 @@ export function buildRules(gdzie = 'doc') {
       title: 'Głód',
       blocks: [
         { t: 'p', text: `Zaczynasz z sytością ${HUNGER_START} i tracisz 1 punkt na turę. Jedzenie podnosi ją do najwyżej ${HUNGER_MAX}.` },
-        { t: 'table', head: ['sytość', 'co się dzieje'], rows: [
-          ['200', 'ostrzeżenie: robisz się głodny'],
-          ['50', 'ostrzeżenie: jesteś bardzo głodny'],
-          ['0', 'głodujesz: tracisz 1 życie co trzecią turę i nie regenerujesz się'],
-        ] },
+        // Progi NIE są tu przepisane ręcznie. Do tej pory były - i rozjechały się
+        // z grą, bo tablica w księdze nie wie, kiedy ktoś zmieni liczbę w silniku.
+        // Teraz jeden zestaw progów (`src/stany.js`) karmi naraz księgę, pasek
+        // w interfejsie i ostrzeżenia w dzienniku (D-021).
+        { t: 'table', head: ['sytość', 'stan', 'co się dzieje'], rows:
+          [...STOPNIE_GLODU].reverse().map((st, i, tab) => {
+            const dolna = i + 1 < tab.length ? tab[i + 1].do + 1 : null;
+            const zakres = st.do === Infinity ? `powyżej ${tab[1].do}`
+              : dolna === null ? String(st.do)
+              : dolna === st.do ? String(st.do) : `${dolna}-${st.do}`;
+            const co = st.do === 0
+              ? 'głodujesz: tracisz 1 życie co trzecią turę i nie regenerujesz się'
+              : st.komunikat ? `ostrzeżenie w dzienniku: „${st.komunikat}"`
+              : 'nic, poza tym że zegar tyka';
+            return [zakres, st.etykieta, co];
+          }) },
         { t: 'table', head: ['jedzenie', 'sytość', 'jak często'], rows:
           FOODS.map(f => [f.name, String(f.nutrition), SHARE.food.get(f.type)]) },
         { t: 'p', text: 'Głód jest zegarem całej wyprawy: to on karze zwlekanie i nadmierne krążenie po odkrytych już poziomach.' },

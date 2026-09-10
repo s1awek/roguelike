@@ -104,11 +104,13 @@ Za pokonane potwory dostajesz doświadczenie. Awans daje +10 do maksimum życia 
 
 Zaczynasz z sytością 1200 i tracisz 1 punkt na turę. Jedzenie podnosi ją do najwyżej 2000.
 
-| sytość | co się dzieje |
-|---|---|
-| 200 | ostrzeżenie: robisz się głodny |
-| 50 | ostrzeżenie: jesteś bardzo głodny |
-| 0 | głodujesz: tracisz 1 życie co trzecią turę i nie regenerujesz się |
+| sytość | stan | co się dzieje |
+|---|---|---|
+| powyżej 700 | syty | nic, poza tym że zegar tyka |
+| 301-700 | podjadłbyś | nic, poza tym że zegar tyka |
+| 101-300 | głodny | ostrzeżenie w dzienniku: „Robisz się głodny." |
+| 1-100 | słabniesz z głodu | ostrzeżenie w dzienniku: „Jesteś bardzo głodny!" |
+| 0 | GŁODUJESZ | głodujesz: tracisz 1 życie co trzecią turę i nie regenerujesz się |
 
 | jedzenie | sytość | jak często |
 |---|---|---|

@@ -1,4 +1,5 @@
 import { polaSlowo } from '../src/items.js';
+import { stanyBohatera } from '../src/stany.js';
 
 // Wspólny kawałek widoku dla obu wersji przeglądarkowych: skutek przedmiotu
 // i różnica wobec noszonego, w jednym kształcie. Treść liczb pochodzi
@@ -33,4 +34,24 @@ export function obejrzyjHtml(nazwa, o) {
   if (o.sztuk > 1) w.push(`<li><span class="etyk">sztuk</span> ${o.sztuk}</li>`);
   return `<h2>${esc(nazwa)}</h2><ul class="karta">${w.join('')}</ul>`
     + (o.werdykt ? `<p class="werdykt ${o.ton}">${esc(o.werdykt)}</p>` : '');
+}
+
+/**
+ * Paski stanów bohatera obok paska życia. Rysowane z rejestru `src/stany.js`,
+ * więc dołożenie tam nowego stanu (zimno, przeziębienie, zdrowie osobno od
+ * energii) pokazuje go w obu wersjach przeglądarkowych bez zmiany tego pliku.
+ *
+ * Słowo stoi OBOK paska, nie zamiast niego. Sam napis „syty" łatwo przeoczyć
+ * i można umrzeć nie wiedząc dlaczego - dokładnie to zgłosił właściciel. Pasek
+ * pokazuje, jak daleko do kłopotu, słowo mówi, jak się ten kłopot nazywa,
+ * a kolor działa kątem oka, zanim gracz zdąży cokolwiek przeczytać.
+ */
+export function stanyHtml(hero) {
+  return stanyBohatera(hero).map(s => `
+    <div class="stan ${s.ton}" data-id="${s.id}"
+         title="${esc(s.nazwa)}: ${s.wartosc} z ${s.max}${s.doNastepnego > 0 ? `, ${s.doNastepnego} tur do gorszego stopnia` : ''}">
+      <span class="lbl">${esc(s.nazwa)}</span>
+      <div class="bar"><i style="width:${(s.frakcja * 100).toFixed(1)}%"></i></div>
+      <span class="num">${esc(s.etykieta)}</span>
+    </div>`).join('');
 }

@@ -12,7 +12,7 @@ import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
 import { poloz, pojemnosc, zajetePola } from '../src/plecak.js';
 import { obejrzyj } from '../src/ocena.js';
 import { siatkaHtml, podepnijSiatke, trwaCiagniecie } from './plecak-ui.js';
-import { statsHtml, obejrzyjHtml } from './opis.js';
+import { statsHtml, obejrzyjHtml, stanyHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
@@ -392,9 +392,6 @@ function koniec() {
 
 // ---------- panel stanu ----------
 
-const HUNGER = [[0, 'głoduje', 'tag red'], [150, 'słabnie', 'tag red'], [400, 'głodny', 'tag gold'], [Infinity, 'syty', 'tag']];
-function hungerTag(v) { const r = HUNGER.find(x => v <= x[0]); return [r[1], r[2]]; }
-
 function odswiezHud() {
   const p = cien.ja;
   if (!p) return;
@@ -409,9 +406,7 @@ function odswiezHud() {
   $('pdepth').textContent = `${p.depth}/${p.maxDepth}`;
   $('pturn').textContent = cien.turn;
   $('pwrogi').textContent = cien.pietro.potwory;
-  const [word, cls] = hungerTag(p.hunger);
-  $('hunger').textContent = word;
-  $('hunger').className = cls;
+  $('stany').innerHTML = stanyHtml(p);
   $('amulet').hidden = !p.hasAmulet;
 
   // Oddech. Gracz musi widzieć, że cofanie się ma koniec, ZANIM zabraknie mu

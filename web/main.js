@@ -10,7 +10,7 @@ import { serialize, loadFromString } from '../src/serialize.js';
 import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
 import { pojemnosc, zajetePola } from '../src/plecak.js';
 import { siatkaHtml, podepnijSiatke } from './plecak-ui.js';
-import { statsHtml, obejrzyjHtml } from './opis.js';
+import { statsHtml, obejrzyjHtml, stanyHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
@@ -418,13 +418,6 @@ function doLoad() {
 
 const $ = (id) => document.getElementById(id);
 
-function hungerTag(h) {
-  if (h <= 0) return ['GŁODUJESZ', 'tag bad'];
-  if (h < 200) return ['głodny', 'tag warn'];
-  if (h > 1500) return ['najedzony', 'tag'];
-  return ['syty', 'tag'];
-}
-
 function updateHud() {
   const p = game.player;
   const frac = p.hp / p.maxHp;
@@ -440,9 +433,7 @@ function updateHud() {
   // czytana wprost z poziomu, w wieloosobowej przychodzi w migawce.
   $('pwrogi').textContent = game.levels.get(game.depth).monsters.filter(m => m.hp > 0).length;
   $('pturn').textContent = game.turn;
-  const [word, cls] = hungerTag(p.hunger);
-  $('hunger').textContent = word;
-  $('hunger').className = cls;
+  $('stany').innerHTML = stanyHtml(p);
   $('amulet').hidden = !p.hasAmulet;
   renderLog();
 }

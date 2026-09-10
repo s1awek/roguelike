@@ -9,6 +9,7 @@ import { itemLabel, itemGlyph, itemStats, polaSlowo } from './items.js';
 import { pojemnosc, zajetePola, ile as sztuk } from './plecak.js';
 import { opisWLinijkach } from './ocena.js';
 import { buildRules } from './rules.js';
+import { stanyBohatera } from './stany.js';
 
 const ESC = '\x1b[';
 export const C = {
@@ -79,11 +80,22 @@ function bar(value, max, width, color) {
   return `${color}${'█'.repeat(filled)}${C.grey}${'░'.repeat(width - filled)}${C.reset}`;
 }
 
-function hungerWord(h) {
-  if (h <= 0) return `${C.brightRed}GŁODUJESZ${C.reset}`;
-  if (h < 200) return `${C.yellow}głodny${C.reset}`;
-  if (h > 1500) return `${C.grey}najedzony${C.reset}`;
-  return `${C.grey}syty${C.reset}`;
+// Kolor stanu bierze się z jego TONU, tego samego, którym kieruje się obie
+// wersje przeglądarkowe. Jedna tablica progów (`src/stany.js`) i jedna tablica
+// kolorów, więc terminal nie może nazwać stanu inaczej niż płótno.
+const TON_KOLOR = {
+  dobrze: C.brightGreen,
+  uwaga: C.yellow,
+  zle: C.brightRed,
+  krytycznie: C.brightRed + C.bold,
+};
+
+/** Stany bohatera jako paski - ten sam kształt co pasek życia obok. */
+function stanyNapis(hero) {
+  return stanyBohatera(hero).map(s => {
+    const k = TON_KOLOR[s.ton] || C.grey;
+    return `${C.bold}${s.nazwa}${C.reset} ${bar(s.wartosc, s.max, 10, k)} ${k}${s.etykieta}${C.reset}`;
+  });
 }
 
 export function renderStatus(game) {
@@ -96,7 +108,7 @@ export function renderStatus(game) {
     `${C.bold}Atak${C.reset} ${game.playerAttack()}`,
     `${C.bold}Obrona${C.reset} ${game.playerDefense()}`,
     `${C.bold}Głębokość${C.reset} ${C.brightCyan}${game.depth}/${game.maxDepth}${C.reset}`,
-    hungerWord(p.hunger),
+    ...stanyNapis(p),
     `${C.bold}Tura${C.reset} ${game.turn}`,
     p.hasAmulet ? `${C.brightYellow}${C.bold}[AMULET]${C.reset}` : '',
   ].filter(Boolean).join('  ');
