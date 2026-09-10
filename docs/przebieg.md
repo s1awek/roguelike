@@ -605,9 +605,13 @@ warstwę korzystającą z tej samej funkcji do czegoś innego.
   przyrządu (śmierć z głodu nie jest przegranym starciem; odmowa poza kontaktem
   nie kosztuje tury; deklaracja od uczestnika po partii jest odrzucana;
   wąchanie poza zakresem plecaka nie wywraca gry)
-- pełny odbiór dziewięciu kryteriów pierwotnej specyfikacji na stanie po całej
-  przebudowie: **9/9**, 1000 partii w 699 s, 283 zwycięstwa (28,3%), zero
-  wywrotek, zero partii bez rozstrzygnięcia
+- pełny odbiór dziewięciu kryteriów pierwotnej specyfikacji, **dwa niezależne
+  przebiegi**: po przebudowie silnika i po dołożeniu warstwy serwera. Oba
+  **9/9**, oba 1000 partii, oba **283 zwycięstwa (28,3%)**, zero wywrotek, zero
+  partii bez rozstrzygnięcia. Identyczna liczba zwycięstw w dwóch przebiegach
+  po dwóch różnych etapach pracy jest mocniejszym dowodem nienaruszalności gry
+  jednoosobowej niż sam odcisk zachowania: odcisk mówi „ta sama ścieżka",
+  a to mówi „ten sam wynik na tysiącu partii"
 - partia przez sieć: dwóch klientów bez przeglądarki, potem klient prowadzony
   prawdziwą przeglądarką
 - wczytanie PRAWDZIWEGO zapisu w formacie 1, wyprodukowanego przed przebudową
