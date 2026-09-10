@@ -392,6 +392,38 @@ kartą, odświeżenie - klient wraca do lobby (`ja: null`, pamięć pusta, przyc
 włączony) i ponowne wejście przechodzi. Test regresyjny pyta stół o znak ważny,
 o znak podrobiony i o miejsce spoza stołu.
 
+### W-14: „widzę tylko napis Dosiadam i trzy kropki"
+
+Zgłoszenie właściciela w trakcie gry. Odtworzenie na jego własnym stole dało wynik
+inny niż zakładaliśmy oboje: gra **uruchamiała się** poprawnie (lobby znikało
+w 700 ms, tury płynęły, zero wyjątków), a napis „Dosiadam..." zostawał na przycisku,
+bo przywracany był wyłącznie przy odmowie. U właściciela ekran wejścia nie zniknął -
+inaczej nie widziałby przycisku.
+
+**Czego NIE ustaliłem:** dlaczego u niego nie zniknął. Serwer sprawdzony niezależnie
+od przeglądarki (własny klient z wiersza poleceń: 11 migawek w 4 s, komplet danych),
+jego miejsce przeżyło porządki, więc strumień był otwarty. Brakuje jednego dowodu -
+treści jego konsoli, której nie mam jak odczytać.
+
+Zamiast szukać dalej po omacku, usunięta została cała klasa awarii i zbudowany
+brakujący przyrząd:
+
+1. Ekran wejścia znika po przyznaniu miejsca, nie po pierwszej migawce (D-032).
+   Wiązanie tych dwóch zdarzeń znaczyło, że każda przeszkoda po stronie migawki
+   objawiała się jako martwy przycisk, przy zajętym już miejscu przy stole.
+2. Przycisk wraca do stanu użytecznego ZAWSZE, także po udanym wejściu.
+3. Strona zgłasza własne wyjątki do stołu (`/api/skarga`), więc konsola gracza
+   przestaje być niewidoczna. Kontrola przyrządu: dwa zasiane błędy (wyjątek
+   nieobsłużony i odrzucona obietnica) trafiły do logu, a dwadzieścia jeden
+   identycznych wyjątków dało JEDEN wpis - dławienie działa, więc jedna usterka
+   w pętli rysowania nie zaleje dozoru.
+
+**Uboczne, znalezione przy sprzątaniu:** sterownik przeglądarki zamykał gniazdko,
+ale zostawiał otwartą kartę - `chrome.kill()` nie dosięga przeglądarki, która
+chodziła już przed jego uruchomieniem. Piętnaście kart z kolejnych prób trzymało
+żywe strumienie, a przez to miejsca przy stole, i zjadało pułap miejsc na adres
+prawdziwemu graczowi. Przyrząd pomiarowy zakłócał mierzony układ.
+
 ## Wątek 4: czytelność, minimapa, autozapis (2026-09-10)
 
 Trzy zgłoszenia właściciela po pierwszej dłuższej rozgrywce w przeglądarce:
