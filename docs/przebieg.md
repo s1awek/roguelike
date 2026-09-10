@@ -299,3 +299,56 @@ przecinek) i to było `[ustalone]`, ale POWÓD, dla którego doszedł przecinek,
 z hipotezy o układzie klawiatury i zacząłem pod nią budować naprawę, zamiast najpierw
 zapytać, czy Shift w ogóle był wciśnięty.** Tańsze pytanie stało przed droższą
 naprawą i zostało pominięte.
+
+## Wątek 4: czytelność, minimapa, autozapis (2026-09-10)
+
+Trzy zgłoszenia właściciela po pierwszej dłuższej rozgrywce w przeglądarce:
+tekst panelu za mały i za szary, brak minimapy, odświeżenie strony resetuje grę.
+Żadne z nich nie było wadą działania - to były braki. Zmiany siedzą wyłącznie
+w `web/`; `src/` nie zostało tknięte, więc wersja terminalowa i bot mierzą
+dokładnie tę samą grę co przed nimi (`git diff --stat` pokazuje cztery pliki,
+wszystkie w `web/`).
+
+### Co zostało zmierzone, a nie przeczytane z kodu
+
+Odbiór przeszedł przez prawdziwą przeglądarkę prowadzoną po protokole debugowania
+(Chrome bez okna, zdarzenia klawiatury wysyłane do strony). Wyniki:
+
+- `[ustalone - dwa odczyty stanu przez uchwyt `roguelike.game`]` Stan po
+  odświeżeniu jest identyczny: tura 17, pozycja `19,9`, punkty życia 29, ziarno
+  `ui-test` - przed i po. Autozapis waży 6921 znaków.
+- `[ustalone - trzy warianty adresu]` Adres bez ziarna wraca do autozapisu;
+  adres z **tym samym** ziarnem też (tura 12, pozycja 15); adres z **innym**
+  ziarnem daje nową grę od tury 0. Ostatni przypadek nadpisuje autozapis
+  poprzedniej rozgrywki - świadomie, bo jawne ziarno w adresie jest prośbą
+  o konkretną grę.
+- `[ustalone - porównanie długości wpisu przed i po pięciu turach]` Zapis ręczny
+  (`S`) nie jest ruszany przez autozapis.
+- `[ustalone - śmierć z głodu wywołana normalnymi turami]` Po śmierci autozapis
+  znika, ekran końcowy pada, a odświeżenie daje nową grę (tura 0, stan `playing`).
+- `[ustalone - kontrola znanego-dobrego przypadku]` Przecinek bez Shiftu nadal
+  znaczy „podnieś" („Nie ma tu nic do podniesienia."), czyli utwardzenie z W-10
+  nie zjadło zwykłego przecinka po dołożeniu `KeyN` do tablicy.
+- `[ustalone - konsola przeglądarki pusta we wszystkich czterech przebiegach]`
+  Zero błędów i zero wyjątków.
+
+### Dwie rzeczy wyszły dopiero ze zrzutu ekranu, nie z kodu
+
+1. Komunikat „Wznowiono grę z autozapisu" wpisywał się do **dziennika gry**,
+   a dziennik jest częścią zapisanego stanu - więc na zrzucie stał dwa razy pod
+   rząd, po dwóch odświeżeniach. Przeniesiony na płótno (znika po 2,6 s).
+2. Adres z ziarnem kasował trwającą rozgrywkę bez ostrzeżenia. Teraz wraca do
+   autozapisu, jeśli ziarno się zgadza.
+
+Obie wychwycone przez oglądanie wyniku, nie przez czytanie własnego kodu -
+i obie były niewidoczne dla testów, bo testy nie patrzą na dziennik ani na adres.
+
+### Czego nadal nie sprawdzono
+
+- `[niezweryfikowane]` Rozgrywka z udziałem **człowieka**. Klawisze wciskał
+  sterownik. To ta sama luka co w wątku 2.
+- `[niezweryfikowane]` Przeglądarki spoza rodziny Chromium i urządzenia dotykowe.
+  Minimapa reaguje na kliknięcie, ale nie na dotyk odrębnie.
+- `[niezweryfikowane]` Zachowanie przy zapełnionej pamięci przeglądarki. Kod ma
+  gałąź na odmowę zapisu (znacznik zmienia się na „bez autozapisu"), ale nie
+  została wywołana na prawdziwym przepełnieniu - tylko przeczytana.

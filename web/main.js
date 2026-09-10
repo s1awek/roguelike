@@ -13,9 +13,11 @@ import { WALL } from '../src/map.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
 
-const SAVE_KEY = 'roguelike:save';
+const SAVE_KEY = 'roguelike:save';   // zapis ręczny, robiony klawiszem S
+const AUTO_KEY = 'roguelike:auto';   // autozapis, nadpisywany po każdej turze
 const STEP_MS = 108;             // tempo marszu po kliknięciu
 const WALK_LIMIT = 400;          // twardy sufit, żeby marsz nie mógł trwać w nieskończoność
+const AUTO_MS = 450;             // nie częściej niż tyle - serializacja to kilkadziesiąt kB
 
 const canvas = document.getElementById('map');
 const overlay = document.getElementById('overlay');
@@ -26,13 +28,30 @@ const renderer = new Renderer(canvas);
 const view = new View();
 
 const params = new URLSearchParams(location.search);
-let game = new Game(params.get('seed') || String(Date.now()));
 let mode = 'map';                // 'map' | 'inventory' | 'drop' | 'help' | 'over'
 let walk = null;
 let notice = '';
 let noticeUntil = 0;
 
-game.message('Wchodzisz do lochu. Naciśnij ? po pomoc.');
+// Odświeżenie karty nie może kosztować rozgrywki. Stan wraca z autozapisu, chyba
+// że w adresie stoi jawne ziarno - wtedy gracz prosi o KONKRETNĄ grę i to on ma
+// rację, nie zapisany stan.
+let game = null;
+const seedParam = params.get('seed');
+const raw = storageGet(AUTO_KEY);
+if (raw) {
+  const r = loadFromString(raw);
+  if (!r.ok) storageRemove(AUTO_KEY);          // zapis obcy albo uszkodzony nie blokuje startu
+  // Adres z ziarnem prosi o KONKRETNĄ grę. Autozapis tego samego ziarna to ta
+  // sama rozgrywka, więc wraca; autozapis innej gry zostaje pominięty i za
+  // chwilę nadpisany - takie jest znaczenie jawnego ziarna w adresie.
+  else if (!seedParam || String(r.game.seed) === seedParam) game = r.game;
+}
+const resumed = !!game;
+if (!game) game = new Game(seedParam || String(Date.now()));
+// Komunikat o wznowieniu NIE idzie do dziennika gry, bo dziennik jest częścią
+// zapisanego stanu - co odświeżenie dopisywałoby do niego kolejny wiersz.
+if (!resumed) game.message('Wchodzisz do lochu. Naciśnij ? po pomoc.');
 view.sync(game);
 renderer.resize(game);
 
@@ -43,7 +62,8 @@ function act(action) {
   if (game.status !== 'playing') return;
   game.act(action);
   view.sync(game);
-  if (game.status !== 'playing') { walk = null; showGameOver(); }
+  autoDirty = true;
+  if (game.status !== 'playing') { walk = null; flushAuto(); showGameOver(); }
   updateHud();
 }
 
@@ -107,7 +127,7 @@ const DIR = {
 // się w "podnieś", co wygląda jak wada gry, a jest rozjazdem układu klawiatury.
 // Rozstrzyga `e.code`, czyli POŁOŻENIE klawisza, niezależne od układu.
 const SHIFTED_BY_CODE = {
-  Comma: '<', Period: '>', Slash: '?', KeyS: 'S', KeyL: 'L', KeyQ: 'Q',
+  Comma: '<', Period: '>', Slash: '?', KeyS: 'S', KeyL: 'L', KeyQ: 'Q', KeyN: 'N',
 };
 
 /** Ostatnie klawisze - do odczytania w konsoli, gdy sterowanie zachowa się dziwnie. */
@@ -121,7 +141,7 @@ window.addEventListener('keydown', (e) => {
   keyLog.push({ key: e.key, code: e.code, shift: e.shiftKey, uzyto: k });
   if (keyLog.length > 24) keyLog.shift();
 
-  if (DIR[k] || ['.', ',', '5', 'g', '>', '<', 'i', 'd', '?', 'S', 'L', 'Escape', ' '].includes(k)) e.preventDefault();
+  if (DIR[k] || ['.', ',', '5', 'g', '>', '<', 'i', 'd', '?', 'S', 'L', 'N', 'm', 'Escape', ' '].includes(k)) e.preventDefault();
 
   if (walk) { walk = null; return; }   // dowolny klawisz przerywa marsz
 
@@ -147,6 +167,8 @@ window.addEventListener('keydown', (e) => {
     case '?': openHelp(); break;
     case 'S': doSave(); break;
     case 'L': doLoad(); break;
+    case 'm': renderer.minimap = !renderer.minimap; say(renderer.minimap ? 'Minimapa włączona.' : 'Minimapa wyłączona.'); break;
+    case 'N': newGame(); break;
     default: break;
   }
 });
@@ -155,7 +177,16 @@ window.addEventListener('keydown', (e) => {
 
 canvas.addEventListener('click', (e) => {
   const r = canvas.getBoundingClientRect();
-  const { x, y } = renderer.tileAt(e.clientX - r.left, e.clientY - r.top);
+  const px = e.clientX - r.left;
+  const py = e.clientY - r.top;
+  // Kliknięcie w plan znaczy to samo co kliknięcie w loch: idź tam. Bez tego
+  // trafienie w minimapę zlecałoby marsz w przypadkowe pole POD nią.
+  if (renderer.inMinimap(px, py)) {
+    const t = renderer.minimapTileAt(px, py);
+    if (t) startWalk(t.x, t.y);
+    return;
+  }
+  const { x, y } = renderer.tileAt(px, py);
   if (x === game.player.x && y === game.player.y) { act({ type: 'wait' }); return; }
   startWalk(x, y);
 });
@@ -209,8 +240,14 @@ function openHelp() {
       <b>podnieś</b><span><kbd>,</kbd> albo <kbd>g</kbd></span>
       <b>schody</b><span><kbd>&gt;</kbd> w dół, <kbd>&lt;</kbd> w górę</span>
       <b>ekwipunek</b><span><kbd>i</kbd>, wyrzucanie <kbd>d</kbd></span>
-      <b>zapis</b><span><kbd>S</kbd> zapisuje, <kbd>L</kbd> wczytuje</span>
+      <b>minimapa</b><span><kbd>m</kbd> włącza i wyłącza plan poziomu; kliknięcie w plan też prowadzi</span>
+      <b>zapis</b><span><kbd>S</kbd> zapisuje ręcznie, <kbd>L</kbd> wczytuje ten zapis</span>
+      <b>nowa gra</b><span><kbd>Shift</kbd>+<kbd>N</kbd></span>
     </div>
+    <h2>Autozapis</h2>
+    <p class="muted">Gra zapisuje się sama po każdej turze, więc odświeżenie strony
+      ani zamknięcie karty nie kosztuje rozgrywki - wracasz tam, gdzie byłeś.
+      Ręczny zapis (<kbd>S</kbd>) to osobny punkt kontrolny: autozapis go nie nadpisuje.</p>
     <h2>Cel</h2>
     <p class="muted">Zejdź na poziom 8, pokonaj Smoka Otchłani, zabierz Amulet
       i wróć schodami w górę na powierzchnię.</p>
@@ -253,9 +290,54 @@ function newGame() {
   renderer.resize(game);
   closeOverlay();
   updateHud();
+  flushAuto();
 }
 
 // ---------- zapis ----------
+
+// `localStorage` bywa niedostępny nie tylko przez brak miejsca: tryb prywatny,
+// zablokowane dane witryn, strona otwarta z pliku. Każde dotknięcie idzie więc
+// przez try, a gra ma działać dalej także wtedy, gdy zapis jest niemożliwy.
+function storageGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function storageRemove(key) {
+  try { localStorage.removeItem(key); } catch { /* nic nie da się zrobić */ }
+}
+
+let autoDirty = false;
+let autoLast = 0;
+let autoBroken = false;   // po pierwszej odmowie nie próbujemy co pół sekundy
+
+/**
+ * Autozapis. Osobny klucz niż zapis ręczny (S) - inaczej każda tura kasowałaby
+ * punkt kontrolny, który gracz zrobił świadomie.
+ * Gra skończona autozapisu NIE zostawia: po śmierci odświeżenie ma dać nową grę,
+ * a nie wieczny ekran końcowy.
+ */
+function flushAuto() {
+  if (autoBroken) return;
+  autoDirty = false;
+  autoLast = performance.now();
+  try {
+    if (game.status !== 'playing') { localStorage.removeItem(AUTO_KEY); return; }
+    localStorage.setItem(AUTO_KEY, serialize(game));
+    blinkAuto();
+  } catch (e) {
+    autoBroken = true;
+    say(`Autozapis niemożliwy: ${e.message}`);
+    const tag = $('autotag');
+    if (tag) { tag.textContent = 'bez autozapisu'; tag.className = 'tag bad'; }
+  }
+}
+
+let blinkUntil = 0;
+function blinkAuto() {
+  const tag = $('autotag');
+  if (!tag) return;
+  tag.classList.add('lit');
+  blinkUntil = performance.now() + 650;
+}
 
 function doSave() {
   try { localStorage.setItem(SAVE_KEY, serialize(game)); say('Zapisano w przeglądarce.'); }
@@ -275,6 +357,7 @@ function doLoad() {
   view.sync(game);
   renderer.resize(game);
   say('Wczytano zapis.');
+  autoDirty = true;
   updateHud();
   // Zapis zrobiony tuż przed śmiercią wczytywał się do stanu, w którym gra jest
   // skończona, ale ekran końcowy nie padał - bo dotąd pokazywał go wyłącznie
@@ -332,6 +415,8 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   stepWalk(now);
+  if (autoDirty && now - autoLast > AUTO_MS) flushAuto();
+  if (blinkUntil && now > blinkUntil) { blinkUntil = 0; $('autotag')?.classList.remove('lit'); }
   view.step(dt);
   renderer.draw(game, view, dt);
   if (notice && now < noticeUntil) drawNotice();
@@ -371,6 +456,15 @@ window.roguelike = {
   get keys() { return keyLog.slice(); },
 };
 
+// Zamknięcie karty potrafi wypaść między dwoma zrzutami z dławieniem. `pagehide`
+// jest jedynym zdarzeniem, które leci także przy przejściu do pamięci podręcznej
+// wstecz/dalej; `visibilitychange` łapie przełączenie karty na telefonie.
+window.addEventListener('pagehide', () => flushAuto());
+window.addEventListener('visibilitychange', () => { if (document.hidden) flushAuto(); });
+
 window.addEventListener('resize', () => renderer.resize(game));
 updateHud();
+flushAuto();
+if (resumed) say('Wznowiono grę z autozapisu. Nowa gra: Shift+N.');
+if (game.status !== 'playing') showGameOver();
 requestAnimationFrame(frame);

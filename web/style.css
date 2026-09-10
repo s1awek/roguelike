@@ -2,8 +2,9 @@
   --bg: #06070b;
   --panel: #0e1017;
   --line: #1e2230;
-  --ink: #cfd4de;
-  --dim: #757d8d;
+  --ink: #e4e8f1;
+  --dim: #929cb0;
+  --dimmer: #6d7688;
   --warm: #ffbe6e;
   --gold: #ffd666;
   --red: #ff5f6d;
@@ -16,7 +17,7 @@ html, body { height: 100%; margin: 0; }
 body {
   background: var(--bg);
   color: var(--ink);
-  font: 13px/1.5 var(--font);
+  font: 14px/1.5 var(--font);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -31,28 +32,43 @@ body {
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
-#hud .lbl { color: var(--dim); letter-spacing: .08em; font-size: 11px; }
+#hud .lbl { color: var(--dim); letter-spacing: .08em; font-size: 12px; }
 #hud .hp { display: flex; align-items: center; gap: 9px; }
 #hud .bar {
-  width: 148px; height: 10px; border-radius: 5px;
+  width: 148px; height: 12px; border-radius: 5px;
   background: #1b1f2b; overflow: hidden;
   box-shadow: inset 0 1px 2px rgba(0,0,0,.6);
 }
 #hud .bar i { display: block; height: 100%; width: 100%; border-radius: 5px; transition: width .18s ease, background .18s ease; }
-#hud .num { font-variant-numeric: tabular-nums; }
+#hud .num { font-variant-numeric: tabular-nums; font-size: 15px; color: #f4f7fc; font-weight: 600; }
 
-#hud .stats { display: flex; gap: 18px; flex-wrap: wrap; }
-#hud .stats span { display: flex; flex-direction: column; line-height: 1.15; }
-#hud .stats b { font-weight: 600; font-variant-numeric: tabular-nums; }
-#hud .stats em { font-style: normal; font-size: 10px; color: var(--dim); letter-spacing: .05em; }
+/* Panel stanu czyta sie w biegu, katem oka, na ciemnym tle - dlatego liczba jest
+   duza i niemal biala, a podpis pod nia maly, ale nadal powyzej progu czytelnosci.
+   Kreska miedzy pozycjami zastepuje odliczanie odstepow wzrokiem. */
+#hud .stats { display: flex; gap: 0; flex-wrap: wrap; }
+#hud .stats span {
+  display: flex; flex-direction: column; line-height: 1.12;
+  padding: 0 15px; border-left: 1px solid #1a1e2a;
+}
+#hud .stats span:first-child { border-left: 0; padding-left: 0; }
+#hud .stats b {
+  font-weight: 600; font-size: 17px; color: #f4f7fc;
+  font-variant-numeric: tabular-nums; letter-spacing: .01em;
+}
+#hud .stats em {
+  font-style: normal; font-size: 11px; color: var(--dim);
+  letter-spacing: .06em; margin-top: 2px;
+}
 
 #hud .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .tag {
-  padding: 3px 9px; border-radius: 999px; font-size: 11px;
+  padding: 3px 10px; border-radius: 999px; font-size: 12px;
   border: 1px solid var(--line); color: var(--dim); white-space: nowrap;
 }
 .tag.warn { color: var(--gold); border-color: #45391c; }
 .tag.bad  { color: var(--red); border-color: #4a2026; }
+.tag.auto { color: var(--dimmer); border-color: #171b26; transition: color .25s ease, border-color .25s ease; }
+.tag.auto.lit { color: var(--green); border-color: #234436; }
 .tag.gold { color: #0d0a02; background: var(--gold); border-color: var(--gold); font-weight: 700; letter-spacing: .06em; }
 
 /* ---------- płótno ---------- */
@@ -67,11 +83,13 @@ body {
 /* ---------- dziennik ---------- */
 #foot { border-top: 1px solid var(--line); background: #0a0c12; padding: 8px 16px 10px; }
 #log { list-style: none; margin: 0 0 6px; padding: 0; height: 4.5em; overflow: hidden; }
+#log li:last-child { font-weight: 500; }
 #log li { color: var(--dim); }
+#log li:nth-last-child(3) { color: var(--dimmer); }
 #log li:last-child { color: var(--ink); }
 #log li.fresh { animation: pop .35s ease; }
 @keyframes pop { from { opacity: 0; transform: translateY(4px); } }
-#hint { margin: 0; color: #4d5666; font-size: 11px; }
+#hint { margin: 0; color: #6d7688; font-size: 12px; }
 
 /* ---------- nakładki ---------- */
 #overlay {
@@ -102,10 +120,11 @@ body {
 #panel dd { margin: 0; font-variant-numeric: tabular-nums; }
 #panel .keys { display: grid; grid-template-columns: 8.5em 1fr; gap: 4px 14px; margin: 0 0 16px; }
 #panel .keys b { color: var(--warm); font-weight: 600; }
-#panel .foot { margin-top: 16px; color: var(--dim); font-size: 11px; }
+#panel .keys span { color: var(--ink); }
+#panel .foot { margin-top: 16px; color: var(--dim); font-size: 12px; }
 kbd {
   background: #1a1f2b; border: 1px solid #262c3a; border-bottom-width: 2px;
-  border-radius: 4px; padding: 1px 5px; font: inherit; font-size: 11px;
+  border-radius: 4px; padding: 1px 5px; font: inherit; font-size: 12px; color: #e4e8f1;
 }
 
 #panel canvas.ico { width: 22px; height: 22px; flex: 0 0 22px; align-self: center; }

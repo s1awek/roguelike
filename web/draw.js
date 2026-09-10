@@ -86,6 +86,8 @@ export class Renderer {
     this.follow = false;
     this.camX = null;
     this.camY = 0;
+    this.minimap = true;
+    this.miniRect = null;   // ustawiane przy rysowaniu; potrzebne do trafien myszy
   }
 
   /** Dopasowuje płótno do kontenera. Cały poziom mieści się bez przewijania. */
@@ -166,6 +168,11 @@ export class Renderer {
     this.drawPlayer(game, view, ps);
     this.drawEffects(view);
 
+    // Minimapa rysuje sie PO zdjeciu wstrzasu - inaczej trzeslaby sie razem
+    // z lochem, a jest elementem panelu, nie swiata.
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.drawMinimap(game, view);
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
@@ -173,6 +180,127 @@ export class Renderer {
     const d = Math.hypot(x - ps.x, y - ps.y);
     const f = 1 - d / (FOV_RADIUS + 2.2);
     return Math.max(0.30, Math.min(1, 0.32 + f * 0.88)) * flicker;
+  }
+
+  // ---------- minimapa ----------
+
+  /**
+   * Plan poziomu w rogu ekranu. Pokazuje WYLACZNIE to, co gracz widzi teraz albo
+   * pamieta z wczesniej - dokladnie ten sam warunek, co przy rysowaniu kafli.
+   * Gdyby rysowala caly poziom, bylaby wykrywaczem korytarzy i wersja graficzna
+   * dawalaby przewage nad terminalowa.
+   *
+   * Ruchome byty (potwory, przedmioty) trafiaja na plan tylko wtedy, gdy sa
+   * WIDOCZNE. Pamiec dotyczy uksztaltowania lochu, nie tego, kto po nim chodzi.
+   */
+  drawMinimap(game, view) {
+    if (!this.minimap) { this.miniRect = null; return; }
+    const L = game.level;
+    const s = Math.max(2, Math.min(5, Math.floor((this.cssW * 0.30) / L.w)));
+    const pad = 6;
+    const w = L.w * s + pad * 2;
+    const h = L.h * s + pad * 2;
+    // Przy waskim oknie plan zjadlby polowe planszy - wtedy go nie ma.
+    if (w > this.cssW * 0.62 || h > this.cssH * 0.5) { this.miniRect = null; return; }
+    const x0 = Math.round(this.cssW - w - 12);
+    const y0 = 12;
+    this.miniRect = { x: x0, y: y0, w, h, s, pad };
+
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.fillStyle = 'rgba(8,10,16,.82)';
+    ctx.strokeStyle = 'rgba(46,53,72,.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1, 7);
+    ctx.fill();
+    ctx.stroke();
+
+    // Kafle skladane w jedna sciezke na kolor. Naiwne fillRect z osobnym
+    // ustawieniem koloru to przy 1520 kaflach i 60 klatkach ~90 tys. zmian
+    // stanu plotna na sekunde.
+    const groups = new Map();
+    const put = (col, x, y) => {
+      let a = groups.get(col);
+      if (!a) { a = []; groups.set(col, a); }
+      a.push(x, y);
+    };
+    for (let y = 0; y < L.h; y++) {
+      for (let x = 0; x < L.w; x++) {
+        const vis = game.isVisible(x, y);
+        if (!vis && !game.isRemembered(x, y)) continue;
+        const t = L.at(x, y);
+        let col;
+        if (t === STAIRS_DOWN) col = vis ? '#c08cff' : '#7b5ba8';
+        else if (t === STAIRS_UP) col = vis ? '#6fe0e8' : '#468f95';
+        else if (t === WALL) col = vis ? '#3c4460' : '#242a3a';
+        else col = vis ? '#7a8298' : '#3d4457';
+        put(col, x, y);
+      }
+    }
+    for (const [col, pts] of groups) {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i += 2) {
+        ctx.rect(x0 + pad + pts[i] * s, y0 + pad + pts[i + 1] * s, s, s);
+      }
+      ctx.fill();
+    }
+
+    // Wycinek planszy widoczny na ekranie - zeby bylo wiadomo, gdzie sie jest
+    // wobec calosci. Rysowany tylko wtedy, gdy kamera faktycznie kadruje.
+    if (this.follow) {
+      const vx = Math.max(0, -this.ox / this.tile);
+      const vy = Math.max(0, -this.oy / this.tile);
+      const vw = Math.min(L.w - vx, this.cssW / this.tile);
+      const vh = Math.min(L.h - vy, this.cssH / this.tile);
+      ctx.strokeStyle = 'rgba(255,205,130,.30)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        Math.round(x0 + pad + vx * s) + 0.5, Math.round(y0 + pad + vy * s) + 0.5,
+        Math.round(vw * s), Math.round(vh * s));
+    }
+
+    const dot = (x, y, col, k) => {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(x0 + pad + (x + 0.5) * s, y0 + pad + (y + 0.5) * s, Math.max(1.2, s * k), 0, Math.PI * 2);
+      ctx.fill();
+    };
+
+    for (const it of game.items) {
+      if (game.isVisible(it.x, it.y)) dot(it.x, it.y, '#ffd666', 0.42);
+    }
+    for (const m of game.monsters) {
+      if (m.hp > 0 && game.isVisible(m.x, m.y)) dot(m.x, m.y, '#ff5f6d', 0.55);
+    }
+
+    const p = game.player;
+    const pulse = 0.75 + 0.25 * Math.sin(view.time * 3.4);
+    ctx.strokeStyle = `rgba(255,205,130,${0.85 * pulse})`;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(x0 + pad + (p.x + 0.5) * s, y0 + pad + (p.y + 0.5) * s, Math.max(2.6, s * 1.25), 0, Math.PI * 2);
+    ctx.stroke();
+    dot(p.x, p.y, '#f6f4ee', 0.5);
+
+    ctx.restore();
+  }
+
+  /** Czy punkt ekranu trafia w minimape (klikniecie ma tam znaczyc co innego). */
+  inMinimap(px, py) {
+    const r = this.miniRect;
+    return !!r && px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+  }
+
+  /** Pole lochu pod punktem minimapy - marsz da sie zlecic takze z planu. */
+  minimapTileAt(px, py) {
+    const r = this.miniRect;
+    if (!r) return null;
+    return {
+      x: Math.floor((px - r.x - r.pad) / r.s),
+      y: Math.floor((py - r.y - r.pad) / r.s),
+    };
   }
 
   // ---------- podłoże ----------

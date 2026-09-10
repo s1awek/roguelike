@@ -34,6 +34,8 @@ npm test                          # testy jednostkowe
 | wyrzuć | `d` |
 | zapis / wczytaj | `S` / `L` |
 | pomoc / wyjście | `?` / `Q` |
+| minimapa (tylko przeglądarka) | `m` |
+| nowa gra (tylko przeglądarka) | `Shift`+`N` |
 
 Znaki: `@` ty, `!` mikstura, `?` zwój, `)` broń, `[` pancerz, `%` jedzenie,
 `"` Amulet. Litery to potwory - małe słabsze, wielkie groźniejsze.
@@ -60,6 +62,7 @@ leczy, raz truje - dowiesz się, dopiero gdy wypijesz.
 | [`web/draw.js`](web/draw.js) | rysowanie na płótnie: kafle, światło, sylwetki |
 | [`web/view.js`](web/view.js) | stan wizualny - płynny ruch, błyski, liczby obrażeń |
 | [`web/main.js`](web/main.js) | wejście, HUD, zapis w przeglądarce |
+| [`tools/browser.js`](tools/browser.js) | sterownik przeglądarki po CDP - przyrząd, którym mierzone są twierdzenia o wersji graficznej |
 | [`bin/serve.js`](bin/serve.js) | serwer plików statycznych, bez zależności |
 
 ## Trzy rzeczy zrobione inaczej, niż wyszłoby domyślnie
@@ -94,9 +97,26 @@ Serwer jest potrzebny wyłącznie dlatego, że moduły ES nie ładują się z `f
 Serwuje katalog projektu, bo `web/` importuje silnik wprost z `src/` - bez
 budowania, bez pakowania, bez kopii kodu gry.
 
-Sterowanie jest to samo co w terminalu, z jednym dodatkiem: **kliknięcie w poznane
-pole** rusza marsz, który sam się zatrzymuje, gdy w polu widzenia pojawi się
-potwór, gdy spadną punkty życia albo gdy pod nogami znajdzie się przedmiot.
+Sterowanie jest to samo co w terminalu, z dodatkami, które mają sens tylko przy
+myszy i karcie przeglądarki: **kliknięcie w poznane pole** rusza marsz (zatrzymuje
+się sam, gdy w polu widzenia pojawi się potwór, gdy spadną punkty życia albo gdy
+pod nogami znajdzie się przedmiot), `m` włącza i wyłącza **minimapę**, a `Shift`+`N`
+zaczyna nową grę.
+
+**Minimapa** rysuje plan poziomu w prawym górnym rogu. Obowiązuje ją ten sam
+warunek co planszę: pokazuje wyłącznie pola widoczne albo zapamiętane, a potwory
+i przedmioty tylko wtedy, gdy są widoczne **teraz** - pamięć dotyczy kształtu
+lochu, nie tego, kto po nim chodzi. Ramka na planie to wycinek widoczny na
+ekranie; kliknięcie w plan zleca marsz tak samo jak kliknięcie w planszę.
+
+**Autozapis.** Gra zapisuje się sama po każdej turze, więc odświeżenie strony,
+zamknięcie karty ani przypadkowe `Ctrl+W` nie kosztują rozgrywki - po powrocie
+stan jest ten sam co do tury i ziarna losowania. Autozapis siedzi pod osobnym
+kluczem niż zapis ręczny (`S`), więc go nie nadpisuje: `S` zostaje świadomym
+punktem kontrolnym, do którego wraca `L`. Po śmierci albo zwycięstwie autozapis
+znika, żeby odświeżenie dawało nową grę, a nie wieczny ekran końcowy. Adres
+z jawnym ziarnem (`?seed=...`) ma pierwszeństwo: wraca do autozapisu tylko wtedy,
+gdy dotyczy tego samego ziarna.
 
 Co rysunek mówi, a czego nie mówi:
 
