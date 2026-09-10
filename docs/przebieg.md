@@ -309,6 +309,45 @@ w `web/`; `src/` nie zostało tknięte, więc wersja terminalowa i bot mierzą
 dokładnie tę samą grę co przed nimi (`git diff --stat` pokazuje cztery pliki,
 wszystkie w `web/`).
 
+### Warstwa sieciowa: trzy warstwy, każda sprawdzalna osobno
+
+Silnik został po przebudowie czystą funkcją stanu i ziarna, i taki ma zostać -
+kryterium 1 pierwotnej specyfikacji na tym stoi. Zegar ścienny jest źródłem
+nieodtwarzalności, więc trafił do warstwy nad silnikiem:
+
+- **`src/stol.js`** - rozjemca tury. Wie, kiedy uczestnik idzie własnym tempem,
+  a kiedy tura jest wspólna, i jak długo czekać na kogoś, kto nie odpowiada.
+  Zegar jest w nim podstawialny, więc dziewięć testów tej warstwy nie śpi ani
+  sekundy - w tym test kryterium 18, którego przedtem nic nie pilnowało.
+- **`src/widok.js`** - migawka dla jednego uczestnika. To ona jest granicą
+  uczciwości partii: `[ustalone - próba na dwóch klientach]` migawka Anki nie
+  niesie nawet imienia Bolka, dopóki go nie widzi.
+- **`bin/server.js`** - serwer. Strumień serwera do przeglądarki, POST z
+  powrotem (D-027).
+- **`web/cien.js`** - atrapa po stronie przeglądarki. Rysownik czyta z obiektu
+  gry tylko rozmiar poziomu, rodzaj kafla, własne położenie, widoczne byty
+  i dwa pytania o widoczność - więc **ten sam rysownik** obsługuje obie wersje
+  gry. Gdyby czytał więcej, trzeba by drugiego.
+
+`[ustalone - dwóch klientów przez sieć, bez przeglądarki, `.workspace/klient-proba.mjs`]`
+Dwoje ludzi dosiadło, zobaczyło się, wymieniło ciosy, każdy dostał własny
+dziennik; boty grały same (jeden zginął w trakcie próby); zgłoszenie z obcym
+znakiem miejsca odbite kodem 403.
+
+`[ustalone - sterownik przeglądarki, `.workspace/proba-przegladarka.log`]`
+Wejście do lochu przez pole imienia, sześć kroków w prawo (tura 167 -> 180,
+położenie przesunięte), spotkanie z botem wraz ze znacznikiem „widzisz:
+Automat 2", plecak, jedenaście rozdziałów księgi zasad, sześć pozycji przy
+stole, **zero błędów konsoli**. Zrzuty: `.workspace/roguelike-wielu-obrazy.md`.
+
+**Wada znaleziona tym przebiegiem, nie lekturą kodu:** klient nigdy nie wołał
+`renderer.resize()`, bo w grze jednoosobowej robi to kod startowy mający już
+gotowy silnik. Wymiary poziomu przychodzą tu dopiero z pierwszą migawką, więc
+płótno liczyło na wartościach domyślnych i szerokość wychodziła nieokreślona -
+`createRadialGradient` przy rysowaniu pochodni dostawał `NaN`. W konsoli był
+wyjątek na każdą klatkę, a na ekranie mimo to coś się rysowało, więc lektura
+kodu tego nie znalazłaby.
+
 ### Co zostało zmierzone, a nie przeczytane z kodu
 
 Odbiór przeszedł przez prawdziwą przeglądarkę prowadzoną po protokole debugowania
@@ -562,17 +601,32 @@ warstwę korzystającą z tej samej funkcji do czegoś innego.
 - odcisk zachowania 60 partii przed i po przebudowie, plus kontrola przyrządu
   na zepsutej kopii silnika
 - 200 partii dwóch graczy automatycznych, liczby w tabeli wyżej
-- 14 nowych testów jednostkowych do kryteriów spec-a, w tym dwie kontrole
-  przyrządu (śmierć z głodu nie jest przegranym starciem; wąchanie poza
-  zakresem plecaka nie wywraca gry)
+- 26 nowych testów jednostkowych do kryteriów spec-a, w tym cztery kontrole
+  przyrządu (śmierć z głodu nie jest przegranym starciem; odmowa poza kontaktem
+  nie kosztuje tury; deklaracja od uczestnika po partii jest odrzucana;
+  wąchanie poza zakresem plecaka nie wywraca gry)
+- pełny odbiór dziewięciu kryteriów pierwotnej specyfikacji na stanie po całej
+  przebudowie: **9/9**, 1000 partii w 699 s, 283 zwycięstwa (28,3%), zero
+  wywrotek, zero partii bez rozstrzygnięcia
+- partia przez sieć: dwóch klientów bez przeglądarki, potem klient prowadzony
+  prawdziwą przeglądarką
 - wczytanie PRAWDZIWEGO zapisu w formacie 1, wyprodukowanego przed przebudową
   (po niej nie da się go już wytworzyć)
 
 ### Czego NIE sprawdzono
 
-- `[niezweryfikowane]` Rozgrywka z udziałem CZŁOWIEKA w trybie wieloosobowym.
-  Graczami byli tu wyłącznie programy sterujące. Nie ma warstwy sieciowej,
-  serwera, ani sposobu, żeby dwie osoby usiadły do tej samej partii.
+- `[niezweryfikowane]` Rozgrywka z udziałem CZŁOWIEKA. Klawisze wciskał
+  sterownik przeglądarki, nie palce, a drugim uczestnikiem był bot. Dwie osoby
+  przy jednym stole naraz nie zostały sprawdzone ani razu - to jest największa
+  luka odbioru i nie da się jej zamknąć bez dwóch ludzi.
+- `[niezweryfikowane]` Zachowanie serwera pod obciążeniem: dwunastu uczestników
+  naraz, zerwane połączenia w trakcie tury wspólnej, wiele przeglądarek na
+  jednym adresie. Limit miejsc i przejmowanie miejsca po rozłączeniu mają
+  testy ręczne, nie serię.
+- `[niezweryfikowane]` Wystawienie serwera do sieci publicznej. Nie ma
+  ograniczenia liczby żądań, nie ma szyfrowania połączenia, a nazwa uczestnika
+  jest jedynym tekstem od użytkownika (czyszczona wzorcem, ale nie sprawdzona
+  adwersaryjnie).
 - `[niezweryfikowane]` Zachowanie przy wielu uczestnikach na RÓŻNYCH poziomach
   jednocześnie mierzone było tylko ubocznie, bez osobnej serii.
 - `[niezweryfikowane]` Czy 25% życia i utrata dobytku to stawka dobrze wyważona

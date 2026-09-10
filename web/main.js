@@ -13,6 +13,7 @@ import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
+import { podpisz } from './autor.js';
 import { DIR, SHIFTED_BY_CODE } from './klawisze.js';
 
 const SAVE_KEY = 'roguelike:save';   // zapis ręczny, robiony klawiszem S
@@ -473,3 +474,5 @@ flushAuto();
 if (resumed) say('Wznowiono grę z autozapisu. Nowa gra: Shift+N.');
 if (game.status !== 'playing') showGameOver();
 requestAnimationFrame(frame);
+
+podpisz(document.getElementById('podpis'));

@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node bin/play.js",
     "web": "node bin/serve.js",
+    "stol": "node bin/server.js",
     "test": "node --test test/*.test.js",
     "bot": "node bin/bot.js",
     "verify": "node bin/verify.js",

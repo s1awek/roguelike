@@ -163,6 +163,40 @@ Zapisy są **wymienne między wersjami**: ten sam JSON, bajt w bajt. Wersja
 terminalowa trzyma go w pliku (`~/.roguelike-save.json`), graficzna w pamięci
 przeglądarki (`localStorage`).
 
+## Wielu graczy w jednym lochu
+
+```
+npm run stol            # serwer partii, domyślnie port 8080
+npm run stol -- --port 8099 --boty 5 --map 120x32
+```
+
+Potem `http://localhost:8080/web/wielu.html`. Loch jest zamieszkany od pierwszej
+chwili: brakujące miejsca zajmują gracze automatyczni, ci sami, którymi mierzona
+jest równowaga gry - więc przeciwnik jest porównywalny z człowiekiem, a nie
+atrapą.
+
+**Reguła tury.** Dopóki nikogo nie widzisz, chodzisz własnym tempem i nikt na
+ciebie nie czeka. Gdy stajesz w polu widzenia innego gracza, wasza tura
+rozstrzyga się **jednocześnie**: oboje zgłaszacie działanie w ślepo i oboje
+działacie w tej samej turze. Nikt nie dostaje darmowej serii ciosów, więc
+odskok jest zawsze wykonalny - ale i nikt nie ucieka darmowo, bo goniący też
+się rusza.
+
+**Stawka.** Przegrane starcie nie kończy partii. Gubisz cały dobytek na miejscu,
+łącznie z Amuletem, i budzisz się piętro wyżej z resztką sił. Zwycięzca ma po
+co bić, przegrany ma po co wracać.
+
+**Co wspólne, a co własne.** Loch jest jeden: przedmiot podniesiony przez kogoś
+innego już tam nie leży, a zabity potwór jest martwy dla wszystkich. Ale
+odkryta mapa, dziennik zdarzeń i wiedza o miksturach są twoje własne - wejście
+na cudzy poziom nie odsłania cudzych korytarzy. Wygląd mikstur jest wspólny na
+całą partię, bo loch jest jeden.
+
+Serwer trzyma stan i wysyła każdemu **osobną migawkę**: tylko jego pamięć
+terenu, tylko potwory z pól, które właśnie widzi, tylko tych graczy, których
+widać. Przeglądarka nie dostaje obiektu gry, więc czego nie ma w migawce, tego
+nie ma na ekranie.
+
 ## Odbiór
 
 Specyfikacja: [`docs/acceptance-spec.md`](docs/acceptance-spec.md) - zamrożona

@@ -14,6 +14,7 @@ import { Renderer } from './draw.js';
 import { View } from './view.js';
 import { Cien } from './cien.js';
 import { DIR, SHIFTED_BY_CODE } from './klawisze.js';
+import { podpisz } from './autor.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('map');
@@ -307,3 +308,5 @@ window.roguelike = {
   get zgloszone() { return zgloszone; },
   zglos,
 };
+
+podpisz(document.getElementById('podpis'));
