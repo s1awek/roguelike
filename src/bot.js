@@ -405,7 +405,7 @@ export function playOut(game, opts = {}) {
 
 function countExplored(game) {
   let n = 0;
-  const mem = game.here.memory;
+  const mem = game.memoryOf(game.player);
   for (let i = 0; i < mem.length; i++) n += mem[i];
   return n;
 }

@@ -51,9 +51,9 @@ test('dalszy ciąg gry po wznowieniu biegnie tak samo jak bez zapisu', () => {
 
 test('zapamiętana mapa i ekwipunek przeżywają zapis', () => {
   const g = graj(new Game('pamiec'), 400);
-  const przed = [...g.here.memory].reduce((a, b) => a + b, 0);
+  const przed = [...g.memoryOf(g.player)].reduce((a, b) => a + b, 0);
   const g2 = loadFromString(serialize(g)).game;
-  const po = [...g2.here.memory].reduce((a, b) => a + b, 0);
+  const po = [...g2.memoryOf(g2.player)].reduce((a, b) => a + b, 0);
   assert.equal(po, przed);
   assert.deepEqual(g2.player.inventory.map(i => i.type), g.player.inventory.map(i => i.type));
 });

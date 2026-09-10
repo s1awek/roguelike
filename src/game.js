@@ -41,19 +41,35 @@ export class Game {
     this._idCounter = 1;
 
     this.appearances = makeAppearances(this.rng);
-    this.identified = new Set();
-    // Rodzaje mikstur, które gracz powąchał. Wiedza słabsza niż rozpoznanie:
-    // mówi, do której pary zapachowej należy mikstura, nie którą z pary jest.
-    this.sniffed = new Set();
-    this.levels = new Map(); // depth -> {level, monsters, items, memory}
-    this.messages = [];
+    this.levels = new Map(); // depth -> {level, monsters, items} - to jest ŚWIAT, wspólny
     this.turn = 0;
-    this.status = 'playing'; // 'playing' | 'won' | 'dead'
-    this.cause = null;
-    this.depth = 0;
-    this.visible = new Set();
 
-    this.player = {
+    // Uczestnicy. Gra jednoosobowa to lista o długości jeden, a `this.player` jest
+    // WIDOKIEM na uczestnika czynnego. Dzięki temu cały silnik, napisany w liczbie
+    // pojedynczej, działa bez zmiany i bez drugiej ścieżki kodu „jeśli wielu" -
+    // a druga ścieżka rozeszłaby się z pierwszą przy pierwszym strojeniu.
+    this.heroes = [];
+    this.active = 0;
+    this.heroes.push(this.makeHero(opts.name ?? 'Ty'));
+
+    if (!opts.deferStart) this.enterLevel(1, 'start');
+  }
+
+  newId() { return this._idCounter++; }
+
+  /**
+   * Nowy uczestnik. Wszystko, co jest CIAŁEM albo WIEDZĄ, należy do niego:
+   * położenie, życie, plecak, pamięć terenu, dziennik, rozpoznane rodzaje.
+   * Wspólny zostaje wyłącznie świat - loch, potwory, przedmioty na podłodze,
+   * generator losowy i wygląd mikstur.
+   *
+   * Uczestnik NIE pobiera identyfikatora z `newId()` celowo: przesunąłby
+   * numerację potworów i przedmiotów, a od niej zależy powtarzalność serii bota.
+   */
+  makeHero(name = 'Ty') {
+    return {
+      hid: this.heroes.length,
+      name,
       x: 0, y: 0,
       hp: PLAYER_START.hp, maxHp: PLAYER_START.hp,
       str: PLAYER_START.str, def: PLAYER_START.def,
@@ -63,12 +79,49 @@ export class Game {
       weapon: null, armor: null,
       hasAmulet: false,
       kills: 0,
+      depth: 0,
+      memory: new Map(),   // głębokość -> Uint8Array; pamięć terenu jest OSOBISTA
+      visible: new Set(),
+      messages: [],
+      identified: new Set(),
+      sniffed: new Set(),
+      status: 'playing',   // 'playing' | 'won' | 'dead'
+      cause: null,
+      deathCause: null,
     };
-
-    if (!opts.deferStart) this.enterLevel(1, 'start');
   }
 
-  newId() { return this._idCounter++; }
+  get player() { return this.heroes[this.active]; }
+
+  // Widoki na uczestnika czynnego. Silnik czyta i pisze `this.depth`,
+  // `this.messages`, `this.identified` i tak dalej - a trafia to do uczestnika.
+  get depth() { return this.player.depth; }
+  set depth(v) { this.player.depth = v; }
+  get visible() { return this.player.visible; }
+  set visible(v) { this.player.visible = v; }
+  get messages() { return this.player.messages; }
+  set messages(v) { this.player.messages = v; }
+  get identified() { return this.player.identified; }
+  set identified(v) { this.player.identified = v; }
+  get sniffed() { return this.player.sniffed; }
+  set sniffed(v) { this.player.sniffed = v; }
+  get status() { return this.player.status; }
+  set status(v) { this.player.status = v; }
+  get cause() { return this.player.cause; }
+  set cause(v) { this.player.cause = v; }
+  get deathCause() { return this.player.deathCause; }
+  set deathCause(v) { this.player.deathCause = v; }
+
+  /** Osobista pamięć terenu danego uczestnika na danym poziomie. */
+  memoryOf(hero, depth = hero.depth) {
+    let m = hero.memory.get(depth);
+    if (!m) {
+      const L = this.levels.get(depth).level;
+      m = new Uint8Array(L.w * L.h);
+      hero.memory.set(depth, m);
+    }
+    return m;
+  }
 
   // ---------- świat ----------
 
@@ -138,7 +191,7 @@ export class Game {
       }
     }
 
-    return { level, monsters, items, memory: new Uint8Array(level.w * level.h) };
+    return { level, monsters, items };
   }
 
   enterLevel(depth, from = 'down') {
@@ -158,21 +211,21 @@ export class Game {
     this.updateFOV();
   }
 
-  updateFOV() {
-    const L = this.level;
-    this.visible = new Set();
-    const mem = this.here.memory;
-    computeFOV({ x: this.player.x, y: this.player.y }, FOV_RADIUS,
+  updateFOV(hero = this.player) {
+    const L = this.levels.get(hero.depth).level;
+    hero.visible = new Set();
+    const mem = this.memoryOf(hero);
+    computeFOV({ x: hero.x, y: hero.y }, FOV_RADIUS,
       (x, y) => !L.inBounds(x, y) || L.isOpaque(x, y),
       (x, y) => {
         if (!L.inBounds(x, y)) return;
-        this.visible.add(`${x},${y}`);
+        hero.visible.add(`${x},${y}`);
         mem[L.idx(x, y)] = 1;
       });
   }
 
   isVisible(x, y) { return this.visible.has(`${x},${y}`); }
-  isRemembered(x, y) { return this.here.memory[this.level.idx(x, y)] === 1; }
+  isRemembered(x, y) { return this.memoryOf(this.player)[this.level.idx(x, y)] === 1; }
 
   monsterAt(x, y) { return this.monsters.find(m => m.x === x && m.y === y && m.hp > 0); }
   itemAt(x, y) { return this.items.find(i => i.x === x && i.y === y); }
@@ -445,7 +498,7 @@ export class Game {
         break;
       }
       case 'magicMap': {
-        this.here.memory.fill(1);
+        this.memoryOf(this.player).fill(1);
         this.message('Mapa lochu rozjaśnia się w Twojej głowie.');
         break;
       }
@@ -594,66 +647,133 @@ export class Game {
         level: entry.level.toJSON(),
         monsters: entry.monsters,
         items: entry.items,
-        memory: bytesToBase64(entry.memory),
       };
     }
     return {
-      format: 1,
+      format: 2,
       seed: this.seed,
       rng: this.rng.getState(),
       idCounter: this._idCounter,
       maxDepth: this.maxDepth,
       width: this.width, height: this.height,
       appearances: this.appearances,
-      identified: [...this.identified],
-      sniffed: [...this.sniffed],
-      depth: this.depth,
       turn: this.turn,
-      status: this.status,
-      cause: this.cause,
-      deathCause: this.deathCause ?? null,
-      messages: this.messages,
-      player: {
-        ...this.player,
-        inventory: this.player.inventory,
-        weapon: this.player.weapon ? this.player.weapon.id : null,
-        armor: this.player.armor ? this.player.armor.id : null,
-      },
+      active: this.active,
+      heroes: this.heroes.map(h => heroToJSON(h)),
       levels,
     };
   }
 
   static fromJSON(data) {
-    if (!data || data.format !== 1) throw new Error('Nieznany format zapisu');
+    if (!data) throw new Error('Nieznany format zapisu');
+    // Format 1 to zapisy sprzed wprowadzenia wielu uczestników. Mają się
+    // wczytywać - w przeglądarce leżą w autozapisie prawdziwych rozgrywek.
+    if (data.format === 1) data = przepiszFormat1(data);
+    if (data.format !== 2) throw new Error('Nieznany format zapisu');
+
     const g = new Game(data.seed, { deferStart: true, maxDepth: data.maxDepth, w: data.width, h: data.height });
     g.rng.setState(data.rng);
     g._idCounter = data.idCounter;
     g.appearances = data.appearances;
-    g.identified = new Set(data.identified);
-    // Zapisy sprzed wprowadzenia wąchania nie mają tego pola - i mają się wczytywać.
-    g.sniffed = new Set(data.sniffed || []);
-    g.depth = data.depth;
     g.turn = data.turn;
-    g.status = data.status;
-    g.cause = data.cause;
-    g.deathCause = data.deathCause ?? undefined;
-    g.messages = data.messages;
-    g.player = { ...data.player };
-    g.player.inventory = data.player.inventory;
-    g.player.weapon = g.player.inventory.find(i => i.id === data.player.weapon) || null;
-    g.player.armor = g.player.inventory.find(i => i.id === data.player.armor) || null;
+
     g.levels = new Map();
     for (const [d, e] of Object.entries(data.levels)) {
       g.levels.set(Number(d), {
         level: Level.fromJSON(e.level),
         monsters: e.monsters,
         items: e.items,
-        memory: base64ToBytes(e.memory),
       });
     }
-    g.updateFOV();
+
+    g.heroes = data.heroes.map((h, i) => heroFromJSON(h, i));
+    g.active = data.active ?? 0;
+    // Pole widzenia nie jest zapisywane - liczy się od nowa, każdemu z osobna.
+    for (const h of g.heroes) g.updateFOV(h);
     return g;
   }
+}
+
+/** Uczestnik do zapisu. Zbiory i mapy nie przechodzą przez JSON same z siebie. */
+function heroToJSON(h) {
+  const memory = {};
+  for (const [d, m] of h.memory) memory[d] = bytesToBase64(m);
+  return {
+    hid: h.hid,
+    name: h.name,
+    x: h.x, y: h.y,
+    hp: h.hp, maxHp: h.maxHp,
+    str: h.str, def: h.def,
+    level: h.level, xp: h.xp,
+    hunger: h.hunger,
+    inventory: h.inventory,
+    weapon: h.weapon ? h.weapon.id : null,
+    armor: h.armor ? h.armor.id : null,
+    hasAmulet: h.hasAmulet,
+    kills: h.kills,
+    depth: h.depth,
+    memory,
+    identified: [...h.identified],
+    sniffed: [...h.sniffed],
+    status: h.status,
+    cause: h.cause ?? null,
+    deathCause: h.deathCause ?? null,
+  };
+}
+
+function heroFromJSON(h, index) {
+  const hero = {
+    ...h,
+    hid: h.hid ?? index,
+    memory: new Map(),
+    visible: new Set(),
+    messages: h.messages ?? [],
+    identified: new Set(h.identified || []),
+    sniffed: new Set(h.sniffed || []),
+    cause: h.cause ?? null,
+    deathCause: h.deathCause ?? null,
+  };
+  for (const [d, b64] of Object.entries(h.memory || {})) hero.memory.set(Number(d), base64ToBytes(b64));
+  hero.inventory = h.inventory || [];
+  hero.weapon = hero.inventory.find(i => i.id === h.weapon) || null;
+  hero.armor = hero.inventory.find(i => i.id === h.armor) || null;
+  return hero;
+}
+
+/**
+ * Zapis jednoosobowy w starym kształcie na nowy. Stary format trzymał pamięć
+ * terenu w POZIOMIE, a wiedzę i dziennik w grze - jedno i drugie należy teraz
+ * do uczestnika, więc przy wczytaniu trafia tam, gdzie jest jego miejsce.
+ */
+function przepiszFormat1(d) {
+  const memory = {};
+  const levels = {};
+  for (const [depth, e] of Object.entries(d.levels)) {
+    levels[depth] = { level: e.level, monsters: e.monsters, items: e.items };
+    if (e.memory) memory[depth] = e.memory;
+  }
+  return {
+    format: 2,
+    seed: d.seed, rng: d.rng, idCounter: d.idCounter,
+    maxDepth: d.maxDepth, width: d.width, height: d.height,
+    appearances: d.appearances,
+    turn: d.turn,
+    active: 0,
+    levels,
+    heroes: [{
+      ...d.player,
+      hid: 0,
+      name: 'Ty',
+      depth: d.depth,
+      memory,
+      messages: d.messages || [],
+      identified: d.identified || [],
+      sniffed: d.sniffed || [],
+      status: d.status,
+      cause: d.cause ?? null,
+      deathCause: d.deathCause ?? null,
+    }],
+  };
 }
 
 function it_power(it) { return it.type === 'greaterHeal' ? 30 : 12; }
