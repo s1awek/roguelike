@@ -65,16 +65,23 @@ const grajacy = () => [...stol.miejsca.values()]
 /**
  * Ile miejsc trzyma W TEJ CHWILI jeden adres.
  *
- * Miejsce już oznaczone jako rozłączone NIE jest liczone: jest w drodze do botów
- * (`porzadki`) i tylko czeka na upływ łaski. Liczenie go zamykało właścicielowi
- * wejście po zamknięciu karty - lokalnie wszystko przychodzi z `::1`, więc pułap
- * zjadały własne porzucone miejsca zamiast cudzych żywych.
+ * Liczą się dwa rodzaje miejsc:
+ *  - miejsce z ŻYWYM strumieniem, czyli ktoś tam realnie siedzi;
+ *  - miejsce, które strumienia NIGDY nie otworzyło - bo dokładnie tak wygląda
+ *    seria kliknięć z W-12 i to przed nią broni pułap.
  *
- * Obrona z D-031 tego nie traci: miejsce dosiadnięte przed chwilą ma jeszcze
- * `rozlaczonyOd === null`, więc seria kliknięć nadal liczy się w całości.
+ * Nie liczy się miejsce, które strumień miało i straciło: zamknięta karta,
+ * uśpiony laptop, zabity sterownik. Takie miejsce jest w drodze do botów i nie
+ * ma czego bronić, a liczenie go zamykało właścicielowi wejście - lokalnie
+ * wszystko przychodzi z `::1`, więc pułap zjadały własne porzucone miejsca.
+ *
+ * Rozróżnienie musi iść po `bylPolaczony`, a NIE po `rozlaczonyOd`: porządki
+ * oznaczają rozłączenie już przy pierwszym tiku (co 3 s od startu), więc miejsce
+ * z serii kliknięć przestawało się liczyć po sekundach i cała obrona padała
+ * w zależności od tego, gdzie wypadł tik. Znalezione testem, nie lekturą.
  */
 const miejscAdresu = (adres) => [...ludzie.values()]
-  .filter(w => w.adres === adres && w.rozlaczonyOd === null).length;
+  .filter(w => w.adres === adres && (!w.bylPolaczony || w.strumienie.size)).length;
 
 /**
  * Dosiadnięcie do stołu, z górnym pułapem miejsc NA JEDEN ADRES.
@@ -107,7 +114,8 @@ function dosiadz(name, adres = '?') {
   if (grajacy() >= LIMIT_MIEJSC) return { blad: 'stół pełny, spróbuj za chwilę' };
   const m = stol.dosiadz(czyste, { rodzaj: 'czlowiek' }).miejsce;
   const token = randomBytes(12).toString('hex');
-  ludzie.set(m.hid, { token, adres, strumienie: new Set(), dziennikDo: 0, kafelWyslany: null, rozlaczonyOd: null });
+  ludzie.set(m.hid, { token, adres, strumienie: new Set(), dziennikDo: 0,
+    kafelWyslany: null, rozlaczonyOd: null, bylPolaczony: false });
   log(`dosiadl ${czyste} (miejsce ${m.hid}), ludzi ${ludzie.size}, grajacych ${grajacy()}`);
   return { hid: m.hid, token, name: czyste };
 }
@@ -333,6 +341,7 @@ const server = createServer(async (req, res) => {
     }
     res.write(': otwarte\n\n');
     w.strumienie.add(res);
+    w.bylPolaczony = true;
     w.dziennikDo = 0;
     w.kafelWyslany = null;
     w.ostatniKlucz = null;

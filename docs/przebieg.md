@@ -913,3 +913,38 @@ wyszukiwania, wrzesień 2026]` na tyle, na ile trzy wyszukiwania ustalają:
 - `[hipoteza]` Bot pojedynkowy (`decydujWPojedynku`) atakuje powyżej 45% życia,
   a poniżej odskakuje. Ten próg nie był strojony, wzięty z pierwszego strzału.
   Wpływ na powyższe liczby nie jest zmierzony.
+
+### W-17: własna poprawka pułapu rozwaliła obronę, którą miała tylko ułagodzić
+
+Pułap miejsc na jeden adres (D-031) był zbyt sztywny w warunkach lokalnych: każde
+połączenie przychodzi z `::1`, więc zamknięcie karty zostawiało miejsce blokujące
+wejście do końca minuty łaski, a moja własna sonda diagnostyczna zjadała połowę
+przydziału właściciela. Poprawka wyglądała oczywiście: nie licz miejsc już
+oznaczonych jako rozłączone, bo i tak idą do botów.
+
+Była zła. Porządki oznaczają rozłączenie przy PIERWSZYM tiku, a licznik
+`ostatniePorzadki` startuje od zera, więc pierwszy przebieg wypada praktycznie
+w chwili otwarcia stołu, a potem co 3 s. Miejsce dosiadnięte w serii kliknięć
+nigdy nie otwiera strumienia, więc po sekundach przestawało się liczyć - i cała
+obrona z W-12 padała, zależnie od tego, gdzie akurat wypadł tik. Test pułapu
+przyjął 4 miejsca przy pułapie 2, a kontrola przyrządu 6 przy pułapie 5.
+
+**Co to naprawdę pokazuje o pomiarze.** Pojedynczy przebieg pliku testowego
+przeszedł 5 na 5 i uznałem sprawę za zamkniętą. Wada wyszła dopiero w pełnym
+przebiegu, bo tam serwer wstaje przy innym obciążeniu i tik wypada w innym
+miejscu serii. **Test wrażliwy na czas, uruchomiony raz, nie mierzy zachowania -
+mierzy jeden zbieg okoliczności.** Powtórzenie jest tu składnikiem pomiaru, nie
+ostrożnością, i od tej pory taki test idzie trzy razy pod rząd oraz w pełnym
+przebiegu, zanim cokolwiek na nim oprę.
+
+Reguła poprawiona: liczą się miejsca z żywym strumieniem ORAZ miejsca, które
+strumienia nigdy nie otworzyły; nie liczą się te, które strumień miały i
+straciły. To trafia w oba przypadki naraz i nie zależy od zegara porządków.
+Test niesie teraz oba bieguny w jednym pomiarze: przy dwóch żywych strumieniach
+trzeci jest odbijany, po zamknięciu jednego strumienia wejście wraca, a miejsce
+bez strumienia nadal blokuje pułap.
+
+**Wpis powstał, bo commit poszedł przed odczytaniem wyniku testów.** Zatwierdziłem
+zmianę, a `npm test` w tym samym poleceniu wypisał `fail 1` - i przeczytałem to
+dopiero po fakcie. Kolejność jest jedna: wynik testów czyta się przed commitem,
+a nie obok niego.

@@ -101,33 +101,54 @@ test('stół potrafi powiedzieć, czy zapamiętane miejsce jeszcze istnieje', as
   } finally { s.koniec(); }
 });
 
-test('miejsce porzucone przestaje zajmować pułap adresu, żywe nadal go zajmuje', async () => {
+test('porzucone miejsce zwalnia pułap adresu, żywe i nigdy niepodłączone go zajmują', async () => {
   // Powód tego testu: lokalnie KAŻDE połączenie przychodzi z tego samego adresu,
   // więc pułap z D-031 zamykał wejście po zamknięciu karty - własne porzucone
-  // miejsce blokowało właściciela do końca okresu łaski. Miejsce oznaczone jako
-  // rozłączone jest już w drodze do botów i nie ma czego bronić.
+  // miejsce blokowało właściciela do końca okresu łaski.
+  //
+  // Pierwsza wersja tego rozróżnienia szła po znaczniku rozłączenia i BYŁA ZŁA:
+  // porządki oznaczają rozłączenie już przy pierwszym tiku, więc miejsce z serii
+  // kliknięć przestawało się liczyć po sekundach. Test to wykrył, gdy tik wypadł
+  // w środku serii - dlatego mierzymy tu oba bieguny naraz.
   const s = await serwer(['--miejsc-na-adres', '2']);
+  const przerwij = [];
+  /** Otwiera prawdziwy strumień i czeka, aż serwer go zarejestruje. */
+  const strumien = async (m) => {
+    const sterowanie = new AbortController();
+    przerwij.push(sterowanie);
+    const r = await fetch(`${s.baza}/api/strumien?hid=${m.hid}&token=${m.token}`,
+      { signal: sterowanie.signal });
+    assert.equal(r.status, 200, 'strumień odrzucony - dalszy pomiar byłby bez sensu');
+    await r.body.getReader().read();       // pierwsza migawka = połączenie stoi
+    return sterowanie;
+  };
   try {
-    for (let i = 0; i < 4; i++) await s.dosiadz(`Porzucony ${i}`);
-    assert.equal((await s.stol()).uczestnicy.filter(u => u.rodzaj === 'czlowiek').length, 2,
-      'pułap nie zadziałał przy serii - dalszy pomiar byłby bez sensu');
+    const a = (await s.dosiadz('Siedzi A')).body;
+    const stA = await strumien(a);
+    const b = (await s.dosiadz('Siedzi B')).body;
+    await strumien(b);
 
-    // Żadne z tych miejsc nie otworzyło strumienia, więc pierwsze porządki (co 3 s)
-    // oznaczą je jako rozłączone. Odpytujemy, zamiast zgadywać moment.
+    // KONTROLA PRZYRZĄDU nr 1: przy dwóch żywych miejscach pułap ma bronić.
+    const odbity = await s.dosiadz('Trzeci przy dwóch żywych');
+    assert.equal(odbity.code, 503, `pułap nie bronił przed żywym trzecim: ${JSON.stringify(odbity.body)}`);
+
+    stA.abort();                            // tyle, co zamknięcie karty
     let wrocilo = null;
     const t0 = Date.now();
-    while (Date.now() - t0 < 9000) {
+    while (Date.now() - t0 < 5000) {
       const r = await s.dosiadz('Wracam');
       if (r.code === 200) { wrocilo = r; break; }
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 200));
     }
-    assert.ok(wrocilo, 'po porzuceniu miejsc adres nadal nie mógł wejść - pułap liczy trupy');
+    assert.ok(wrocilo, 'po zamknięciu karty adres nadal nie mógł wejść - pułap liczy trupy');
 
-    // KONTROLA PRZYRZĄDU: obrona nie zniknęła. Świeże miejsca liczą się w całości,
-    // więc trzecie żywe z tego samego adresu musi zostać odbite.
-    assert.equal((await s.dosiadz('Zywy 2')).code, 200, 'drugie żywe miejsce ma się zmieścić');
-    const odbity = await s.dosiadz('Zywy 3');
-    assert.equal(odbity.code, 503, `pułap przestał bronić przed serią: ${JSON.stringify(odbity.body)}`);
-    assert.match(odbity.body.blad, /z tego adresu/);
-  } finally { s.koniec(); }
+    // KONTROLA PRZYRZĄDU nr 2: miejsce, które strumienia NIGDY nie otworzyło,
+    // liczy się w całości - inaczej seria kliknięć z W-12 znów by przeszła.
+    const seria = await s.dosiadz('Klikacz bez strumienia');
+    assert.equal(seria.code, 503,
+      `miejsce bez strumienia nie liczy się do pułapu - obrona z W-12 padła: ${JSON.stringify(seria.body)}`);
+  } finally {
+    for (const c of przerwij) { try { c.abort(); } catch { /* juz przerwany */ } }
+    s.koniec();
+  }
 });
