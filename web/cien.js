@@ -26,6 +26,7 @@ export class Cien {
     this.sniffed = new Set();
     this.messages = [];
     this.kontakt = [];
+    this.pietro = { potwory: 0, smialkowie: 0 };
     this.turn = 0;
     this.hid = null;
 
@@ -77,6 +78,7 @@ export class Cien {
     this.identified = new Set(w.rozpoznane);
     this.sniffed = new Set(w.powachane);
     this.kontakt = w.kontakt;
+    if (w.pietro) this.pietro = w.pietro;
     this.turn = w.turn;
     this.hid = w.hid;
     for (const m of w.dziennik) this.messages.push(m);

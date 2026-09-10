@@ -9,6 +9,7 @@
 
 import { findPath, distanceField, chebyshev, neighbors } from './path.js';
 import { STAIRS_DOWN, STAIRS_UP } from './map.js';
+import { PROG_ZMECZENIA } from './game.js';
 
 const LOW_HP = 0.4;
 const CRITICAL_HP = 0.22;
@@ -440,7 +441,12 @@ export function decydujWPojedynku(game, hero, bot) {
   const sasiad = wrogowie.find(o => chebyshev(hero.x, hero.y, o.x, o.y) === 1);
   if (sasiad) {
     const slabo = hero.hp < hero.maxHp * 0.45;
-    if (!slabo) {
+    // Bez tchu ucieczka jest pozorna: odwrót zamienia się w przystanek na
+    // oddech, a przeciwnik stoi obok i bije. Zwierzę zaszczute staje i walczy -
+    // inaczej gracz automatyczny biernie oddaje ciosy, co wygląda na usterkę,
+    // a nie na decyzję.
+    const bezTchu = (hero.zmeczenie || 0) >= PROG_ZMECZENIA;
+    if (!slabo || bezTchu) {
       return { type: 'move', dx: Math.sign(sasiad.x - hero.x), dy: Math.sign(sasiad.y - hero.y) };
     }
     // Wycofanie: pole obok, dalej od przeciwnika, wolne i przejezdne. Bez losowania.

@@ -21,10 +21,12 @@
       <span><b id="patk">0</b><em>atak</em></span>
       <span><b id="pdef">0</b><em>obrona</em></span>
       <span><b id="pdepth">1/8</b><em>głębokość</em></span>
+      <span><b id="pwrogi">0</b><em>wrogów tu</em></span>
       <span><b id="pturn">0</b><em>tura</em></span>
     </div>
     <div class="right">
       <span id="kontakt" class="tag" hidden></span>
+      <span id="oddech" class="tag bad" hidden>bez tchu</span>
       <span id="hunger" class="tag">syty</span>
       <span id="amulet" class="tag gold" hidden>AMULET</span>
     </div>
@@ -34,6 +36,10 @@
 
   <main id="stage">
     <canvas id="map"></canvas>
+    <div id="turowy" hidden>
+      <b id="turowy-tytul">TRYB TUROWY</b>
+      <span id="turowy-powod"></span>
+    </div>
     <p id="notice" hidden></p>
   </main>
 
@@ -53,6 +59,10 @@
     <p class="muted">Przegrane starcie <b>nie kończy partii</b>. Gubisz cały dobytek na miejscu
       i budzisz się piętro wyżej z resztką sił. Loch jest jeden i wspólny, ale odkryta mapa,
       dziennik i wiedza o miksturach są twoje własne.</p>
+    <p class="muted">Odwrót ma cenę: kto odskakuje od przeciwnika, który zostaje, dostaje cios
+      w plecy, a cofać się pod rząd można ograniczoną liczbę razy - potem trzeba stanąć
+      i zaczerpnąć tchu. Dlatego <b>ucieczka bez końca nie jest taktyką</b>. Cała reszta zasad
+      siedzi pod klawiszem <b>?</b>.</p>
     <label for="imie">Twoje imię przy stole</label>
     <input id="imie" maxlength="16" autocomplete="off" placeholder="np. Halina">
     <button id="wejdz">Wejdź do lochu</button>

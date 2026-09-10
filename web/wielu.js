@@ -309,21 +309,45 @@ function odswiezHud() {
   $('pdef').textContent = p.obrona;
   $('pdepth').textContent = `${p.depth}/${p.maxDepth}`;
   $('pturn').textContent = cien.turn;
+  $('pwrogi').textContent = cien.pietro.potwory;
   const [word, cls] = hungerTag(p.hunger);
   $('hunger').textContent = word;
   $('hunger').className = cls;
   $('amulet').hidden = !p.hasAmulet;
 
+  // Oddech. Gracz musi widzieć, że cofanie się ma koniec, ZANIM zabraknie mu
+  // tchu - inaczej odmowa ruchu wygląda jak zablokowana klawiatura, czyli
+  // dokładnie ta wada, na którą właściciel zwrócił uwagę przy turze wspólnej.
+  const zm = p.zmeczenie || 0, prog = p.progZmeczenia || 6;
+  const bezTchu = zm >= prog;
+  const oddech = $('oddech');
+  oddech.hidden = zm < Math.ceil(prog / 2);
+  oddech.textContent = bezTchu ? 'bez tchu' : `oddech ${prog - zm}`;
+  oddech.className = bezTchu ? 'tag bad' : 'tag warn';
+  oddech.title = bezTchu
+    ? 'Cofasz się zbyt długo - najbliższa próba odwrotu skończy się przystankiem na oddech.'
+    : `Możesz się jeszcze cofnąć ${prog - zm} razy, potem musisz zaczerpnąć powietrza.`;
+
   // Znacznik tury wspólnej. Gracz musi WIEDZIEĆ, że jego ruch czeka na kogoś -
   // inaczej nieruchomy ekran po naciśnięciu klawisza wygląda jak zawieszona gra.
   const wKontakcie = cien.kontakt.length > 0;
+  const kto = cien.kontakt.map(k => k.name).join(', ');
   const t = $('kontakt');
   t.hidden = !wKontakcie;
   if (wKontakcie) {
-    t.textContent = zgloszone
-      ? `tura wspólna: czekasz na ${cien.kontakt.map(k => k.name).join(', ')}`
-      : `widzisz: ${cien.kontakt.map(k => k.name).join(', ')}`;
+    t.textContent = zgloszone ? `tura wspólna: czekasz na ${kto}` : `widzisz: ${kto}`;
     t.className = zgloszone ? 'tag gold' : 'tag';
+  }
+
+  // Pasek na planszy: nazywa stan, podaje powód i mówi, co gracz ma zrobić.
+  const pasek = $('turowy');
+  pasek.hidden = !wKontakcie;
+  if (wKontakcie) {
+    pasek.className = zgloszone ? 'czeka' : '';
+    $('turowy-tytul').textContent = zgloszone ? 'CZEKAM NA RUCH' : 'TRYB TUROWY';
+    $('turowy-powod').textContent = zgloszone
+      ? `Ruch zgłoszony. Czekam na ${kto} - obie strony działają w tej samej turze, więc nikt nie dostaje darmowego ciosu.`
+      : `${kto} w zasięgu wzroku. Wasze ruchy rozstrzygają się jednocześnie, więc plansza czeka na drugą stronę. To nie zawieszenie gry.`;
   }
   const msgs = cien.messages.slice(-3);
   logEl.innerHTML = msgs.map(m => `<li>${escapeHtml(m.text)}</li>`).join('');
@@ -390,12 +414,18 @@ if (zapamietane) {
  * Niesie WYŁĄCZNIE to, co i tak przyszło w migawce, więc nie da się nim
  * podejrzeć niczego, czego serwer nie przysłał.
  */
+// Powierzchnia diagnostyczna. `odswiezHud` jest tu, żeby dało się sprawdzić
+// panel stanu na PODSTAWIONYM stanie - inaczej pasek tury wspólnej da się
+// zobaczyć tylko wtedy, gdy bot sam wejdzie w pole widzenia, czyli nigdy na
+// żądanie. Podstawiane są DANE WEJŚCIOWE o kształcie migawki z serwera; kod
+// rysujący jest ten sam, którym gra rysuje naprawdę.
 window.roguelike = {
   get cien() { return cien; },
   get ja() { return ja; },
   get mode() { return mode; },
   get zgloszone() { return zgloszone; },
   zglos,
+  odswiezHud,
 };
 
 

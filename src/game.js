@@ -28,6 +28,51 @@ export const HUNGER_MAX = 2000;
 
 const PLAYER_START = { hp: 30, str: 6, def: 2 };
 
+/**
+ * Powierzchnia mapy, pod którą strojono równowagę gry jednoosobowej.
+ * Liczba potworów i przedmiotów na poziomie jest do niej ODNOSZONA, a nie stała:
+ * ta sama garść przeciwników rozsypana po mapie dwa i pół raza większej daje
+ * poziom, po którym da się przejść od schodów do schodów i nie spotkać nikogo.
+ * Przy rozmiarze domyślnym mnożnik wynosi dokładnie 1, więc partia jednoosobowa
+ * przebiega jak przed tą zmianą - i to jest dowód, że równowaga się nie ruszyła.
+ */
+const POWIERZCHNIA_WZORCOWA = 76 * 20;
+
+/** Co ile tur stół zagląda, czy poziomy nie zrobiły się martwe. */
+const ODNOWA_CO_TUR = 40;
+
+/**
+ * Ile razy pod rząd wolno cofać się przed innym uczestnikiem, zanim zabraknie tchu.
+ *
+ * Bez tego progu pościg między dwoma uczestnikami o tej samej szybkości nie ma
+ * końca: ruchy rozstrzygają się jednocześnie, więc uciekający utrzymuje odstęp
+ * w nieskończoność i starcie nigdy nie następuje. Zgłoszenie właściciela:
+ * „jeżeli on nie chce walczyć, to nie ma sposobu, żeby z nim walczyć".
+ */
+export const PROG_ZMECZENIA = 6;
+
+/**
+ * Zwrot sił za zabicie przeciwnika. Jedno źródło dla silnika i dla księgi zasad -
+ * księga liczy z tej funkcji, więc nie da się jej rozjechać z grą (D-021).
+ */
+export const ZWROT_DZIELNIK = 5;
+export const ZWROT_MIN = 2;
+
+/**
+ * O ile wolniej życie odnawia się SAMO, odkąd odnawia je walka.
+ *
+ * To jest cena nagrody za zabicie, ustalona pomiarem, a nie wyczuciem. Sama
+ * nagroda (bez tego mnożnika) podniosła udział zwycięstw gracza automatycznego
+ * z 29,5% na 59,0% na dwustu partiach - czyli po cichu zrobiła grę łatwiejszą,
+ * o co nikt nie prosił. Przy mnożniku 3 udział wraca do 37,0%, więc zmiana jest
+ * PRZESUNIĘCIEM źródła leczenia z czekania na walkę, a nie ułatwieniem.
+ * Zmierzone warianty: 2x -> 45,5%, 3x -> 37,0%, 4x -> 30,5%.
+ */
+export const REGEN_MNOZNIK = 3;
+export function zwrotZaZabicie(maxHp) {
+  return Math.max(ZWROT_MIN, Math.round(maxHp / ZWROT_DZIELNIK));
+}
+
 /** Próg doświadczenia potrzebny do osiągnięcia danego poziomu postaci. */
 export function xpForLevel(n) { return Math.floor(10 * Math.pow(n - 1, 1.85)); }
 
@@ -38,6 +83,13 @@ export class Game {
     this.maxDepth = opts.maxDepth ?? MAX_DEPTH;
     this.width = opts.w ?? 76;
     this.height = opts.h ?? 20;
+    // Odnawianie lochu jest WYŁĄCZONE domyślnie. Partia jednoosobowa ma być
+    // skończonym zadaniem: poziom ogołocony jest tam wynikiem gry, nie usterką,
+    // a dosypywanie potworów przesunęłoby zmierzoną równowagę. Stół wieloosobowy
+    // włącza je, bo tam ten sam loch żyje godzinami i kilku uczestników ogołaca
+    // go szybciej, niż nowy zdąży wejść.
+    this.odnawianie = !!opts.odnawianie;
+    this.ostatniaOdnowa = 0;
     this._idCounter = 1;
 
     this.appearances = makeAppearances(this.rng);
@@ -81,6 +133,7 @@ export class Game {
       weapon: null, armor: null,
       hasAmulet: false,
       kills: 0,
+      zmeczenie: 0,       // ile razy pod rząd cofał się przed innym uczestnikiem
       depth: 0,
       memory: new Map(),   // głębokość -> Uint8Array; pamięć terenu jest OSOBISTA
       visible: new Set(),
@@ -220,12 +273,24 @@ export class Game {
     return null;
   }
 
+  /**
+   * Mnożnik zaludnienia: ile razy ta mapa jest większa od wzorcowej.
+   * Przy rozmiarze domyślnym daje 1, więc stare liczby zostają nietknięte.
+   */
+  get gestosc() { return (this.width * this.height) / POWIERZCHNIA_WZORCOWA; }
+
+  /** Docelowa liczba potworów na poziomie tej głębokości. */
+  ilePotworow(depth) { return Math.max(1, Math.round((4 + depth) * this.gestosc)); }
+
+  /** Docelowa liczba przedmiotów, bez losowej dosypki. */
+  ilePrzedmiotow(depth) { return Math.max(1, Math.round((3 + Math.floor(depth / 2)) * this.gestosc)); }
+
   buildLevel(depth) {
     const level = generateLevel(this.rng, { w: this.width, h: this.height, depth });
     const monsters = [];
     const items = [];
 
-    const count = 4 + depth;
+    const count = this.ilePotworow(depth);
     for (let i = 0; i < count; i++) {
       const p = this.freeTile(level, monsters, items, [level.upPos]);
       if (!p) break;
@@ -241,7 +306,7 @@ export class Game {
       monsters.push(b);
     }
 
-    const itemCount = 3 + Math.floor(depth / 2) + this.rng.int(3);
+    const itemCount = this.ilePrzedmiotow(depth) + this.rng.int(3);
     for (let i = 0; i < itemCount; i++) {
       const p = this.freeTile(level, monsters, items);
       if (!p) break;
@@ -367,14 +432,83 @@ export class Game {
     // jest wtedy całą listą; przy dziesięciu ośmiu pozostałym świat ruszał się
     // dwa razy na jedno ich działanie.
     const uczestnicy = (grupa ?? this.heroes).filter(h => h.status === 'playing');
+
+    // Stan PRZED działaniami: kogo każdy widzi i kto z kim stoi twarzą w twarz.
+    // Odczyt musi być zrobiony teraz, bo po ruchach nie da się już odróżnić
+    // „odskoczył" od „nigdy nie stał obok".
+    const kontakty = new Map();
+    const sasiedztwoPrzed = new Map();
+    for (const h of uczestnicy) {
+      const k = this.contacts(h);
+      kontakty.set(h.hid, k);
+      sasiedztwoPrzed.set(h.hid, k.filter(o => chebyshev(h.x, h.y, o.x, o.y) === 1));
+    }
+
     const spent = new Map();
+    const cofnal = new Set();
     for (const hero of uczestnicy) {
-      const a = actions.get(hero.hid) ?? { type: 'wait' };
+      let a = actions.get(hero.hid) ?? { type: 'wait' };
+      if (kontakty.get(hero.hid).length && this.czyOdwrot(hero, kontakty.get(hero.hid), a)) {
+        if ((hero.zmeczenie || 0) >= PROG_ZMECZENIA) {
+          hero.zmeczenie = 0;
+          this.tell(hero, 'Brakuje Ci tchu - stajesz, żeby zaczerpnąć powietrza.');
+          a = { type: 'wait' };
+        } else {
+          cofnal.add(hero.hid);
+        }
+      }
       spent.set(hero.hid, this.applyAction(hero, a));
     }
+
+    // Zmęczenie rośnie tylko od cofania się i schodzi, gdy uczestnik stanie
+    // albo natrze. Dzięki temu ostrożne podejście nie jest karane, a ucieczka
+    // bez końca przestaje być możliwa - i to symetrycznie dla obu stron.
+    for (const h of uczestnicy) {
+      h.zmeczenie = cofnal.has(h.hid)
+        ? Math.min(PROG_ZMECZENIA, (h.zmeczenie || 0) + 1)
+        : Math.max(0, (h.zmeczenie || 0) - 1);
+    }
+
+    this.ciosyWOdwrocie(uczestnicy, sasiedztwoPrzed, cofnal);
     this.turn++;
     this.worldTurn(uczestnicy);
     return spent;
+  }
+
+  /**
+   * Czy to działanie jest cofnięciem się przed kimś, kogo uczestnik widzi.
+   *
+   * Sądzone po JEGO kroku wobec położeń sprzed tury, a nie po odległości
+   * końcowej: przy jednoczesnym rozstrzyganiu obie strony ruszają się naraz,
+   * więc odległość końcowa mówi o obu decyzjach, a nas interesuje ta jedna.
+   */
+  czyOdwrot(hero, kontakt, action) {
+    if (!action || action.type !== 'move') return false;
+    const teraz = Math.min(...kontakt.map(o => chebyshev(hero.x, hero.y, o.x, o.y)));
+    const potem = Math.min(...kontakt.map(o =>
+      chebyshev(hero.x + action.dx, hero.y + action.dy, o.x, o.y)));
+    return potem > teraz;
+  }
+
+  /**
+   * Cios w odwrocie: kto stał twarzą w twarz i odskoczył, dostaje w plecy od
+   * tego, kto został. Obopólne rozejście jest darmowe - kara jest za wyjście
+   * ze starcia, którego druga strona nie przerywa.
+   *
+   * Obrażenia są POŁOWICZNE. Pełny cios darmowy zamieniłby każde spotkanie
+   * w zakład o to, kto pierwszy odskoczy, a to jest dokładnie ten „bęcek bez
+   * możliwości wycofania się", którego zakazuje D-023.
+   */
+  ciosyWOdwrocie(uczestnicy, sasiedztwoPrzed, cofnal) {
+    for (const h of uczestnicy) {
+      if (!cofnal.has(h.hid) || h.status !== 'playing') continue;
+      for (const o of sasiedztwoPrzed.get(h.hid)) {
+        if (o.status !== 'playing' || o.depth !== h.depth) continue;
+        if (cofnal.has(o.hid)) continue;              // rozeszli się obopólnie
+        if (chebyshev(h.x, h.y, o.x, o.y) === 1) continue;   // odstęp się nie otworzył
+        this.attack(o, h, { okazja: true });
+      }
+    }
   }
 
   /**
@@ -431,6 +565,59 @@ export class Game {
         else this.die(hero, hero.deathCause || 'rany');
       }
     }
+    if (this.odnawianie) this.odnowLoch();
+  }
+
+  /**
+   * Odnawianie lochu na stole, który żyje godzinami.
+   *
+   * Zmierzone na czterech botach i mapie 120x32: poziom pierwszy miał ZERO
+   * potworów i ZERO przedmiotów już w turze 1891 i tak zostawał do końca
+   * partii. Człowiek wchodzący później dostawał martwy loch - dokładnie to
+   * zgłosił właściciel („przeszedłem cały poziom i spotkałem jednego goblina").
+   *
+   * Dwie reguły, które trzymają to po stronie uczciwej:
+   *  - nic nie wyrasta w POLU WIDZENIA ani w jego pobliżu, więc gracz nigdy nie
+   *    widzi potwora pojawiającego się z powietrza;
+   *  - odnawianie tylko UZUPEŁNIA do liczby, którą poziom miał na starcie, więc
+   *    nie da się nim zrobić poziomu gęstszego niż zamierzony.
+   */
+  odnowLoch() {
+    if (this.turn - this.ostatniaOdnowa < ODNOWA_CO_TUR) return;
+    this.ostatniaOdnowa = this.turn;
+    for (const [depth, entry] of this.levels) {
+      const zywe = entry.monsters.filter(m => m.hp > 0);
+      if (zywe.length < this.ilePotworow(depth)) {
+        const p = this.wolnePoleWCiemnosci(depth, entry);
+        if (p) {
+          const m = spawnMonster(this.rng, depth, p.x, p.y);
+          m.id = this.newId();
+          entry.monsters.push(m);
+        }
+      }
+      if (entry.items.length < this.ilePrzedmiotow(depth) && this.rng.int(3) === 0) {
+        const p = this.wolnePoleWCiemnosci(depth, entry);
+        if (p) {
+          const it = randomItem(this.rng, depth);
+          it.id = this.newId();
+          it.x = p.x; it.y = p.y;
+          entry.items.push(it);
+        }
+      }
+    }
+  }
+
+  /** Wolne pole podłogi, którego NIKT z obecnych na poziomie nie widzi ani nie ma blisko. */
+  wolnePoleWCiemnosci(depth, entry) {
+    const obecni = this.heroes.filter(h => h.status === 'playing' && h.depth === depth);
+    for (let tries = 0; tries < 200; tries++) {
+      const p = this.freeTile(entry.level, entry.monsters, entry.items);
+      if (!p) return null;
+      if (obecni.some(h => h.visible.has(`${p.x},${p.y}`)
+        || chebyshev(h.x, h.y, p.x, p.y) <= FOV_RADIUS + 2)) continue;
+      return p;
+    }
+    return null;
   }
 
   /**
@@ -494,16 +681,22 @@ export class Game {
    * Kolejność losowań (kość obrażeń, potem redukcja) jest nietykalna: od niej
    * zależy, czy partia jednoosobowa z danego ziarna przebiega jak przed zmianą.
    */
-  attack(attacker, defender) {
+  attack(attacker, defender, { okazja = false } = {}) {
     const aHero = this.isHero(attacker);
     const dHero = this.isHero(defender);
     const atkPower = aHero ? this.playerAttack(attacker) : attacker.str;
     const defPower = dHero ? this.playerDefense(defender) : defender.def;
     const raw = this.rng.dice(1, Math.max(1, atkPower));
     const mitigation = this.rng.int(defPower + 1);
-    const dmg = Math.max(0, raw - mitigation);
+    const pelne = Math.max(0, raw - mitigation);
+    const dmg = okazja ? Math.floor(pelne / 2) : pelne;
 
     if (dmg <= 0) {
+      if (okazja) {
+        if (aHero) this.tell(attacker, `${cap(defender.name)} odskakuje - nie dosięgasz.`);
+        if (dHero) this.tell(defender, `Odskakujesz i ${attacker.name} nie dosięga.`);
+        return;
+      }
       if (aHero) this.tell(attacker, `Chybiasz - ${defender.name} unika ciosu.`);
       if (dHero) this.tell(defender, `${cap(attacker.name)} chybia.`);
       return;
@@ -511,6 +704,15 @@ export class Game {
 
     defender.hp -= dmg;
     if (aHero && dHero) this.stats.pvpHits++;
+    if (okazja) {
+      if (aHero) this.tell(attacker, `${cap(defender.name)} odskakuje - trafiasz w odwrocie (${dmg}).`);
+      if (dHero) {
+        defender.deathCause = `zabity przez: ${attacker.name}`;
+        defender.lastHitBy = attacker;
+        this.tell(defender, `Odskakujesz, ale ${attacker.name} trafia Cię w odwrocie (${dmg}).`);
+      }
+      return;
+    }
     if (aHero) this.tell(attacker, `Trafiasz ${defender.name} (${dmg}).`);
     if (dHero) {
       defender.deathCause = `zabity przez: ${attacker.name}`;
@@ -528,6 +730,7 @@ export class Game {
     if (killer) {
       killer.kills++;
       this.gainXp(killer, m.xp);
+      this.lupSil(killer, m);
     }
     const idx = entry.monsters.indexOf(m);
     if (idx >= 0) entry.monsters.splice(idx, 1);
@@ -538,6 +741,24 @@ export class Game {
       entry.items.push(amulet);
       this.tell(killer, 'Z ciała wypada Amulet Otchłani! Zabierz go na powierzchnię.');
     }
+  }
+
+  /**
+   * Zwrot sił za zabicie. Zgłoszenie właściciela: „w przeciwnym razie jedynym
+   * rozsądnym rozwiązaniem po spotkaniu takiego przeciwnika jest ominięcie go
+   * jak najszerszym łukiem" - czyli walka, będąca sednem gry, była decyzją
+   * ekonomicznie błędną wszędzie poza koniecznością.
+   *
+   * Zwrot rośnie z siłą przeciwnika, ale ma dolną granicę, żeby szczur też był
+   * wart ciosu. NIGDY nie podnosi życia powyżej pełni - inaczej wystarczyłoby
+   * stać w drzwiach i zbierać drobnicę, żeby nadrobić dowolne obrażenia.
+   */
+  lupSil(hero, m) {
+    if (hero.hp >= hero.maxHp) return 0;
+    const ile = Math.min(zwrotZaZabicie(m.maxHp), hero.maxHp - hero.hp);
+    hero.hp += ile;
+    this.tell(hero, `Bierzesz oddech po walce (+${ile}).`);
+    return ile;
   }
 
   gainXp(hero, amount) {
@@ -824,7 +1045,7 @@ export class Game {
     const p = hero;
     if (p.hp <= 0 || p.hp >= p.maxHp) return;
     if (p.hunger <= 0) return; // głodujący się nie regeneruje
-    const interval = Math.max(8, 24 - p.level);
+    const interval = Math.max(8, 24 - p.level) * REGEN_MNOZNIK;
     if (this.turn % interval === 0) p.hp = Math.min(p.maxHp, p.hp + 1);
   }
 
@@ -932,6 +1153,7 @@ function heroToJSON(h) {
     armor: h.armor ? h.armor.id : null,
     hasAmulet: h.hasAmulet,
     kills: h.kills,
+    zmeczenie: h.zmeczenie || 0,
     depth: h.depth,
     memory,
     identified: [...h.identified],
@@ -946,6 +1168,9 @@ function heroFromJSON(h, index) {
   const hero = {
     ...h,
     hid: h.hid ?? index,
+    // Zapis sprzed wprowadzenia zmęczenia go nie niesie - zero jest wtedy
+    // stanem prawdziwym, bo tamta gra nie znała cofania się z kosztem.
+    zmeczenie: h.zmeczenie || 0,
     memory: new Map(),
     visible: new Set(),
     messages: h.messages ?? [],

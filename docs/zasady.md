@@ -58,6 +58,31 @@ Obrażenia liczą się tak: losujesz od 1 do swojego ataku, a obrońca losuje od
 
 Ta sama zasada obowiązuje w obie strony, więc każdy cios może chybić - także cios Smoka.
 
+Za zabicie przeciwnika odzyskujesz część sił - tym więcej, im groźniejszy był. Zwrot nigdy nie podnosi życia powyżej pełni, więc nie da się nim nadrobić dowolnych obrażeń stojąc w drzwiach i zbierając drobnicę. Opłaca się jednak bić, a nie omijać: drobny przeciwnik też oddaje coś, czego nie oddaje ominięcie go łukiem.
+
+| przeciwnik | zwrot sił za zabicie |
+|---|---|
+| szczur | +2 |
+| nietoperz | +2 |
+| kobold | +2 |
+| goblin | +3 |
+| szkielet | +4 |
+| ork | +5 |
+| ogr | +7 |
+| troll | +10 |
+| zjawa | +8 |
+| Smok Otchłani | +26 |
+
+## Starcia z innymi śmiałkami
+
+Dopóki nikogo nie widzisz, chodzisz własnym tempem. Gdy inny śmiałek wejdzie w Twoje pole widzenia, wasza tura rozstrzyga się JEDNOCZEŚNIE: oboje deklarujecie ruch w ślepo i oboje działacie w tej samej turze. Dlatego plansza czeka wtedy na drugą stronę - to nie zawieszenie gry. Nikt nie dostaje darmowej serii ciosów, więc odskok jest zawsze wykonalny.
+
+Przegrane starcie NIE kończy partii. Gubisz cały dobytek na miejscu i budzisz się piętro wyżej z resztką sił. Amulet też wypada, więc odebranie go komuś jest realnym sposobem wygrania wyścigu.
+
+Odwrót nie jest darmowy. Kto stał twarzą w twarz i odskoczył, dostaje cios w plecy od tego, kto został - o połowie zwykłej siły. Gdy obie strony rozchodzą się w tej samej turze, nikt nie zbiera nic.
+
+Cofać się można 6 razy pod rząd. Potem brakuje tchu i najbliższa próba odwrotu kończy się przystankiem na oddech - stoisz jedną turę, a przeciwnik nie. Licznik schodzi, gdy staniesz albo natrzesz. Zasada obowiązuje obie strony jednakowo: dlatego ucieczka bez końca jest niemożliwa i silniejszy może doprowadzić starcie do rozstrzygnięcia.
+
 ## Rozwój postaci
 
 Za pokonane potwory dostajesz doświadczenie. Awans daje +10 do maksimum życia (i tyle samo od ręki), +1 do siły, a co drugi poziom +1 do zręczności.
@@ -72,7 +97,7 @@ Za pokonane potwory dostajesz doświadczenie. Awans daje +10 do maksimum życia 
 | 7 | 275 |
 | 8 | 365 |
 
-Życie odnawia się samo: 1 punkt co max(8, 24 - poziom postaci) tur. Na pierwszym poziomie to jeden punkt na 23 tur, na ósmym na 16. Głodujący NIE regeneruje się wcale.
+Życie odnawia się samo BARDZO wolno: 1 punkt co 69 tur na pierwszym poziomie postaci i co 48 na ósmym. Głodujący nie regeneruje się wcale. Odsypianie ran jest więc drogą kosztowną - podstawowym źródłem sił jest WALKA, bo każde zabicie oddaje ich część.
 
 ## Głód
 

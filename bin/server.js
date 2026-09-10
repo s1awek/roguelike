@@ -42,7 +42,12 @@ const TYPES = {
 // ---------- partia ----------
 
 const [MW, MH] = MAPA.split('x').map(Number);
-const game = new Game(ZIARNO, { name: 'Pierwszy', w: MW, h: MH });
+// `odnawianie` włączone WYŁĄCZNIE tu: ten loch żyje godzinami i kilku
+// uczestników ogołaca go szybciej, niż nowy zdąży wejść. Zmierzone na czterech
+// botach: poziom pierwszy miał zero potworów i zero przedmiotów w turze 1891.
+// Partia jednoosobowa zostaje bez odnawiania, żeby jej równowaga - zmierzona
+// na tysiącu partii - nie ruszyła się ani o krok (D-034).
+const game = new Game(ZIARNO, { name: 'Pierwszy', w: MW, h: MH, odnawianie: true });
 // Pierwszy uczestnik powstaje razem z grą, więc trafia na schody. Rozrzucamy go
 // tak samo jak wszystkich pozostałych - inaczej każda partia zaczynałaby się
 // bijatyką przy wejściu.

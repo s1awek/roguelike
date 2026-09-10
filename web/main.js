@@ -393,6 +393,9 @@ function updateHud() {
   $('patk').textContent = game.playerAttack();
   $('pdef').textContent = game.playerDefense();
   $('pdepth').textContent = `${game.depth}/${game.maxDepth}`;
+  // Zaludnienie piętra: liczba zbiorcza, bez położeń. W grze jednoosobowej
+  // czytana wprost z poziomu, w wieloosobowej przychodzi w migawce.
+  $('pwrogi').textContent = game.levels.get(game.depth).monsters.filter(m => m.hp > 0).length;
   $('pturn').textContent = game.turn;
   const [word, cls] = hungerTag(p.hunger);
   $('hunger').textContent = word;

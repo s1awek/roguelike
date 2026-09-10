@@ -948,3 +948,58 @@ bez strumienia nadal blokuje pułap.
 zmianę, a `npm test` w tym samym poleceniu wypisał `fail 1` - i przeczytałem to
 dopiero po fakcie. Kolejność jest jedna: wynik testów czyta się przed commitem,
 a nie obok niego.
+
+### W-18: pusty poziom miał DWIE przyczyny, wymagające przeciwnych napraw
+
+Zgłoszenie brzmiało jednoznacznie: cały drugi poziom przy turze ponad 5000,
+jeden goblin, ani przedmiotu. Pokusa była oczywista - dosypać potworów. Pomiar
+pokazał, że dosypanie samo w sobie naprawiłoby połowę sprawy i zepsułoby drugą.
+
+Przyczyna pierwsza: liczba mieszkańców poziomu była STAŁA (`4 + głębokość`),
+a stół chodzi na mapie 120x32, czyli 3840 pól wobec 1520, pod którymi grę
+strojono. Gęstość wychodziła 1,56 potwora na 1000 pól przy 3,95 na mapie
+wzorcowej - dwa i pół raza rzadziej. Poziom dawał się przejść od schodów do
+schodów i nie spotkać nikogo, bez żadnej usterki w kodzie.
+
+Przyczyna druga: cztery boty ogołacały poziom, a nic się nie odnawiało. Pomiar
+na sześciu tysiącach tur: poziom pierwszy miał ZERO potworów i ZERO przedmiotów
+już w turze 1891 i tak zostawał do końca. Człowiek wchodzący później dostawał
+loch-muzeum. Tego nie naprawia żadna gęstość początkowa.
+
+Naprawy są przeciwne w tym sensie, że pierwsza dotyczy generatora i musi być
+NIEZMIENNA dla mapy domyślnej (inaczej przesuwa zmierzoną równowagę gry
+jednoosobowej), a druga dotyczy życia partii i musi być WYŁĄCZONA w grze
+jednoosobowej (bo tam ogołocony poziom jest wynikiem gry, nie usterką). Stąd
+mnożnik odnoszony do powierzchni wzorcowej - na 76x20 daje dokładnie 1, co test
+przypina do starych tablic - i odnawianie jako opcja włączana tylko przez stół.
+
+**Uboczne, o fałszywym alarmie:** w tym samym pomiarze licznik tur zatrzymał się
+na 4542 i nie ruszył przez cztery punkty pomiaru. Wyglądało to na postój stołu,
+czyli wadę groźniejszą niż wszystko powyżej. Diagnoza zajęła jedno uruchomienie:
+wszystkie cztery boty były martwe, a mój pomiar - inaczej niż prawdziwy serwer -
+nie dostawiał nowych. Wada leżała w przyrządzie, nie w grze.
+
+### W-19: reguła, która nie działała wcale, bo NaN nie zgłasza błędu
+
+Koszt odwrotu i zmęczenie ucieczką napisałem, uruchomiłem i wyglądały na gotowe:
+gra działała, testy przechodziły, nic nie krzyczało w konsoli. Mechanizm był
+w całości MARTWY. Cztery nowe wywołania `chebyshev` dostały obiekty zamiast
+czterech liczb, bo funkcja ma postać `chebyshev(ax, ay, bx, by)`, a ja podałem
+`chebyshev(a, b)`. `Math.abs(obiekt - obiekt)` daje NaN, a każde porównanie
+z NaN jest fałszywe - więc żaden warunek nigdy nie był spełniony i cała reguła
+milczała. Zero wyjątków, zero ostrzeżeń, zero śladu w logu.
+
+**Co to mówi o testach kontrolnych.** Test „obopólne rozejście jest darmowe"
+PRZESZEDŁ przy martwym mechanizmie - bo gdy nie ma kary, to nie ma jej także za
+rozejście. Kontrola na przypadku znanym-złym jest więc ważna wyłącznie w parze
+z przypadkiem znanym-dobrym: test negatywny, który przechodzi także przy
+całkowitym braku mechanizmu, nie mierzy niczego. Usterkę wykrył test pozytywny
+(„odskok kończy się ciosem w plecy"), i to jest jedyny powód, dla którego nie
+pojechała na stół właściciela.
+
+**Uboczne, o czytaniu własnych testów.** Dwa pierwsze przebiegi tego pliku padły
+z innego powodu: postać cofała się w ścianę, więc odwrót nie następował i test
+mierzył geometrię komnaty, nie regułę. Poprawka to pole zapasowe w oprzyrządowaniu
+(trzy pola podłogi w rzędzie) i powrót obu postaci na start przed każdą turą.
+Gdybym rozluźnił warunek zamiast poprawić oprzyrządowanie, wada z NaN przeszłaby
+niezauważona.

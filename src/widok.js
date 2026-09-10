@@ -11,6 +11,7 @@
 // (`web/draw.js`) działa bez jednej zmiany w obu trybach gry.
 
 import { bytesToBase64, base64ToBytes } from './bytes.js';
+import { PROG_ZMECZENIA } from './game.js';
 
 /** Kafle, których uczestnik nie pamięta, są zerem - reszta to kod kafla plus jeden. */
 function kafleZnane(level, mem) {
@@ -67,6 +68,7 @@ export function widokDla(game, hero, opts = {}) {
       hp: hero.hp, maxHp: hero.maxHp, str: hero.str, def: hero.def,
       level: hero.level, xp: hero.xp, hunger: hero.hunger, depth,
       kills: hero.kills, hasAmulet: hero.hasAmulet,
+      zmeczenie: hero.zmeczenie || 0, progZmeczenia: PROG_ZMECZENIA,
       atak: game.playerAttack(hero), obrona: game.playerDefense(hero),
       maxDepth: game.maxDepth,
       status: hero.status, cause: hero.cause,
@@ -80,6 +82,13 @@ export function widokDla(game, hero, opts = {}) {
     dziennik: hero.messages.slice(od).map(m => ({ ...m })),
     dziennikDo: hero.messages.length,
     kontakt: game.contacts(hero).map(o => ({ hid: o.hid, name: o.name })),
+    // Zaludnienie piętra: liczba ZBIORCZA, bez położeń i bez imion. Odpowiada na
+    // pytanie „czy jest tu z kim walczyć", a nie „gdzie oni są" - więc nie daje
+    // przewagi, której nie dałoby nadstawienie ucha w prawdziwym lochu.
+    pietro: {
+      potwory: wpis.monsters.filter(m => m.hp > 0).length,
+      smialkowie: game.heroes.filter(o => o.status === 'playing' && o.depth === depth).length,
+    },
   };
   if (opts.zKaflami !== false) w.kafle = bytesToBase64(kafleZnane(level, mem));
   return w;

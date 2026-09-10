@@ -13,7 +13,8 @@
 
 import { POTIONS, SCROLLS, WEAPONS, ARMORS, FOODS, SCENTS, POTION_SCENT, scentGroup } from './items.js';
 import { KINDS, BOSS } from './monsters.js';
-import { MAX_DEPTH, FOV_RADIUS, INVENTORY_LIMIT, HUNGER_START, HUNGER_MAX, xpForLevel } from './game.js';
+import { MAX_DEPTH, FOV_RADIUS, INVENTORY_LIMIT, HUNGER_START, HUNGER_MAX, xpForLevel,
+  zwrotZaZabicie, PROG_ZMECZENIA, REGEN_MNOZNIK } from './game.js';
 
 const POTION_EFFECT = {
   heal: (p) => `leczy ${p.power} punktów życia`,
@@ -128,6 +129,19 @@ export function buildRules(gdzie = 'doc') {
           ['obrona potwora', 'jego obrona'],
         ] },
         { t: 'p', text: 'Ta sama zasada obowiązuje w obie strony, więc każdy cios może chybić - także cios Smoka.' },
+        { t: 'p', text: 'Za zabicie przeciwnika odzyskujesz część sił - tym więcej, im groźniejszy był. Zwrot nigdy nie podnosi życia powyżej pełni, więc nie da się nim nadrobić dowolnych obrażeń stojąc w drzwiach i zbierając drobnicę. Opłaca się jednak bić, a nie omijać: drobny przeciwnik też oddaje coś, czego nie oddaje ominięcie go łukiem.' },
+        { t: 'table', head: ['przeciwnik', 'zwrot sił za zabicie'], rows:
+          KINDS.map(k => [k.name, `+${zwrotZaZabicie(k.hp)}`]).concat([[BOSS.name, `+${zwrotZaZabicie(BOSS.hp)}`]]) },
+      ],
+    },
+    {
+      id: 'starcia',
+      title: 'Starcia z innymi śmiałkami',
+      blocks: [
+        { t: 'p', text: 'Dopóki nikogo nie widzisz, chodzisz własnym tempem. Gdy inny śmiałek wejdzie w Twoje pole widzenia, wasza tura rozstrzyga się JEDNOCZEŚNIE: oboje deklarujecie ruch w ślepo i oboje działacie w tej samej turze. Dlatego plansza czeka wtedy na drugą stronę - to nie zawieszenie gry. Nikt nie dostaje darmowej serii ciosów, więc odskok jest zawsze wykonalny.' },
+        { t: 'p', text: 'Przegrane starcie NIE kończy partii. Gubisz cały dobytek na miejscu i budzisz się piętro wyżej z resztką sił. Amulet też wypada, więc odebranie go komuś jest realnym sposobem wygrania wyścigu.' },
+        { t: 'p', text: 'Odwrót nie jest darmowy. Kto stał twarzą w twarz i odskoczył, dostaje cios w plecy od tego, kto został - o połowie zwykłej siły. Gdy obie strony rozchodzą się w tej samej turze, nikt nie zbiera nic.' },
+        { t: 'p', text: `Cofać się można ${PROG_ZMECZENIA} razy pod rząd. Potem brakuje tchu i najbliższa próba odwrotu kończy się przystankiem na oddech - stoisz jedną turę, a przeciwnik nie. Licznik schodzi, gdy staniesz albo natrzesz. Zasada obowiązuje obie strony jednakowo: dlatego ucieczka bez końca jest niemożliwa i silniejszy może doprowadzić starcie do rozstrzygnięcia.` },
       ],
     },
     {
@@ -137,7 +151,7 @@ export function buildRules(gdzie = 'doc') {
         { t: 'p', text: 'Za pokonane potwory dostajesz doświadczenie. Awans daje +10 do maksimum życia (i tyle samo od ręki), +1 do siły, a co drugi poziom +1 do zręczności.' },
         { t: 'table', head: ['poziom', 'potrzebne doświadczenie'], rows:
           [2, 3, 4, 5, 6, 7, 8].map(n => [String(n), String(xpForLevel(n))]) },
-        { t: 'p', text: `Życie odnawia się samo: 1 punkt co max(8, 24 - poziom postaci) tur. Na pierwszym poziomie to jeden punkt na ${Math.max(8, 24 - 1)} tur, na ósmym na ${Math.max(8, 24 - 8)}. Głodujący NIE regeneruje się wcale.` },
+        { t: 'p', text: `Życie odnawia się samo BARDZO wolno: 1 punkt co ${Math.max(8, 24 - 1) * REGEN_MNOZNIK} tur na pierwszym poziomie postaci i co ${Math.max(8, 24 - 8) * REGEN_MNOZNIK} na ósmym. Głodujący nie regeneruje się wcale. Odsypianie ran jest więc drogą kosztowną - podstawowym źródłem sił jest WALKA, bo każde zabicie oddaje ich część.` },
       ],
     },
     {
