@@ -613,6 +613,31 @@ warstwę korzystającą z tej samej funkcji do czegoś innego.
 - wczytanie PRAWDZIWEGO zapisu w formacie 1, wyprodukowanego przed przebudową
   (po niej nie da się go już wytworzyć)
 
+### Czy ktoś już to ma: rozpoznanie w sieci
+
+Pytanie właściciela z rozmowy: czy są gdzieś takie wersje jak nasza, webowe,
+gdzie wchodzi się i gra z człowiekiem albo z botem. `[ustalone - trzy
+wyszukiwania, wrzesień 2026]` na tyle, na ile trzy wyszukiwania ustalają:
+
+- **Wieloosobowe roguelike'i z trwałym, wspólnym lochem istnieją od dawna
+  i poszły w zegar rzeczywisty, nie w tury.** MAngband, TomeNET i pochodna
+  Tangaria to gry z klientem do zainstalowania, z systemem energii zamiast
+  ścisłych tur; w TomeNET czas płynie wolniej na głębszych poziomach, żeby
+  wyrównać przewagę szybkości. To potwierdza rachunek, na którym stoi D-023:
+  ścisła turowość dla wszystkich naraz nie skaluje się i nikt jej nie utrzymał.
+- **Stawka śmierci w MAngbandzie jest bardzo bliska naszej D-022:** zabity gracz
+  zmienia się w ducha i wraca do świątyni, tracąc wszystkie przedmioty. Doszliśmy
+  do tego rachunkiem, nie zapożyczeniem, ale zbieżność z rozwiązaniem sprawdzonym
+  przez dwie dekady jest argumentem na rzecz tej stawki.
+- **W przeglądarce jest co innego.** Rogule daje wszystkim ten sam loch na dany
+  dzień i jedno podejście - to współzawodnictwo o wynik, nie wspólny świat.
+  Webowy klient Dungeon Crawl Stone Soup jest jednoosobowy.
+- `[hipoteza - NIE do wpisania w portfolio jako fakt]` Połączenie „przeglądarka
+  bez instalowania + jeden wspólny loch + tury + człowiek albo bot" wygląda na
+  nieobsadzone. Trzy wyszukiwania nie są przeglądem rynku, a itch.io ma tysiące
+  pozycji, których w ten sposób się nie przeszuka. Zdanie w portfolio ma brzmieć
+  „zrobione tak i tak", a nie „pierwsze takie".
+
 ### Czego NIE sprawdzono
 
 - `[niezweryfikowane]` Rozgrywka z udziałem CZŁOWIEKA. Klawisze wciskał
