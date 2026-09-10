@@ -56,12 +56,39 @@ async function post(sciezka, body) {
   return { code: r.status, body: await r.json().catch(() => ({})) };
 }
 
+/**
+ * Dosiadanie jest JEDNORAZOWE - drugie kliknięcie nie może prosić o nowe miejsce.
+ *
+ * Bez tej zapory każde kliknięcie w „Wejdź" brało osobne miejsce przy stole,
+ * a `otworzStrumien` zamykał przy tym strumień poprzedniego. Zmierzone: cztery
+ * kliknięcia to cztery miejsca, z których żyje ostatnie. Właściciel przy
+ * pierwszym wejściu na stronę zajął tak osiem z dwunastu miejsc i zapełnił stół
+ * sam sobie. Samo szybkie działanie przycisku tego nie tłumaczy (lobby znika
+ * po 66 ms), więc nie zgaduję, co go skłoniło do klikania - zamykam skutek.
+ */
+let dosiadanie = false;
+
 async function dosiadz(name) {
-  const { code, body } = await post('/api/dosiadz', { name });
-  if (code !== 200) { say(`Nie udało się dosiąść: ${body.blad || code}`); return; }
-  ja = body;
-  sessionStorage.setItem('roguelike:miejsce', JSON.stringify(ja));
-  otworzStrumien();
+  if (dosiadanie || ja) return;
+  dosiadanie = true;
+  const przycisk = $('wejdz');
+  const napis = przycisk.textContent;
+  przycisk.disabled = true;
+  przycisk.textContent = 'Dosiadam...';
+  try {
+    const { code, body } = await post('/api/dosiadz', { name });
+    if (code !== 200) {
+      say(`Nie udało się dosiąść: ${body.blad || code}`);
+      przycisk.disabled = false;
+      przycisk.textContent = napis;
+      return;
+    }
+    ja = body;
+    sessionStorage.setItem('roguelike:miejsce', JSON.stringify(ja));
+    otworzStrumien();
+  } finally {
+    dosiadanie = false;
+  }
 }
 
 function otworzStrumien() {

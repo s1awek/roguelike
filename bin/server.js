@@ -30,6 +30,7 @@ const LIMIT_MIEJSC = Number(arg('--limit', 12));
 const LASKA_MS = Number(arg('--laska', 60000));   // ile czekamy na powrót rozłączonego
 const TICK_MS = 60;
 const ZADAN_NA_SEKUNDE = Number(arg('--limit-zadan', 25));
+const MIEJSC_NA_ADRES = Number(arg('--miejsc-na-adres', 2));
 const STRUMIENI_NA_MIEJSCE = 3;
 
 const TYPES = {
@@ -61,12 +62,41 @@ const ludzie = new Map();
 const grajacy = () => [...stol.miejsca.values()]
   .filter(m => game.heroes[m.hid].status === 'playing').length;
 
-function dosiadz(name) {
+/** Ile miejsc trzyma w tej chwili jeden adres. */
+const miejscAdresu = (adres) => [...ludzie.values()].filter(w => w.adres === adres).length;
+
+/**
+ * Dosiadnięcie do stołu, z górnym pułapem miejsc NA JEDEN ADRES.
+ *
+ * Pułap nie jest ostrożnością na zapas - jest odpowiedzią na zmierzone
+ * zdarzenie. Właściciel wszedł na stronę i w ciągu sześciu sekund zajął OSIEM
+ * z dwunastu miejsc, bo każde kliknięcie w „Wejdź" prosiło o nowe miejsce,
+ * a przeglądarka zamykała przy tym poprzedni strumień. Zostało jedno miejsce
+ * grające i siedem porzuconych ciał, a stół zrobił się pełny, więc nikt inny
+ * nie mógł już wejść. Porządki odzyskały te miejsca dopiero po okresie łaski.
+ *
+ * Zapora po stronie klienta (przycisk gaszony na czas dosiadania) usuwa
+ * przypadek, ale nie wystarcza: przy grze wystawionej publicznie `/api/dosiadz`
+ * woła kto chce i czym chce, a przydział żądań na sekundę przepuszcza
+ * dwanaście wywołań w pół sekundy. Pułap na adres jest jedyną warstwą,
+ * która działa bez zaufania do klienta.
+ *
+ * Dlaczego DWA, a nie jedno: za jednym adresem siedzi cała sieć domowa, biuro
+ * albo operator komórkowy, więc pułap jeden odbijałby drugiego prawdziwego
+ * gracza. Dwa przepuszczają domownika i drugą kartę, a nie przepuszczają serii
+ * kliknięć. Miejsce zwolnione przez porządki przestaje się liczyć, bo wychodzi
+ * ze zbioru ludzi.
+ */
+function dosiadz(name, adres = '?') {
   const czyste = String(name || '').replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 16) || 'Gość';
+  if (miejscAdresu(adres) >= MIEJSC_NA_ADRES) {
+    log(`odmowa: adres ${adres} ma juz ${miejscAdresu(adres)} miejsc`);
+    return { blad: `z tego adresu zajęte są już ${MIEJSC_NA_ADRES} miejsca - zamknij starą kartę albo poczekaj` };
+  }
   if (grajacy() >= LIMIT_MIEJSC) return { blad: 'stół pełny, spróbuj za chwilę' };
   const m = stol.dosiadz(czyste, { rodzaj: 'czlowiek' }).miejsce;
   const token = randomBytes(12).toString('hex');
-  ludzie.set(m.hid, { token, strumienie: new Set(), dziennikDo: 0, kafelWyslany: null, rozlaczonyOd: null });
+  ludzie.set(m.hid, { token, adres, strumienie: new Set(), dziennikDo: 0, kafelWyslany: null, rozlaczonyOd: null });
   log(`dosiadl ${czyste} (miejsce ${m.hid}), ludzi ${ludzie.size}, grajacych ${grajacy()}`);
   return { hid: m.hid, token, name: czyste };
 }
@@ -222,7 +252,7 @@ const server = createServer(async (req, res) => {
   if (path === '/api/dosiadz' && req.method === 'POST') {
     try {
       const b = await cialo(req);
-      const r = dosiadz(b.name);
+      const r = dosiadz(b.name, adres);
       return json(res, r.blad ? 503 : 200, r);
     } catch (e) { return json(res, 400, { blad: e.message }); }
   }

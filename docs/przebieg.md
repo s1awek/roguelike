@@ -322,6 +322,45 @@ zegar systemowy `11:37:46+02:00`, wpis serwera `[11:37:44+02:00]`, różnica
 to opóźnienie startu procesu. Poza `bin/server.js` wzorzec nie występował nigdzie
 w projekcie.
 
+### W-12: jedno wejście na stronę zajęło osiem z dwunastu miejsc
+
+Pierwsza wada znaleziona przez **żywego człowieka przy stole**, a nie przez bota,
+test ani sterownik przeglądarki. W logu widać osiem dosiadnięć tego samego imienia
+w ciągu sześciu sekund, po nich jeden gracz z żywym strumieniem i siedem
+porzuconych ciał. Stół pokazywał 12/12, więc druga osoba nie mogła już wejść.
+
+Mechanizm ustalony pomiarem, nie lekturą: cztery kliknięcia w „Wejdź" dały cztery
+osobne miejsca (`ludzie=[3,4,5,6,7]`), bo `dosiadz()` nie miał żadnej zapory,
+a `otworzStrumien()` zamykał przy tym strumień poprzedniego miejsca - stąd
+dokładnie jedno miejsce żywe i resztа bez strumienia.
+
+**Czego NIE ustaliłem:** dlaczego człowiek kliknął osiem razy. Naturalne
+wyjaśnienie („przycisk wyglądał na martwy") nie broni się pomiarem: od jednego
+kliknięcia do zniknięcia lobby mija **66 ms**, przy zerze błędów w konsoli.
+Odświeżanie strony też jest niewinne - trzy odświeżenia z rzędu trzymają to samo
+miejsce, tak jak zakładał `sessionStorage`. Przyczyna po stronie człowieka zostaje
+otwarta; naprawa jej nie potrzebuje, bo zamyka skutek.
+
+Naprawa dwuwarstwowa, bo warstwa przeglądarki nie jest zaporą, tylko wygodą:
+1. Klient - dosiadanie jednorazowe, przycisk gaszony na czas lotu żądania,
+   drugie wywołanie odrzucane, gdy miejsce już jest.
+2. Serwer - pułap miejsc na adres (D-031). Serwer nie może wierzyć klientowi:
+   `/api/dosiadz` wystawiony publicznie woła kto chce i czym chce, a przydział
+   żądań przepuszcza dwanaście wywołań w pół sekundy.
+
+Zmierzone po naprawie, tym samym przebiegiem sterownika: **osiem kliknięć bez
+przerwy na pustej sesji daje jedno miejsce** i gra się zaczyna (`mode: map`,
+lobby schowane); dalsze próby z tego samego adresu serwer odbija kodem 503
+z podaniem prawdziwej przyczyny, a nie mylącym „stół pełny". Test regresyjny
+uruchamia prawdziwy serwer po HTTP i niesie kontrolę przyrządu: przy pułapie
+podniesionym do pięciu ta sama seria zajmuje pięć miejsc, więc widać, że test
+mierzy pułap, a nie limit stołu ani przydział żądań.
+
+**Uboczne, warte zapisania:** przy tej samej awarii sprawdziło się przekazanie
+miejsca po rozłączeniu (D-029) - siedem porzuconych ciał wróciło do botów po
+okresie łaski, samo, bez żadnej interwencji. To pierwszy raz, gdy ten mechanizm
+zadziałał na człowieku, a nie w próbie.
+
 ## Wątek 4: czytelność, minimapa, autozapis (2026-09-10)
 
 Trzy zgłoszenia właściciela po pierwszej dłuższej rozgrywce w przeglądarce:
