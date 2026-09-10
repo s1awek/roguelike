@@ -521,14 +521,41 @@ uczestników to `turyUczestnikowWKontakcie / turyUczestnikow`, i ona weszła do
 przyrządu. Wniosek o wpływie rozmiaru mapy był już postawiony na tej pierwszej
 i został wycofany przed zapisaniem.
 
-`[ustalone - po jednej serii na rozmiar, 10 graczy]` Rozmiar mapy wobec udziału
-tur w kontakcie i przegranych starć na partię: 76x20 -> 32,8% i 30,6;
-120x32 -> 38,2% i 21,8; 160x44 -> 44,0% i 18,0. Kierunek przegranych starć jest
-oczekiwany (więcej miejsca, rzadsze starcia), kierunek udziału kontaktu jest
-przeciwny do intuicji. **Mechanizmu NIE ustalono**, a pomiar ma zaplątaną
-zmienną: liczba potworów i przedmiotów zależy w tej grze od głębokości, nie od
-powierzchni, więc większa mapa jest jednocześnie pustsza i wolniej się zwiedza.
-Rozstrzygnęłaby to seria z gęstością skalowaną do powierzchni.
+`[obalone - ta sama seria po naprawie zawężenia tury]` Pierwszy pomiar rozmiaru
+mapy dał udział tur w kontakcie ROSNĄCY z powierzchnią (32,8% -> 38,2% -> 44,0%)
+i został zapisany jako wynik przeciwny do intuicji, z zastrzeżeniem, że
+mechanizmu nie ustalono. Był artefaktem wady w przyrządzie, nie własnością gry
+- patrz niżej.
+
+**Wada w samym przyrządzie, znaleziona przy budowie rozjemcy tury.**
+`resolveTurn` rozstrzygał turę dla WSZYSTKICH żywych uczestników, także tych
+poza kontaktem, a pętla dawała im potem ich własną turę jeszcze raz. Przy dwóch
+graczach było to niewidoczne, bo grupa w kontakcie jest wtedy całą listą; przy
+dziesięciu ośmiu pozostałym świat ruszał się dwa razy na jedno ich działanie -
+czyli głód i potwory szły dwa razy szybciej niż powinny. Druga wada w tym samym
+miejscu: grupowanie brało „ja plus moje kontakty" bez domknięcia przechodniego,
+więc w łańcuchu A-B-C uczestnik C rozstrzygał turę osobno, przeciw B, który już
+się ruszył. Oba naprawione, oba mają teraz test.
+
+`[ustalone - 30 partii na rozmiar, 10 graczy, PO naprawie]`
+
+| mapa | udział tur w kontakcie | tury wspólne | przegrane starcia na partię |
+|---|---|---|---|
+| 76x20 | 57,4% | 17,2% | 57,1 |
+| 120x32 | 53,4% | 16,0% | 36,5 |
+| 160x44 | 45,1% | 14,3% | 49,0 |
+
+Kierunek udziału kontaktu jest teraz zgodny z intuicją: więcej miejsca, mniej
+kontaktu. Kolumna przegranych starć **nie jest monotoniczna** i przy trzydziestu
+partiach na rozmiar nie wolno z niej czytać kierunku - `[niezweryfikowane]`.
+Zaplątana zmienna zostaje: liczba potworów i przedmiotów zależy w tej grze od
+głębokości, nie od powierzchni, więc większa mapa jest jednocześnie pustsza.
+
+**Nauka metodyczna.** Pierwszy wniosek był podany z zastrzeżeniem „mechanizmu
+nie ustalono" i to zastrzeżenie okazało się jedyną rzeczą, która go trzymała
+przy życiu. Wynik przeciwny do intuicji jest sygnałem do sprawdzenia PRZYRZĄDU,
+nie do szukania ciekawego wyjaśnienia. Znalazło się dopiero wtedy, gdy pisałem
+warstwę korzystającą z tej samej funkcji do czegoś innego.
 
 ### Co zostało zmierzone, a nie przeczytane z kodu
 

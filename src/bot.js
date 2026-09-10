@@ -435,7 +435,7 @@ function result(game, outcome, cause) {
  * gdy jej nie masz. Tyle wystarcza, żeby ZMIERZYĆ, czy reguła tury daje się
  * rozstrzygać - i czy da się z niej wyjść żywym.
  */
-function decydujWPojedynku(game, hero, bot) {
+export function decydujWPojedynku(game, hero, bot) {
   const wrogowie = game.contacts(hero);
   const sasiad = wrogowie.find(o => chebyshev(hero.x, hero.y, o.x, o.y) === 1);
   if (sasiad) {
@@ -465,8 +465,40 @@ function decydujWPojedynku(game, hero, bot) {
  * działania biorą skutek naraz), a uczestnik samotny idzie własnym tempem
  * i na nikogo nie czeka.
  */
+/**
+ * Uczestnicy pogrupowani po kontakcie, DOMKNIĘCIE PRZECHODNIE.
+ *
+ * Kontakt jest parami: A widzi B, B widzi C, ale A nie widzi C. Naiwne
+ * grupowanie „ja plus moje kontakty" dałoby wtedy grupę {A,B}, a C zostałby
+ * sam - i rozstrzygałby swoją turę przeciw B, który już się ruszył. To jest
+ * dokładnie ta darmowa seria ciosów, której zakazuje reguła tury. Cały
+ * łańcuch musi rozstrzygać się razem.
+ */
+export function grupyWKontakcie(game, zywi) {
+  const wziete = new Set();
+  const grupy = [];
+  for (const start of zywi) {
+    if (wziete.has(start.hid)) continue;
+    const grupa = [];
+    const kolejka = [start];
+    wziete.add(start.hid);
+    while (kolejka.length) {
+      const h = kolejka.shift();
+      grupa.push(h);
+      for (const o of game.contacts(h)) {
+        if (!wziete.has(o.hid)) { wziete.add(o.hid); kolejka.push(o); }
+      }
+    }
+    grupy.push(grupa);
+  }
+  return grupy;
+}
+
 export function playDuel(game, opts = {}) {
-  const maxTurns = opts.maxTurns ?? MAX_TURNS;
+  // Licznik tur gry rośnie o jeden na KAŻDE działanie uczestnika, nie na rundę,
+  // więc budżet musi skalować się z liczbą graczy - inaczej dziesięciu graczy
+  // dostaje jedną piątą partii, którą dostaje dwóch.
+  const maxTurns = opts.maxTurns ?? MAX_TURNS * Math.max(1, game.heroes.length);
   const stallLimit = opts.stallLimit ?? 500;
   const boty = game.heroes.map(() => new Bot());
 
@@ -487,14 +519,7 @@ export function playDuel(game, opts = {}) {
 
   try {
     while (game.turn < maxTurns && zyje().length > 0) {
-      const grupy = [];
-      const wziete = new Set();
-      for (const h of zyje()) {
-        if (wziete.has(h.hid)) continue;
-        const razem = [h, ...game.contacts(h).filter(o => !wziete.has(o.hid))];
-        for (const x of razem) wziete.add(x.hid);
-        grupy.push(razem);
-      }
+      const grupy = grupyWKontakcie(game, zyje());
 
       const kontakt = grupy.some(g => g.length > 1);
       if (kontakt && !byłKontakt) pom.spotkania++;
@@ -523,7 +548,7 @@ export function playDuel(game, opts = {}) {
             akcje.set(h.hid, decydujWPojedynku(game, h, boty[h.hid]));
             game.active = prev;
           }
-          const spent = game.resolveTurn(akcje);
+          const spent = game.resolveTurn(akcje, grupa);
           pom.turyWspolne++;
           for (const [hid, ok] of spent) if (!ok) { pom.odrzucone++; boty[hid].invalidate(); }
         }

@@ -13,6 +13,7 @@ import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
+import { DIR, SHIFTED_BY_CODE } from './klawisze.js';
 
 const SAVE_KEY = 'roguelike:save';   // zapis ręczny, robiony klawiszem S
 const AUTO_KEY = 'roguelike:auto';   // autozapis, nadpisywany po każdej turze
@@ -115,23 +116,6 @@ function stepWalk(now) {
 }
 
 // ---------- klawiatura ----------
-
-const DIR = {
-  h: [-1, 0], j: [0, 1], k: [0, -1], l: [1, 0],
-  y: [-1, -1], u: [1, -1], b: [-1, 1], n: [1, 1],
-  '4': [-1, 0], '2': [0, 1], '8': [0, -1], '6': [1, 0],
-  '7': [-1, -1], '9': [1, -1], '1': [-1, 1], '3': [1, 1],
-  ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1],
-};
-
-// Znaki, które na typowej klawiaturze powstają dopiero z Shiftem. Na części
-// układów `e.key` nie donosi o tym wcale i do gry dociera znak spod klawisza -
-// przecinek zamiast '<', kropka zamiast '>'. Wtedy "wejdź po schodach" zamienia
-// się w "podnieś", co wygląda jak wada gry, a jest rozjazdem układu klawiatury.
-// Rozstrzyga `e.code`, czyli POŁOŻENIE klawisza, niezależne od układu.
-const SHIFTED_BY_CODE = {
-  Comma: '<', Period: '>', Slash: '?', KeyS: 'S', KeyL: 'L', KeyQ: 'Q', KeyN: 'N',
-};
 
 /** Ostatnie klawisze - do odczytania w konsoli, gdy sterowanie zachowa się dziwnie. */
 const keyLog = [];

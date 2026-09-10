@@ -356,10 +356,17 @@ export class Game {
    *
    * `actions`: Map hid -> działanie. Zwraca Map hid -> czy tura zeszła.
    */
-  resolveTurn(actions = new Map()) {
+  resolveTurn(actions = new Map(), grupa = null) {
     // Uczestnicy tury ustalani PRZED działaniami: kto wchodził w turę żywy,
     // ten ją do końca odbywa, choćby w jej trakcie wygrał albo padł.
-    const uczestnicy = this.heroes.filter(h => h.status === 'playing');
+    //
+    // `grupa` zawęża turę do tych, którzy są ze sobą w kontakcie. Bez tego
+    // zawężenia tura wspólna dwóch graczy ruszała świat WSZYSTKIM, także tym,
+    // którzy chodzą osobno - a ci dostawali swoją turę jeszcze raz, we własnym
+    // tempie. Przy dwóch uczestnikach było to niewidoczne, bo grupa w kontakcie
+    // jest wtedy całą listą; przy dziesięciu ośmiu pozostałym świat ruszał się
+    // dwa razy na jedno ich działanie.
+    const uczestnicy = (grupa ?? this.heroes).filter(h => h.status === 'playing');
     const spent = new Map();
     for (const hero of uczestnicy) {
       const a = actions.get(hero.hid) ?? { type: 'wait' };

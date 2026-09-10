@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Game } from '../src/game.js';
-import { playDuel } from '../src/bot.js';
+import { playDuel, grupyWKontakcie } from '../src/bot.js';
 import { serialize, loadFromString } from '../src/serialize.js';
 
 /** Dwóch uczestników postawionych obok siebie, bez losowania położeń. */
@@ -224,4 +224,32 @@ test('stan wielu uczestników przeżywa zapis i wznowienie', () => {
   }
   assert.notEqual(g2.heroes[0].identified, g2.heroes[1].identified,
     'po wczytaniu wiedza obu uczestników nie może być tym samym zbiorem');
+});
+
+// ---------- grupowanie po kontakcie ----------
+
+test('łańcuch kontaktów rozstrzyga się CAŁY razem, nie parami', () => {
+  // Kontakt jest parami: A widzi B, B widzi C, A nie widzi C. Naiwne grupowanie
+  // dałoby {A,B} i osobno {C}, więc C rozstrzygałby turę przeciw B, który już
+  // się ruszył. Sprawdzane na zastępniku, bo ustawienie takiego łańcucha na
+  // prawdziwej mapie zależy od układu ścian, a mierzona jest tu SAMA reguła.
+  const widzi = { 1: [2], 2: [1, 3], 3: [2], 4: [] };
+  const zywi = [1, 2, 3, 4].map(hid => ({ hid, status: 'playing' }));
+  const zastepnik = { contacts: (h) => widzi[h.hid].map(i => zywi[i - 1]) };
+  const grupy = grupyWKontakcie(zastepnik, zywi).map(g => g.map(h => h.hid).sort());
+  assert.equal(grupy.length, 2, `oczekiwane dwie grupy, wyszło ${JSON.stringify(grupy)}`);
+  assert.deepEqual(grupy.find(g => g.length > 1), [1, 2, 3], 'cały łańcuch ma być jedną grupą');
+  assert.deepEqual(grupy.find(g => g.length === 1), [4], 'osobny uczestnik nie może wpaść do grupy');
+});
+
+test('tura wspólna grupy NIE rusza świata tym, którzy chodzą osobno', () => {
+  const g = new Game('zawezenie');
+  g.addHero('Druga');
+  g.addHero('Trzecia');
+  const [a, b, c] = g.heroes;
+  const glodC = c.hunger, hpC = c.hp;
+  g.resolveTurn(new Map([[a.hid, { type: 'wait' }], [b.hid, { type: 'wait' }]]), [a, b]);
+  assert.equal(c.hunger, glodC, 'osobnemu uczestnikowi ubył głód w cudzej turze');
+  assert.equal(c.hp, hpC, 'osobny uczestnik oberwał w cudzej turze');
+  assert.notEqual(a.hunger, glodC, 'uczestnikom grupy głód ubyć MIAŁ');
 });

@@ -166,6 +166,7 @@ export class Renderer {
     this.drawItems(game, ps, flicker, view);
     this.drawMonsters(game, view, ps, flicker);
     this.drawPlayer(game, view, ps);
+    this.drawOthers(game, view);
     this.drawEffects(view);
 
     // Minimapa rysuje sie PO zdjeciu wstrzasu - inaczej trzeslaby sie razem
@@ -817,6 +818,61 @@ export class Renderer {
   }
 
   // ---------- gracz ----------
+
+  /**
+   * Pozostali GRACZE - ci, ktorych widac teraz.
+   *
+   * Rysownik sam z siebie zna tylko potwory, wiec bez tego wejscia spotkanie
+   * z drugim czlowiekiem bylo niewidoczne. Barwa jest zimna, przeciwnie do
+   * cieplej obwodki wlasnej postaci, i kazdy niesie imie nad glowa: gracz musi
+   * wiedzieć, z kim ma do czynienia, zanim zdecyduje, czy uderzyc, czy odejsc.
+   *
+   * W grze jednoosobowej `game.gracze` nie istnieje, wiec metoda nic nie robi.
+   */
+  drawOthers(game, view) {
+    const inni = game.gracze;
+    if (!inni || !inni.length) return;
+    const ctx = this.ctx;
+    const t = this.tile;
+    const r = t * 0.5;
+    for (const o of inni) {
+      const cx = this.ox + o.x * t + t / 2;
+      const cy = this.oy + o.y * t + t / 2;
+
+      ctx.fillStyle = '#dfe7f4';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.44, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(130,190,255,0.95)';
+      ctx.lineWidth = Math.max(1.2, r * 0.14);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.66, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Pasek zycia, zeby dalo sie przeliczyc sily przed starciem. Bez niego
+      // decyzja "uderzyc czy odejsc" jest rzutem monetą.
+      const frac = Math.max(0, Math.min(1, o.hp / o.maxHp));
+      const bw = t * 0.66, bh = Math.max(2, t * 0.07);
+      const bx = cx - bw / 2, by = cy - r * 0.95;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = frac > 0.5 ? '#7fd48b' : frac > 0.25 ? '#ffcd82' : '#ff5f6d';
+      ctx.fillRect(bx, by, bw * frac, bh);
+
+      const label = String(o.name || '').slice(0, 12);
+      if (label) {
+        ctx.font = `${Math.max(9, Math.round(t * 0.26))}px ui-sans-serif, system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(6,7,11,0.85)';
+        ctx.strokeText(label, cx, by - 2);
+        ctx.fillStyle = '#cfe0f7';
+        ctx.fillText(label, cx, by - 2);
+      }
+    }
+  }
 
   drawPlayer(game, view, ps) {
     const ctx = this.ctx;
