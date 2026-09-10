@@ -221,7 +221,8 @@ function openInventory(which) {
   panel.innerHTML = `
     <h2>${INV_TITLE[which]} <span class="muted">${p.inventory.length}/16</span></h2>
     <ul>${rows || '<li class="muted">(pusto)</li>'}</ul>
-    <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. <kbd>Esc</kbd> wraca.</p>`;
+    <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
+      ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
   // Ikona rysowana tą samą funkcją co przedmiot leżący na podłodze. Dzięki temu
   // "czarna mikstura" w plecaku to dokładnie ta czarna flaszka, którą gracz
   // widział na kaflu - a nie osobna, rozjeżdżająca się z czasem grafika.

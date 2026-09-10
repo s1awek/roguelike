@@ -107,7 +107,10 @@ export function renderMessages(game, count = 2) {
 }
 
 const INV_HINT = {
-  inventory: 'litera = użyj/załóż',
+  // Wyrzucanie ISTNIEJE od początku (klawisz d), ale było opisane wyłącznie
+  // w księdze zasad - czyli w miejscu, do którego trzeba wyjść z plecaka.
+  // Podpowiedź stoi tam, gdzie gracz akurat patrzy na pełny plecak.
+  inventory: 'litera = użyj/załóż, d = wyrzuć',
   drop: 'litera = wyrzuć',
   sniff: 'litera = powąchaj (tylko mikstury)',
 };
