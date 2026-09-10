@@ -1039,3 +1039,29 @@ mierzę mechanikę, czy tylko własną zdolność do pisania zdań o niej.
 **Nauka:** zgłoszenie „pokaż mi liczbę" jest okazją, żeby sprawdzić, ile miejsc
 tę liczbę zna. Interfejs, który ma ją wyświetlić, musi ją skądś wziąć - i to
 pytanie znajduje duplikaty, których nie widać, dopóki nikt nie pyta.
+
+### W-21: kontrola dozoru zasiana do ŻYWEGO logu uszkadza własny dowód
+
+Dozór nad logiem stołu wymaga kontroli przyrządu - dozór, który nigdy nic nie
+zgłosił, jest nieodróżnialny od zepsutego. Zasiałem więc trzy linie z prawdziwymi
+sygnaturami serwera (`SKARGA PRZEGLADARKI`, `odmowa:`, `WYWROTKA w turze`)
+dopisując je do tego samego pliku, do którego pisze serwer.
+
+W logu została po tym linia urwana w środku: `GA PRZEGLADARKI [::1] proba`.
+Przyczyna: serwer wstał z przekierowaniem `> plik`, więc jego deskryptor NIE jest
+w trybie dopisywania i trzyma własne przesunięcie. Moje `echo >> plik` dokłada na
+końcu, ale kolejny zapis serwera trafia tam, gdzie stoi JEGO przesunięcie - i
+nadpisuje wstawkę. `tail -F` widzi wtedy plik, który skurczył się i wydłużył
+naprzemiennie, więc zgłoszenie jednej z trzech linii nie doszło do kanału zdarzeń,
+choć wzorzec ją łapie (sprawdzone osobno na ogonie pliku: 3 trafienia na 3).
+
+Wniosek nie jest o dozorze, tylko o miejscu zasiewu: **kontrolę wstrzykuje się do
+KOPII logu albo do osobnego pliku, nigdy do pliku, który w tej chwili pisze inny
+proces z deskryptorem bez `O_APPEND`.** Inaczej kontrola przyrządu psuje dokładnie
+ten dowód, który miała potwierdzić. Przy następnym podniesieniu stołu
+przekierowanie ma być `>>`, a nie `>`.
+
+Drugi wniosek, tańszy: dwa dozory na tym samym pliku dublują każde zdarzenie.
+Jeden zostaje jako czynny, z filtrem odpornym na wielkość liter - poprzedni
+wzorzec szukał `skarga`, a serwer pisze `SKARGA`, więc przepuściłby wszystkie
+skargi przeglądarek.
