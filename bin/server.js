@@ -286,6 +286,13 @@ const server = createServer(async (req, res) => {
       const b = await cialo(req);
       const w = uwierzytelnij(b.hid, b.token);
       if (!w) return json(res, 403, { blad: 'nie twoje miejsce' });
+      // Porządkowanie plecaka omija deklaracje: nie jest działaniem w świecie,
+      // więc nie ma na co czekać ani czego rozstrzygać wspólną turą.
+      if (b.action && b.action.type === 'przeloz') {
+        const r = stol.przeloz(Number(b.hid), b.action);
+        if (r.ok) wyslijWidok(Number(b.hid), w);
+        return json(res, 200, r);
+      }
       return json(res, 200, stol.zadeklaruj(Number(b.hid), b.action));
     } catch (e) { return json(res, 400, { blad: e.message }); }
   }
@@ -322,8 +329,15 @@ const server = createServer(async (req, res) => {
   }
 
   if (path === '/api/moje') {
-    const w = uwierzytelnij(Number(u.searchParams.get('hid')), u.searchParams.get('token'));
-    return json(res, w ? 200 : 403, w ? { ok: true } : { blad: 'miejsce już nie istnieje' });
+    const hid = Number(u.searchParams.get('hid'));
+    const w = uwierzytelnij(hid, u.searchParams.get('token'));
+    if (!w) return json(res, 403, { blad: 'miejsce już nie istnieje' });
+    // Samo istnienie miejsca nie wystarczy przeglądarce: miejsce po ZMARŁYM
+    // bohaterze nadal istnieje, a wracanie na nie kończy się ekranem „Koniec"
+    // bez wyjścia. Stan wraca razem z odpowiedzią, żeby klient miał czym
+    // odróżnić „wróć na swoje miejsce" od „weź nowe".
+    const hero = game.heroes[hid];
+    return json(res, 200, { ok: true, status: hero ? hero.status : 'dead' });
   }
 
   if (path === '/api/strumien') {

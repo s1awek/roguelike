@@ -91,6 +91,14 @@ function handleKey(key) {
     return;
   }
 
+  // Oglądanie nic nie kosztuje, więc wychodzi się z niego dowolnym klawiszem
+  // poza podniesieniem - a podniesienie działa od razu, bez wracania na mapę.
+  if (mode === 'obejrzyj') {
+    if (key === ',' || key === 'g') { game.act({ type: 'pickup' }); mode = 'map'; return; }
+    mode = 'map';
+    return;
+  }
+
   if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') {
     if (key === 'ESC' || key === 'i' || key === 'q') { mode = 'map'; return; }
     const idx = key.length === 1 ? key.charCodeAt(0) - 97 : -1;
@@ -112,6 +120,7 @@ function handleKey(key) {
     case 'i': mode = 'inventory'; break;
     case 'd': mode = 'drop'; break;
     case 'w': mode = 'sniff'; break;
+    case 'x': mode = 'obejrzyj'; break;
     case '?': mode = 'help'; break;
     case 'S': {
       try { saveToFile(game, SAVE_PATH); extra = `${C.brightGreen}Zapisano: ${SAVE_PATH}${C.reset}`; }

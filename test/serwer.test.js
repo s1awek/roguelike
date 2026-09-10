@@ -36,6 +36,10 @@ async function serwer(args = []) {
     stol: async () => (await fetch(`${baza}/api/stol`)).json(),
     moje: async (hid, token) =>
       (await fetch(`${baza}/api/moje?hid=${hid}&token=${encodeURIComponent(token)}`)).status,
+    mojeCiało: async (hid, token) => {
+      const r = await fetch(`${baza}/api/moje?hid=${hid}&token=${encodeURIComponent(token)}`);
+      return { code: r.status, body: await r.json().catch(() => ({})) };
+    },
     koniec: () => p.kill(),
   };
 }
@@ -151,4 +155,28 @@ test('porzucone miejsce zwalnia pułap adresu, żywe i nigdy niepodłączone go 
     for (const c of przerwij) { try { c.abort(); } catch { /* juz przerwany */ } }
     s.koniec();
   }
+});
+
+
+// ---------- czy miejsce nadaje się do powrotu ----------
+
+test('miejsce mówi nie tylko CZY istnieje, ale i czy bohater jeszcze gra', async () => {
+  // Przeglądarka wraca na zapamiętane miejsce po odświeżeniu strony. Samo
+  // „istnieje" nie wystarcza do tej decyzji: miejsce po zmarłym też istnieje,
+  // a powrót na nie daje wyłącznie ekran końca, z którego nie ma wyjścia -
+  // ekran wejścia mignie i zniknie. Zgłoszone przez właściciela 10.09.2026.
+  const s = await serwer();
+  try {
+    const { body } = await s.dosiadz('Wracający');
+    const { code, body: b } = await s.mojeCiało(body.hid, body.token);
+    assert.equal(code, 200);
+    assert.equal(b.ok, true);
+    assert.equal(b.status, 'playing', 'żywe miejsce ma się przedstawiać jako grające');
+
+    // KONTROLA PRZYRZĄDU: obcy znak nadal odbija się o 403, więc odpowiedź
+    // „playing" nie bierze się stąd, że punkt końcowy zgadza się na wszystko.
+    const zle = await s.mojeCiało(body.hid, 'nie-ten-znak');
+    assert.equal(zle.code, 403);
+    assert.notEqual(zle.body.status, 'playing');
+  } finally { s.koniec(); }
 });

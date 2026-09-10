@@ -10,6 +10,7 @@
 import { findPath, distanceField, chebyshev, neighbors } from './path.js';
 import { STAIRS_DOWN, STAIRS_UP } from './map.js';
 import { PROG_ZMECZENIA } from './game.js';
+import { wolnePola } from './plecak.js';
 
 const LOW_HP = 0.4;
 const CRITICAL_HP = 0.22;
@@ -51,6 +52,10 @@ function itemValue(game, it, ctx) {
       ctx.food = (ctx.food || 0) + 1;
       return ctx.food <= 2 ? 95 : 8; // trzecia racja i dalsze to balast
     }
+    // Większy plecak jest wart tyle, ile miejsca dokłada - i tylko wtedy, gdy
+    // faktycznie jest większy od noszonego.
+    case 'pack':
+      return (it.w * it.h) > (game.player.plecak.w * game.player.plecak.h) ? 160 : 2;
     default: return 10;
   }
 }
@@ -107,6 +112,12 @@ export class Bot {
     const p = game.player;
     const inv = p.inventory;
     this.exhausted.add(`${game.depth}:${p.x},${p.y}`);
+
+    // 0. większy plecak przekładamy od razu - noszenie go zamiast używać jest
+    //    czystą stratą pola, a przy okazji robi z niego kandydata do porzucenia
+    const plecakIdx = inv.findIndex(it => it.kind === 'pack'
+      && it.w * it.h > p.plecak.w * p.plecak.h);
+    if (plecakIdx >= 0) return { type: 'use', index: plecakIdx };
 
     // 1. ratunek: leczenie przy niskim życiu
     if (p.hp / p.maxHp < LOW_HP) {
@@ -168,7 +179,7 @@ export class Bot {
     // 5. przedmiot pod nogami
     const under = game.itemAt(p.x, p.y);
     if (under && !this.dropped.has(under.id)) {
-      if (inv.length < 16 && itemValue(game, under, {}) > 10) return { type: 'pickup' };
+      if (game.czyZmiesci(under) && itemValue(game, under, {}) > 10) return { type: 'pickup' };
       // plecak pełny: porzucamy balast, jeśli to, co leży, jest cenniejsze
       const worst = worstCarried(game);
       if (worst.idx >= 0 && itemValue(game, under, {}) > worst.val) {
@@ -223,7 +234,7 @@ export class Bot {
       if (step) return step;
     }
     const worst = worstCarried(game);
-    if (inv.length < 16 || worst.val < 30) {
+    if (wolnePola(p) > 0 || worst.val < 30) {
       // pole, na którym stoimy, nie jest celem podróży - inaczej bot wychodzi
       // z niego i natychmiast wraca, bo znów jest najbliższe
       const worthwhile = game.items.filter(i => !this.dropped.has(i.id)

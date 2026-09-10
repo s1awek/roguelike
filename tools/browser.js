@@ -90,6 +90,33 @@ const api = {
     await S('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
     await new Promise(r => setTimeout(r, 60));
   },
+  /**
+   * Zdarzenie myszy w punkcie widoku. Bez tego przeciągnięcie w plecaku dawało
+   * się wyłącznie PRZECZYTAĆ w kodzie, a lektura kodu nie jest pomiarem.
+   * `type`: mousePressed | mouseMoved | mouseReleased.
+   */
+  async mysz(type, x, y) {
+    await S('Input.dispatchMouseEvent', {
+      type, x: Math.round(x), y: Math.round(y),
+      button: type === 'mouseMoved' ? 'none' : 'left',
+      buttons: type === 'mouseReleased' ? 0 : 1,
+      clickCount: type === 'mouseMoved' ? 0 : 1,
+      pointerType: 'mouse',
+    });
+    await new Promise(r => setTimeout(r, 45));
+  },
+
+  /** Przeciągnięcie z punktu do punktu, w kilku krokach - jak ludzka ręka. */
+  async przeciagnij(x1, y1, x2, y2, { kroki = 6, wSrodku = null } = {}) {
+    await api.mysz('mousePressed', x1, y1);
+    for (let i = 1; i <= kroki; i++) {
+      await api.mysz('mouseMoved', x1 + (x2 - x1) * i / kroki, y1 + (y2 - y1) * i / kroki);
+      if (wSrodku && i === Math.ceil(kroki / 2)) await wSrodku();
+    }
+    await api.mysz('mouseReleased', x2, y2);
+    await new Promise(r => setTimeout(r, 120));
+  },
+
   /** Wymuszony rozmiar okna widoku - do prób na ekranach innych niż domyślny. */
   async metrics(width, height) {
     await S('Emulation.setDeviceMetricsOverride',

@@ -73,6 +73,7 @@ export function widokDla(game, hero, opts = {}) {
       maxDepth: game.maxDepth,
       status: hero.status, cause: hero.cause,
       inventory: hero.inventory.map(i => ({ ...i })),
+      plecak: { ...hero.plecak },
       weapon: hero.weapon ? { ...hero.weapon } : null,
       armor: hero.armor ? { ...hero.armor } : null,
     },

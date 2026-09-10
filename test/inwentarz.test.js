@@ -186,3 +186,80 @@ test('widok stołu wystarcza do policzenia różnicy - mimo że niesie KOPIE prz
     'stół nie rozpoznał noszonego pancerza w kopii - porównywanie po tożsamości obiektu');
   assert.equal(itemStats(kopiaLezacej, w.ja).porownanie, 'gorsze o 1');
 });
+
+// ---------- obejrzenie przed podniesieniem ----------
+
+test('obejrzenie mówi, co rzecz daje i jak wypada wobec noszonego', () => {
+  const g = new Game('obejrzyj-a');
+  g.player.inventory.length = 0;
+  g.player.armor = { id: 1, kind: 'armor', type: 'studded', name: 'kurtka ćwiekowa', bonus: 2, size: [2, 2] };
+  const kolczuga = { id: 2, kind: 'armor', type: 'chain', name: 'kolczuga', bonus: 3, size: [2, 3] };
+
+  const o = g.obejrzyj(kolczuga);
+  assert.equal(o.opis, 'obrona +3');
+  assert.equal(o.porownanie, 'lepsze o 1');
+  assert.equal(o.znak, 'plus');
+  assert.equal(o.miejsce, '2x3');
+  assert.equal(o.pola, 6);
+  assert.equal(o.zmiesci, true);
+  assert.match(o.werdykt, /warto/);
+});
+
+test('obejrzenie NIE rozpoznaje mikstury - inaczej byłoby darmowym zwojem rozpoznania', () => {
+  const g = new Game('obejrzyj-b');
+  g.player.inventory.length = 0;
+  const trucizna = { id: 3, kind: 'potion', type: 'poison', name: 'mikstura trucizny' };
+
+  const o = g.obejrzyj(trucizna);
+  assert.equal(g.identified.has('potion:poison'), false, 'obejrzenie rozpoznało rodzaj');
+  assert.equal(o.opis, 'nieznane działanie');
+  assert.ok(!/trucizn/i.test(o.werdykt), `werdykt zdradza rodzaj: ${o.werdykt}`);
+
+  g.identify({ kind: 'potion', type: 'poison' });
+  const po = g.obejrzyj(trucizna);
+  assert.notEqual(po.opis, 'nieznane działanie', 'po rozpoznaniu skutek ma być podany');
+});
+
+test('obejrzenie liczy miejsce tą samą regułą, co podnoszenie', () => {
+  // Rzecz, która się nie mieści, ma to POWIEDZIEĆ, a nie dać się podnieść
+  // i zniknąć. Test wiąże obie odpowiedzi ze sobą: werdykt i skutek `pickup`.
+  const g = new Game('obejrzyj-c');
+  const h = g.player;
+  h.inventory.length = 0;
+  h.plecak = { w: 2, h: 2 };
+  const topor = { id: 4, kind: 'weapon', type: 'warAxe', name: 'topór bojowy', bonus: 6, size: [2, 3] };
+
+  const o = g.obejrzyj(topor);
+  assert.equal(o.zmiesci, false, 'topór 2x3 nie ma prawa zmieścić się w plecaku 2x2');
+  assert.match(o.werdykt, /Nie ma na to miejsca/);
+
+  g.items.push({ ...topor, x: h.x, y: h.y });
+  assert.equal(g.act({ type: 'pickup' }), false, 'skoro nie było miejsca, podniesienie ma odmówić');
+  assert.equal(h.inventory.length, 0);
+});
+
+test('obejrzenie nie kosztuje tury i nie rusza świata', () => {
+  const a = new Game('obejrzyj-kontrola');
+  const b = new Game('obejrzyj-kontrola');
+  const it = a.items[0];
+  a.player.x = it.x; a.player.y = it.y;
+  b.player.x = it.x; b.player.y = it.y;
+
+  a.obejrzyj(it);
+  assert.equal(a.turn, b.turn, 'oglądanie zabrało turę');
+  assert.equal(a.player.hp, b.player.hp);
+  assert.deepEqual(a.rng.getState(), b.rng.getState(), 'oglądanie zużyło losowanie');
+});
+
+test('KONTROLA PRZYRZĄDU: obejrzenie gorszej rzeczy odróżnia się od lepszej', () => {
+  // Bez tego testu „warto" mogłoby stać przy każdej rzeczy i nikt by nie zauważył.
+  const g = new Game('obejrzyj-d');
+  g.player.armor = { id: 5, kind: 'armor', type: 'chain', name: 'kolczuga', bonus: 3, size: [2, 3] };
+  const kurta = { id: 6, kind: 'armor', type: 'leather', name: 'kurta skórzana', bonus: 1, size: [2, 2] };
+
+  const o = g.obejrzyj(kurta);
+  assert.equal(o.znak, 'minus');
+  assert.equal(o.porownanie, 'gorsze o 2');
+  assert.match(o.werdykt, /Gorsze/);
+  assert.equal(g.obejrzyj(null), null, 'puste pole nie może udawać przedmiotu');
+});

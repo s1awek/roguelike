@@ -1065,3 +1065,69 @@ Drugi wniosek, tańszy: dwa dozory na tym samym pliku dublują każde zdarzenie.
 Jeden zostaje jako czynny, z filtrem odpornym na wielkość liter - poprzedni
 wzorzec szukał `skarga`, a serwer pisze `SKARGA`, więc przepuściłby wszystkie
 skargi przeglądarek.
+
+### W-22: „w czasie rzeczywistym atakują nas stworzonka" - wina zegara, której zegar nie miał
+
+Zgłoszenie właściciela brzmiało jak usterka zegara: gra ma być turowa, a nietoperze
+i szczury biją, kiedy chcą. Pokusa była oczywista - poszukać `setInterval` w `src/stol.js`
+i coś tam spowolnić. Zegar był niewinny.
+
+Przyczyna siedziała w modelu tury. `worldTurn` wołane było raz na działanie KAŻDEGO
+uczestnika piętra, więc świat ruszał się tyle razy, ilu uczestników akurat coś robiło.
+Przy czterech botach na poziomie potwór dostawał cztery ruchy na jeden ruch człowieka.
+To nie jest „prawie czas rzeczywisty" - to jest czas rzeczywisty, tylko taktowany cudzymi
+działaniami, a więc niewidoczny w kodzie odmierzającym czas.
+
+Naprawa (D-040) zawęża ruch potworów do otoczenia uczestników rozgrywanej tury, z bramką
+`ilu > 1`, żeby partia jednoosobowa liczyła się bit w bit tak jak przedtem. Kontrola
+przyrządu w `test/tempo.test.js`: potwór stojący obok gracza A nie rusza się przez osiem
+tur gracza B i A nie traci ani punktu życia, a przypadek znany-dobry (samotny gracz, potwór
+nadchodzący spoza pola widzenia) nadal przechodzi.
+
+**Nauka:** zgłoszenie opisuje OBJAW w kategoriach, które zna zgłaszający. „Dzieje się
+w czasie rzeczywistym" znaczyło „świat rusza się częściej niż ja", a nie „ktoś odmierza
+czas zegarem". Szukanie po słowie z reklamacji trafiłoby w plik, który nie miał z tym nic
+wspólnego.
+
+### W-23: komunikat radził czynność, której skutku nikt nigdy nie zmierzył
+
+Ekran końca przy stole pisał: „Odśwież stronę albo wciśnij Enter, żeby dosiąść na nowo".
+Zdanie było nieprawdziwe od dnia napisania. Odświeżenie wracało na to samo, zużyte miejsce,
+bo `sessionStorage` trzymał jego znak, a `/api/moje` odpowiadał „istnieje" - i słusznie,
+bo miejsce po zmarłym rzeczywiście istnieje. Gracz oglądał mignięcie ekranu wejścia
+i natychmiast ten sam ekran końca, w kółko. Enter robił `location.reload()`, czyli dokładnie
+ten sam obieg.
+
+Wada przeżyła cały odbiór wersji wieloosobowej, bo żaden test ani żadna próba w przeglądarce
+nie doszła do stanu „bohater nie żyje". Miejsce zostawało zajęte, więc dla samego stołu
+wszystko wyglądało poprawnie.
+
+**Nauka, szersza niż ta jedna wada:** zdanie w interfejsie, które KAŻE graczowi coś zrobić,
+jest twierdzeniem o zachowaniu systemu i podlega tej samej regule co każde inne - wolno je
+napisać dopiero wtedy, gdy ktoś tę czynność wykonał i zobaczył skutek. Tu nie wykonał nikt,
+ani razu, przez cały wątek wieloosobowy. Drugi wniosek: pytanie zadawane serwerowi musi być
+tak mocne, jak decyzja, którą się na nim opiera. „Czy miejsce istnieje" nie wystarcza do
+rozstrzygnięcia „czy mam tam wracać".
+
+Granica dowodu, świadomie zostawiona: `[ustalone]` jest kształt odpowiedzi `/api/moje`
+(test w `test/serwer.test.js` z kontrolą przyrządu na obcym znaku) oraz reguła w kliencie.
+`[niezweryfikowane]` pozostaje pełna pętla śmierć - odświeżenie w prawdziwej przeglądarce,
+bo nie ma jak zabić bohatera na żądanie; rozstrzygnie ją najbliższa śmierć właściciela.
+
+### W-24: klient wyprzedził serwer i położył trwającą partię
+
+Pliki z `web/` są serwowane wprost z dysku, więc zmiana w kliencie działa NATYCHMIAST,
+a zmiana w silniku dopiero po restarcie serwera. Nowy `web/wielu.js` wołał `pojemnosc(bohater)`
+na migawce ze stołu uruchomionego 35 minut wcześniej, czyli sprzed wprowadzenia plecaka
+na siatce. Migawka nie niosła pola `plecak`, więc otwarcie ekwipunku wywracało stronę:
+`Cannot read properties of undefined (reading 'w') @ plecak.js:28`. Właściciel siedział
+wtedy przy stole.
+
+Złapał to dozór logów, nie ja - i to jest jedyny powód, dla którego naprawa poszła w dwie
+minuty zamiast czekać na zgłoszenie „nie mogę otworzyć plecaka".
+
+**Nauka:** w tym układzie klient i serwer mają dwa różne momenty wdrożenia, więc każdy nowy
+kształt migawki jest zmianą NIEZGODNĄ WSTECZ z punktu widzenia strony. Klient ma przeżyć
+serwer w starszej wersji: brak nowego pola to gorszy widok, nie wywrotka. Poprawka pokazuje
+w takim wypadku sam spis rzeczy, a przy oglądaniu mówi wprost, że miejsce w plecaku policzy
+dopiero nowsza wersja stołu - zamiast twierdzić, że nic tu nie leży.

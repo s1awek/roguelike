@@ -41,19 +41,21 @@ test('KONTROLA PRZYRZĄDU: limit tur poniżej najkrótszej wygranej czyni grę n
   // gry. Ten test pilnuje, że limit produkcyjny nie zejdzie z powrotem pod tę
   // granicę - i pokazuje, jak wygląda pomiar zepsuty przez własne narzędzie.
   assert.ok(MAX_TURNS > 4068, `limit ${MAX_TURNS} tur czyni grę nieprzechodną`);
-  // `grywalnosc-1` wygrywa na turze 10749. Przy limicie 4000 zostaje ucięta
+  // `grywalnosc-7` wygrywa na turze 8841. Przy limicie 4000 zostaje ucięta
   // i wygląda na zakleszczenie, choć gra działa poprawnie - to jest dokładnie
   // ten fałszywy odczyt, przed którym ta kontrola broni.
   //
-  // Ziarno zmienione 10.09 z `grywalnosc-5`: po wprowadzeniu zwrotu sił za
-  // zabicie i wolniejszej regeneracji tamta partia kończy się śmiercią. Test
-  // przypina konkretną partię, więc każde strojenie równowagi może go
-  // unieważnić - i wtedy trzeba dobrać nową partię spełniającą OBA warunki
-  // kontroli, a nie rozluźnić warunek.
-  const zaNisko = playOut(new Game('grywalnosc-1'), { maxTurns: 4000 });
+  // Ziarno zmieniane już DWA razy (10.09): `grywalnosc-5` przestało wygrywać po
+  // wprowadzeniu zwrotu sił za zabicie, `grywalnosc-1` po zamianie plecaka na
+  // przestrzenny. Test przypina konkretną partię, więc każda zmiana równowagi
+  // może go unieważnić - i wtedy dobiera się NOWĄ partię spełniającą OBA warunki
+  // kontroli, nigdy nie rozluźnia warunku. Sama częstotliwość tych zmian jest
+  // informacją: mówi, że zmiana faktycznie ruszyła przebieg gry, a nie tylko
+  // jej opis.
+  const zaNisko = playOut(new Game('grywalnosc-7'), { maxTurns: 4000 });
   assert.equal(zaNisko.outcome, 'stalled',
     'przy limicie 4000 partia powinna zostać ucięta - inaczej ta kontrola niczego nie mierzy');
-  const normalnie = playOut(new Game('grywalnosc-1'));
+  const normalnie = playOut(new Game('grywalnosc-7'));
   assert.equal(normalnie.outcome, 'won',
     'ta sama partia przy limicie produkcyjnym powinna zostać wygrana');
 });

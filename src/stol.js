@@ -64,6 +64,22 @@ export class Stol {
     return { ok: true };
   }
 
+  /**
+   * Przełożenie rzeczy w plecaku. To NIE jest działanie w świecie: nie kosztuje
+   * tury, nie budzi potworów i nikt poza właścicielem plecaka tego nie widzi.
+   * Dlatego idzie z pominięciem deklaracji i zegara - gdyby szło zwykłą drogą,
+   * porządkowanie plecaka wstrzymywałoby turę wspólną komuś, kto stoi obok
+   * i czeka na rozstrzygnięcie walki.
+   */
+  przeloz(hid, { index, x, y, obrot } = {}) {
+    const m = this.miejsca.get(hid);
+    if (!m) return { ok: false, powod: 'nie ma takiego miejsca' };
+    const hero = this.game.heroes[hid];
+    if (!hero || hero.status !== 'playing') return { ok: false, powod: 'partia tego uczestnika skończona' };
+    const ok = this.game.przelozWPlecaku(hero, Number(index), Number(x), Number(y), Number(obrot) || 0);
+    return ok ? { ok: true } : { ok: false, powod: 'tam się nie mieści' };
+  }
+
   /** Uczestnicy pogrupowani po kontakcie; grupa dłuższa niż jeden idzie turą wspólną. */
   grupy() {
     const zywi = this.game.heroes.filter(h => h.status === 'playing');

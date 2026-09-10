@@ -11,9 +11,10 @@
 // Czego tu NIE MA i być nie może: który wygląd mikstury odpowiada któremu
 // rodzajowi w bieżącej partii. To jest sekret rozgrywki, nie reguła gry.
 
-import { POTIONS, SCROLLS, WEAPONS, ARMORS, FOODS, SCENTS, POTION_SCENT, scentGroup } from './items.js';
+import { POTIONS, SCROLLS, WEAPONS, ARMORS, FOODS, PACKS, SCENTS, POTION_SCENT, scentGroup } from './items.js';
+import { PLECAK_START, LIMIT_STOSU } from './plecak.js';
 import { KINDS, BOSS } from './monsters.js';
-import { MAX_DEPTH, FOV_RADIUS, INVENTORY_LIMIT, HUNGER_START, HUNGER_MAX, xpForLevel,
+import { MAX_DEPTH, FOV_RADIUS, HUNGER_START, HUNGER_MAX, xpForLevel,
   zwrotZaZabicie, PROG_ZMECZENIA, REGEN_MNOZNIK } from './game.js';
 
 const POTION_EFFECT = {
@@ -62,6 +63,7 @@ const KEYS = [
   ['strzałki, hjkl, yubn, klawiatura numeryczna', 'ruch i atak - wejście na potwora to cios', 'oba'],
   ['. albo 5', 'czekaj jedną turę', 'oba'],
   [', albo g', 'podnieś to, co leży pod nogami', 'oba'],
+  ['x', 'obejrzyj to, co leży pod nogami - skutek, różnica wobec noszonego, miejsce w plecaku; nie kosztuje tury', 'oba'],
   ['> / <', 'schody w dół / w górę', 'oba'],
   ['i', 'ekwipunek: litera używa albo zakłada', 'oba'],
   ['d', 'wyrzuć przedmiot', 'oba'],
@@ -197,12 +199,26 @@ export function buildRules(gdzie = 'doc') {
       title: 'Broń i pancerz',
       blocks: [
         { t: 'p', text: 'Broń i pancerz są widoczne od razu - tu nie ma zagadki. Głębsze poziomy dają lepszy sprzęt; płytkie nie dają go wcale.' },
-        { t: 'table', head: ['broń', 'premia do ataku', 'od poziomu'], rows:
-          WEAPONS.map(w => [w.name, `+${w.bonus}`, String(w.minDepth)]) },
-        { t: 'table', head: ['pancerz', 'premia do obrony', 'od poziomu'], rows:
-          ARMORS.map(a => [a.name, `+${a.bonus}`, String(a.minDepth)]) },
-        { t: 'p', text: `W plecaku mieści się ${INVENTORY_LIMIT} przedmiotów. Przedmioty wolno układać w stos na jednym polu, więc pełny plecak nigdy nie blokuje gry.` },
+        { t: 'table', head: ['broń', 'premia do ataku', 'miejsce w plecaku', 'od poziomu'], rows:
+          WEAPONS.map(w => [w.name, `+${w.bonus}`, `${w.size[0]}x${w.size[1]}`, String(w.minDepth)]) },
+        { t: 'table', head: ['pancerz', 'premia do obrony', 'miejsce w plecaku', 'od poziomu'], rows:
+          ARMORS.map(a => [a.name, `+${a.bonus}`, `${a.size[0]}x${a.size[1]}`, String(a.minDepth)]) },
+
         { t: 'p', text: 'Plecak sam podaje skutek każdej rzeczy i to, co się zmieni po założeniu: „obrona +2, gorsze o 1" znaczy, że kurta jest słabsza od noszonej kolczugi. Tych liczb nie trzeba przepisywać z tej tabeli ani pamiętać - stoją przy przedmiocie. Mikstury i zwoje pokazują działanie dopiero po rozpoznaniu.' },
+      ],
+    },
+    {
+      id: 'plecak',
+      title: 'Plecak',
+      blocks: [
+        { t: 'p', text: `Plecak ma ${PLECAK_START.w}x${PLECAK_START.h} pól, a rzeczy zajmują różną ich ilość: mikstura czy zwój jedno pole, długi miecz cztery, zbroja płytowa dziewięć. Miejsce liczy się więc powierzchnią, a nie liczbą sztuk.` },
+        { t: 'p', text: gdzie === 'term'
+          ? 'W terminalu nie układa się niczego ręcznie - widać tylko, ile pól zajęte i ile zostało, a rzeczy same znajdują sobie miejsce.'
+          : 'Rzeczy da się przeciągać myszą, a trzymając spację obrócić o ćwierć obrotu. Podświetlenie w trakcie przeciągania pokazuje, czy rzecz się tam zmieści.' },
+        { t: 'p', text: `Rzeczy nierozróżnialne dla Ciebie układają się w stos: do ${LIMIT_STOSU.potion} mikstur albo zwojów na jedno pole, do ${LIMIT_STOSU.food} porcji jedzenia. Dwie mikstury o RÓŻNYM wyglądzie nigdy nie wpadną na wspólne pole - inaczej samo złączenie zdradzałoby, że są tym samym.` },
+        { t: 'table', head: ['plecak', 'pola', 'od poziomu'], rows:
+          PACKS.map(p => [p.name, `${p.w}x${p.h}`, String(p.minDepth)]) },
+        { t: 'p', text: 'Podniesienie rzeczy, która się nie mieści, jest odmawiane i NIE kosztuje tury - nic przy tym nie ginie. Wyrzucać (klawisz d) można zawsze, także z pełnego plecaka.' },
       ],
     },
     {

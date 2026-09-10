@@ -8,8 +8,11 @@
 // się jednocześnie, więc nikt nie może zobaczyć skutku swojego ruchu, zanim
 // drugi zadeklaruje własny.
 
-import { itemLabel, itemStats } from '../src/items.js';
-import { statsHtml } from './opis.js';
+import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
+import { poloz, pojemnosc, zajetePola } from '../src/plecak.js';
+import { obejrzyj } from '../src/ocena.js';
+import { siatkaHtml, podepnijSiatke, trwaCiagniecie } from './plecak-ui.js';
+import { statsHtml, obejrzyjHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
@@ -138,6 +141,10 @@ function otworzStrumien() {
     // Tura zeszła, więc zgłoszenie zostało rozstrzygnięte.
     if (cien.turn !== turaZgloszenia) zgloszone = null;
     if (cien.ja.status !== 'playing' && mode !== 'over') koniec();
+    // Otwarty plecak żyje razem z migawką - inaczej po podniesieniu rzeczy
+    // gracz patrzyłby na siatkę sprzed zmiany. W trakcie chwytu odświeżenie
+    // czeka, bo przerysowanie wyrwałoby rzecz z ręki.
+    if (mode === 'inventory' && !trwaCiagniecie()) otworzPlecak('inventory');
     odswiezHud();
   };
   strumien.onerror = async () => {
@@ -157,7 +164,12 @@ function otworzStrumien() {
 async function miejsceIstnieje(m) {
   try {
     const r = await fetch(`/api/moje?hid=${m.hid}&token=${encodeURIComponent(m.token)}`);
-    return r.status === 200;
+    if (r.status !== 200) return false;
+    // Miejsce po zmarłym bohaterze ISTNIEJE, ale wracać na nie nie ma po co:
+    // przychodzi z niego wyłącznie ekran końca, a odświeżenie strony wraca
+    // na to samo. Traktujemy je jak nieistniejące.
+    const b = await r.json().catch(() => ({}));
+    return b.status ? b.status === 'playing' : true;
   } catch { return true; }   // brak sieci to nie dowód, że miejsca nie ma
 }
 
@@ -192,7 +204,12 @@ window.addEventListener('keydown', (e) => {
   if (e.shiftKey && SHIFTED_BY_CODE[e.code]) k = SHIFTED_BY_CODE[e.code];
   if (DIR[k] || ['.', ',', '5', 'g', '>', '<', 'i', 'd', 'w', '?', 'm', 'Escape', ' '].includes(k)) e.preventDefault();
 
-  if (mode === 'over') { if (k === 'Enter' || k === ' ') location.reload(); return; }
+  if (mode === 'over') {
+    // Przeładowanie strony wracało na zużyte miejsce. Nowe miejsce bierze się
+    // z ekranu wejścia, więc idziemy tam wprost - bez przeładowania.
+    if (k === 'Enter' || k === ' ') { zamknij(); doLobby(); }
+    return;
+  }
   if (mode === 'help') {
     if (k === 'Escape' || k === '?' || k === 'q') { zamknij(); return; }
     if (k === 'n' || k === ' ' || k === 'ArrowRight' || k === 'ArrowDown') { pokazZasady(ruleSection + 1); return; }
@@ -201,6 +218,12 @@ window.addEventListener('keydown', (e) => {
     if (Number.isInteger(n) && n >= 1 && n <= RULES.length) pokazZasady(n - 1);
     return;
   }
+  if (mode === 'obejrzyj') {
+    if (k === ',' || k === 'g') { zamknij(); zglos({ type: 'pickup' }); return; }
+    zamknij();
+    return;
+  }
+
   if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') {
     if (k === 'Escape' || k === 'i' || k === 'q') { zamknij(); return; }
     const idx = k.length === 1 ? k.charCodeAt(0) - 97 : -1;
@@ -216,6 +239,7 @@ window.addEventListener('keydown', (e) => {
     case 'i': otworzPlecak('inventory'); break;
     case 'd': otworzPlecak('drop'); break;
     case 'w': otworzPlecak('sniff'); break;
+    case 'x': pokazObejrzenie(); break;
     case '?': pokazZasady(ruleSection); break;
     case 'm': renderer.minimap = !renderer.minimap; say(renderer.minimap ? 'Plan włączony.' : 'Plan wyłączony.'); break;
     default: break;
@@ -232,24 +256,82 @@ function uzyj(idx) {
   zglos({ type: typ, index: idx });
 }
 
+/**
+ * Obejrzenie rzeczy pod nogami. Liczone U SIEBIE, z migawki - i wolno tak
+ * dlatego, że oglądanie nie zmienia niczego w świecie, a wszystkie dane, na
+ * których się opiera, są już w migawce. Ta sama funkcja `obejrzyj` odpowiada
+ * w terminalu, więc werdykt nie może się rozjechać między wersjami.
+ */
+function pokazObejrzenie() {
+  const p = cien.ja;
+  const it = (cien.items || []).find(i => i.x === p.x && i.y === p.y);
+  mode = 'obejrzyj';
+  const etykieta = (x) => itemLabel(x, cien.appearances, cien.identified, cien.sniffed);
+  const naSiatce = !!(p.plecak && p.plecak.w);
+  const o = it && naSiatce ? obejrzyj(it, p, cien.identified, etykieta) : null;
+  // Rzecz pod nogami JEST, tylko starszy stół nie przysyła wymiarów plecaka -
+  // wtedy pokazujemy tyle, ile wiemy, zamiast twierdzić, że nic tu nie leży.
+  const tresc = it && !o
+    ? `<h2>${escapeHtml(etykieta(it))}</h2>`
+      + `<p>${statsHtml(itemStats(it, p, cien.identified)) || '<span class="muted">bez opisu</span>'}</p>`
+      + '<p class="muted">Miejsce w plecaku policzy dopiero nowsza wersja stołu.</p>'
+    : obejrzyjHtml(it ? etykieta(it) : '', o);
+  panel.innerHTML = tresc
+    + `<p class="foot">${it ? '<kbd>,</kbd> podnosi. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+  overlay.hidden = false;
+}
+
 const INV_TITLE = { drop: 'Co wyrzucić?', sniff: 'Co powąchać?', inventory: 'Ekwipunek' };
 const INV_HINT = { drop: 'wyrzuca', sniff: 'wącha', inventory: 'używa' };
+
+/**
+ * Przekładanie w plecaku przy stole.
+ *
+ * To jedyne działanie, które klient wykonuje NA WŁASNEJ KOPII, zanim przyjdzie
+ * potwierdzenie - i wolno na to tylko dlatego, że układ plecaka nie jest
+ * częścią świata: nie kosztuje tury, nie widzi go nikt inny i nie da się nim
+ * niczego zdobyć. Gdyby serwer odmówił, najbliższa migawka nadpisze układ
+ * swoją wersją, bo obie strony liczą to tą samą funkcją `mozna()`.
+ */
+function przelozUSiebie(index, x, y, obrot) {
+  const it = cien.ja.inventory[index];
+  if (!it || !(cien.ja.plecak && cien.ja.plecak.w)) return;
+  const stare = { px: it.px, py: it.py, obrot: it.obrot };
+  if (!poloz(cien.ja, it, x, y, obrot)) return;
+  post('/api/dzialanie', { hid: ja.hid, token: ja.token, action: { type: 'przeloz', index, x, y, obrot } })
+    .then(({ code, body }) => {
+      if (code === 200 && body.ok !== false) return;
+      Object.assign(it, stare);           // serwer wie lepiej
+      say(body.powod || body.blad || 'nie udało się przełożyć');
+      if (mode === 'inventory') otworzPlecak('inventory');
+    });
+}
 
 function otworzPlecak(which) {
   mode = which;
   const p = cien.ja;
+  const etykieta = (it) => itemLabel(it, cien.appearances, cien.identified, cien.sniffed);
   const rows = p.inventory.map((it, i) => {
-    const nazwa = itemLabel(it, cien.appearances, cien.identified, cien.sniffed);
     const noszone = it === p.weapon || it === p.armor
       || (p.weapon && it.id === p.weapon.id) || (p.armor && it.id === p.armor.id);
+    const ile = (it.ile || 1) > 1 ? ` <span class="worn">x${it.ile}</span>` : '';
     return `<li class="item" data-i="${i}"><span class="key">${String.fromCharCode(97 + i)}</span>`
       + `<canvas class="ico" width="44" height="44"></canvas>`
-      + `<span class="nm">${escapeHtml(nazwa)}${noszone ? ' <em class="muted">(noszone)</em>' : ''}`
+      + `<span class="nm">${escapeHtml(etykieta(it))}${ile}${noszone ? ' <em class="muted">(noszone)</em>' : ''}`
       + `${statsHtml(itemStats(it, p, cien.identified))}</span></li>`;
   }).join('');
+  // Migawka ze STARSZEGO stołu nie zna plecaka na siatce - wtedy pokazujemy
+  // sam spis, zamiast wywracać się na polu, którego serwer jeszcze nie wysyła.
+  // Klient przeżywa serwer w wersji sprzed zmiany; to nie jest luksus, tylko
+  // warunek tego, żeby wgranie nowego pliku nie kładło komuś trwającej partii.
+  const naSiatce = !!(p.plecak && p.plecak.w);
+  const licznik = naSiatce
+    ? `${zajetePola(p)}/${pojemnosc(p)} ${polaSlowo(pojemnosc(p))}`
+    : `${p.inventory.length} rzeczy`;
   panel.innerHTML = `
-    <h2>${INV_TITLE[which]} <span class="muted">${p.inventory.length}/16</span></h2>
-    <ul>${rows || '<li class="muted">(pusto)</li>'}</ul>
+    <h2>${INV_TITLE[which]} <span class="muted">${licznik}</span></h2>
+    <div class="ekwipunek">${which === 'inventory' && naSiatce ? siatkaHtml(p, etykieta) : ''}
+      <ul>${rows || '<li class="muted">(pusto)</li>'}</ul></div>
     <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
       ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
   panel.querySelectorAll('li.item').forEach(li => {
@@ -257,6 +339,15 @@ function otworzPlecak(which) {
     const c = li.querySelector('canvas.ico');
     if (c && it) renderer.drawItemShape(c.getContext('2d'), it, 22, 22, 40, cien, view);
     li.addEventListener('click', () => uzyj(Number(li.dataset.i)));
+  });
+  podepnijSiatke(panel, p, {
+    przeloz: (i, x, y, obrot) => {
+      if (i >= 0) przelozUSiebie(i, x, y, obrot);
+      otworzPlecak(which);
+    },
+    uzyj: (i) => uzyj(i),
+    rysuj: (c, it) => renderer.drawItemShape(c.getContext('2d'), it,
+      c.width / 2, c.height / 2, Math.min(c.width, c.height) - 8, cien, view),
   });
   overlay.hidden = false;
 }
@@ -286,11 +377,16 @@ function pokazZasady(index) {
 function koniec() {
   mode = 'over';
   const p = cien.ja;
+  // Miejsce jest zużyte. Zapomnienie go TUTAJ, a nie dopiero przy wejściu na
+  // nowe, zamyka pułapkę zgłoszoną 10.09: odświeżenie strony wracało na to
+  // samo martwe miejsce, więc ekran wejścia migał przez ułamek sekundy
+  // i natychmiast ustępował ekranowi końca - bez żadnej drogi dalej.
+  sessionStorage.removeItem('roguelike:miejsce');
   const wygral = p.status === 'won';
   panel.innerHTML = `<h2>${wygral ? 'Wyszedłeś z lochu' : 'Koniec'}</h2>`
     + `<p class="muted">${escapeHtml(p.cause || (wygral ? 'z Amuletem' : 'rany'))}</p>`
     + `<p class="muted">Poziom ${p.level}, doświadczenie ${p.xp}, głębokość ${p.depth}, tura ${cien.turn}.</p>`
-    + `<p class="foot">Odśwież stronę albo wciśnij <kbd>Enter</kbd>, żeby dosiąść na nowo.</p>`;
+    + `<p class="foot">Wciśnij <kbd>Enter</kbd>, żeby wrócić do wejścia i dosiąść jako ktoś nowy.</p>`;
   overlay.hidden = false;
 }
 

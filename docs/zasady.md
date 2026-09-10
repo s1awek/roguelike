@@ -22,6 +22,7 @@ Loch jest generowany z ziarna. Ta sama gra z tego samego ziarna przebiega dokła
 | strzałki, hjkl, yubn, klawiatura numeryczna | ruch i atak - wejście na potwora to cios |
 | . albo 5 | czekaj jedną turę |
 | , albo g | podnieś to, co leży pod nogami |
+| x | obejrzyj to, co leży pod nogami - skutek, różnica wobec noszonego, miejsce w plecaku; nie kosztuje tury |
 | > / < | schody w dół / w górę |
 | i | ekwipunek: litera używa albo zakłada |
 | d | wyrzuć przedmiot |
@@ -153,24 +154,37 @@ Zwój rozpoznania rozpoznaje wszystko nieznane, co masz przy sobie W TEJ CHWILI 
 
 Broń i pancerz są widoczne od razu - tu nie ma zagadki. Głębsze poziomy dają lepszy sprzęt; płytkie nie dają go wcale.
 
-| broń | premia do ataku | od poziomu |
-|---|---|---|
-| sztylet | +1 | 1 |
-| krótki miecz | +2 | 1 |
-| buzdygan | +3 | 2 |
-| długi miecz | +4 | 4 |
-| topór bojowy | +6 | 5 |
+| broń | premia do ataku | miejsce w plecaku | od poziomu |
+|---|---|---|---|
+| sztylet | +1 | 1x2 | 1 |
+| krótki miecz | +2 | 1x3 | 1 |
+| buzdygan | +3 | 2x2 | 2 |
+| długi miecz | +4 | 1x4 | 4 |
+| topór bojowy | +6 | 2x3 | 5 |
 
-| pancerz | premia do obrony | od poziomu |
-|---|---|---|
-| kurta skórzana | +1 | 1 |
-| kurta ćwiekowana | +2 | 1 |
-| kolczuga | +3 | 3 |
-| zbroja płytowa | +5 | 5 |
-
-W plecaku mieści się 16 przedmiotów. Przedmioty wolno układać w stos na jednym polu, więc pełny plecak nigdy nie blokuje gry.
+| pancerz | premia do obrony | miejsce w plecaku | od poziomu |
+|---|---|---|---|
+| kurta skórzana | +1 | 2x2 | 1 |
+| kurta ćwiekowana | +2 | 2x2 | 1 |
+| kolczuga | +3 | 2x3 | 3 |
+| zbroja płytowa | +5 | 3x3 | 5 |
 
 Plecak sam podaje skutek każdej rzeczy i to, co się zmieni po założeniu: „obrona +2, gorsze o 1" znaczy, że kurta jest słabsza od noszonej kolczugi. Tych liczb nie trzeba przepisywać z tej tabeli ani pamiętać - stoją przy przedmiocie. Mikstury i zwoje pokazują działanie dopiero po rozpoznaniu.
+
+## Plecak
+
+Plecak ma 5x4 pól, a rzeczy zajmują różną ich ilość: mikstura czy zwój jedno pole, długi miecz cztery, zbroja płytowa dziewięć. Miejsce liczy się więc powierzchnią, a nie liczbą sztuk.
+
+Rzeczy da się przeciągać myszą, a trzymając spację obrócić o ćwierć obrotu. Podświetlenie w trakcie przeciągania pokazuje, czy rzecz się tam zmieści.
+
+Rzeczy nierozróżnialne dla Ciebie układają się w stos: do 4 mikstur albo zwojów na jedno pole, do 2 porcji jedzenia. Dwie mikstury o RÓŻNYM wyglądzie nigdy nie wpadną na wspólne pole - inaczej samo złączenie zdradzałoby, że są tym samym.
+
+| plecak | pola | od poziomu |
+|---|---|---|
+| plecak podróżny | 6x4 | 3 |
+| wielki plecak | 6x5 | 5 |
+
+Podniesienie rzeczy, która się nie mieści, jest odmawiane i NIE kosztuje tury - nic przy tym nie ginie. Wyrzucać (klawisz d) można zawsze, także z pełnego plecaka.
 
 ## Potwory
 

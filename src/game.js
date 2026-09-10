@@ -17,12 +17,13 @@ import { generateLevel, Level, STAIRS_DOWN, STAIRS_UP, WALL } from './map.js';
 import { computeFOV } from './fov.js';
 import { distanceField, neighbors, chebyshev } from './path.js';
 import { randomItem, makeAmulet, makeAppearances, itemLabel, potionPower, SCENTS, POTION_SCENT, scentGroup } from './items.js';
+import { PLECAK_START, dolozDoPlecaka, przepakuj, zmiesciSie, poloz, mozna, ile as sztuk, poleRzeczy, wolnePola, pojemnosc } from './plecak.js';
+import { obejrzyj as obejrzyjRzecz } from './ocena.js';
 import { spawnMonster, spawnBoss } from './monsters.js';
 import { bytesToBase64, base64ToBytes } from './bytes.js';
 
 export const MAX_DEPTH = 8;
 export const FOV_RADIUS = 8;
-export const INVENTORY_LIMIT = 16;
 export const HUNGER_START = 1200;
 export const HUNGER_MAX = 2000;
 
@@ -130,6 +131,7 @@ export class Game {
       level: 1, xp: 0,
       hunger: HUNGER_START,
       inventory: [],
+      plecak: { ...PLECAK_START },
       weapon: null, armor: null,
       hasAmulet: false,
       kills: 0,
@@ -553,7 +555,17 @@ export class Game {
       if (!poziomy.has(h.depth)) poziomy.set(h.depth, []);
       poziomy.get(h.depth).push(h);
     }
-    for (const [d, cele] of poziomy) this.monstersActOn(d, cele);
+    // Potwory ruszają się w turze TYCH, przy których stoją - a nie przy każdym
+    // działaniu kogokolwiek na piętrze. Bez tego ograniczenia świat chodzi tyle
+    // razy na jedną turę gracza, ilu bohaterów jest na poziomie: przy czterech
+    // botach szczur obok człowieka dostawał pięć ruchów na jego jeden, co z
+    // fotela gracza wygląda jak walka w czasie rzeczywistym w środku tury
+    // wspólnej. Zawężenie działa WYŁĄCZNIE tam, gdzie na piętrze jest więcej
+    // niż jeden bohater, więc gra jednoosobowa ma dokładnie dawne zachowanie.
+    for (const [d, cele] of poziomy) {
+      const ilu = this.heroes.filter(h => h.status === 'playing' && h.depth === d).length;
+      this.monstersActOn(d, cele, ilu > 1 ? { zasieg: FOV_RADIUS + 2 } : {});
+    }
 
     for (const hero of uczestnicy) {
       this.tickRegen(hero);
@@ -637,6 +649,7 @@ export class Game {
     const entry = this.levels.get(hero.depth);
     for (const it of [...hero.inventory]) {
       it.x = hero.x; it.y = hero.y;
+      delete it.px; delete it.py;
       entry.items.push(it);
     }
     const ile = hero.inventory.length;
@@ -773,21 +786,65 @@ export class Game {
     }
   }
 
+  /** Etykieta widziana przez CZYNNEGO uczestnika - to ona rozstrzyga o stosach. */
+  etykieta(it) { return itemLabel(it, this.appearances, this.identified, this.sniffed); }
+
+  /**
+   * Przełożenie rzeczy w plecaku. NIE jest działaniem w grze: nie kosztuje tury,
+   * nie rusza świata i nie przechodzi przez turę wspólną. Porządkowanie plecaka
+   * nie może dawać przewagi ani jej odbierać - dlatego stoi obok tury, a nie w niej.
+   */
+  przelozWPlecaku(hero, index, x, y, obrot = 0) {
+    const it = hero.inventory[index];
+    if (!it) return false;
+    const stare = { px: it.px, py: it.py, obrot: it.obrot };
+    if (!mozna(hero, it, x, y, obrot ? 1 : 0, it)) return false;
+    if (!poloz(hero, it, x, y, obrot ? 1 : 0)) { Object.assign(it, stare); return false; }
+    return true;
+  }
+
+  /** Czy rzecz zmieści się w plecaku czynnego uczestnika. */
+  czyZmiesci(it, hero = this.player) { return zmiesciSie(hero, it, (x) => this.etykieta(x)); }
+
+  /**
+   * Obejrzenie rzeczy. DARMOWE - nie kosztuje tury i nie rusza świata, bo
+   * przyjrzenie się czemuś leżącemu pod nogami nie jest działaniem, tylko
+   * odczytaniem tego, co gracz i tak ma przed oczami. Nie rozpoznaje przy tym
+   * rodzaju mikstury ani zwoju: patrz `src/ocena.js`.
+   */
+  obejrzyj(it, hero = this.player) {
+    if (!it) return null;
+    return obejrzyjRzecz(it, hero, this.identified, (x) => this.etykieta(x));
+  }
+
+  /** Rzecz leżąca pod nogami uczestnika. */
+  podNogami(hero = this.player) { return this.itemAt(hero.x, hero.y); }
+
   pickUp() {
     const it = this.itemAt(this.player.x, this.player.y);
     if (!it) { this.message('Nie ma tu nic do podniesienia.'); return false; }
-    if (this.player.inventory.length >= INVENTORY_LIMIT) {
-      this.message('Nie udźwigniesz więcej.');
+
+    const bylo = sztuk(it);
+    const wziete = dolozDoPlecaka(this.player, it, (x) => this.etykieta(x));
+    if (wziete === 0) {
+      // Odmowa, nie utrata: rzecz zostaje na podłodze, tura nie mija.
+      this.message(`Nie ma miejsca w plecaku (${wolnePola(this.player)} z ${pojemnosc(this.player)} pól wolnych, `
+        + `a to zajmuje ${poleRzeczy(it)}).`);
       return false;
     }
-    this.items.splice(this.items.indexOf(it), 1);
-    delete it.x; delete it.y;
-    this.player.inventory.push(it);
+    if (wziete >= bylo) {
+      this.items.splice(this.items.indexOf(it), 1);
+    } else {
+      it.ile = bylo - wziete;   // reszta zostaje pod nogami
+    }
+
     if (it.kind === 'amulet') {
       this.player.hasAmulet = true;
       this.message('Bierzesz Amulet Otchłani. Wracaj na powierzchnię!');
     } else {
-      this.message(`Podnosisz: ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.`);
+      const ogon = wziete < bylo ? ` (${bylo - wziete} zostaje - brak miejsca)` : '';
+      const krotnosc = wziete > 1 ? ` x${wziete}` : '';
+      this.message(`Podnosisz: ${this.etykieta(it)}${krotnosc}.${ogon}`);
     }
     return true;
   }
@@ -803,9 +860,21 @@ export class Game {
     if (this.player.armor === it) this.player.armor = null;
     if (it.kind === 'amulet') this.player.hasAmulet = false;
     it.x = this.player.x; it.y = this.player.y;
+    delete it.px; delete it.py;              // położenie w plecaku traci sens na podłodze
     this.items.push(it);
-    this.message(`Odkładasz: ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.`);
+    const krotnosc = sztuk(it) > 1 ? ` x${sztuk(it)}` : '';
+    this.message(`Odkładasz: ${this.etykieta(it)}${krotnosc}.`);
     return true;
+  }
+
+  /**
+   * Zużycie JEDNEJ sztuki. Stos maleje o jeden, ostatnia sztuka znika z plecaka.
+   * Wszystkie zużycia idą tędy - inaczej wypicie mikstury ze stosu kasowałoby
+   * cały stos, co jest usterką niewidoczną, dopóki ktoś nie uzbiera trzech.
+   */
+  zuzyj(it, index) {
+    if (sztuk(it) > 1) { it.ile = sztuk(it) - 1; return; }
+    this.player.inventory.splice(index, 1);
   }
 
   identify(item) { this.identified.add(`${item.kind}:${item.type}`); }
@@ -859,8 +928,29 @@ export class Game {
       case 'scroll': return this.read(it, index);
       case 'food': {
         this.player.hunger = Math.min(HUNGER_MAX, this.player.hunger + it.nutrition);
-        this.player.inventory.splice(index, 1);
+        this.zuzyj(it, index);
         this.message(`Zjadasz: ${it.name}.`);
+        return true;
+      }
+      case 'pack': {
+        // Większy plecak nie może zgubić ani jednej rzeczy: przepakowanie idzie
+        // po zdjęciu samego plecaka ze stanu i tylko POWIĘKSZA pole, więc
+        // niepowodzenie jest niemożliwe - ale sprawdzamy je mimo to.
+        const stary = { ...this.player.plecak };
+        if (it.w * it.h <= stary.w * stary.h) {
+          this.message('Ten plecak nie jest większy od Twojego.');
+          return false;
+        }
+        this.zuzyj(it, index);
+        this.player.plecak = { w: it.w, h: it.h };
+        if (!przepakuj(this.player)) {
+          this.player.plecak = stary;
+          this.player.inventory.splice(index, 0, it);
+          przepakuj(this.player);
+          this.message('Nie udało się przełożyć rzeczy.');
+          return false;
+        }
+        this.message(`Przekładasz rzeczy do większego plecaka: ${it.w}x${it.h} pól.`);
         return true;
       }
       case 'weapon': {
@@ -881,7 +971,7 @@ export class Game {
   }
 
   quaff(it, index) {
-    this.player.inventory.splice(index, 1);
+    this.zuzyj(it, index);
     this.identify(it);
     switch (it.type) {
       case 'heal':
@@ -908,7 +998,7 @@ export class Game {
   }
 
   read(it, index) {
-    this.player.inventory.splice(index, 1);
+    this.zuzyj(it, index);
     this.identify(it);
     const L = this.level;
     switch (it.type) {
@@ -977,7 +1067,7 @@ export class Game {
 
   // ---------- świat odpowiada ----------
 
-  monstersActOn(depth, cele = this.heroesOn(depth)) {
+  monstersActOn(depth, cele = this.heroesOn(depth), { zasieg = null } = {}) {
     const entry = this.levels.get(depth);
     if (!entry) return;
     const L = entry.level;
@@ -987,12 +1077,18 @@ export class Game {
     // jeden przebieg na poziom, nie jeden na potwora.
     if (!cele.length) return;
 
-    const awake = lista.filter(m => !m.asleep && m.hp > 0);
+    // `zasieg` odsiewa potwory, które z tą turą nie mają nic wspólnego, bo stoją
+    // przy kimś innym. Odległość liczona CZTEREMA LICZBAMI - `chebyshev` nie
+    // przyjmuje obiektów i po cichu daje NaN, co raz już unieruchomiło całą
+    // regułę bez jednego błędu (W-19).
+    const wZasiegu = (m) => zasieg === null
+      || cele.some(h => chebyshev(m.x, m.y, h.x, h.y) <= zasieg);
+    const awake = lista.filter(m => !m.asleep && m.hp > 0 && wZasiegu(m));
 
     // budzenie: FOV jest symetryczny, więc "gracz widzi potwora" znaczy też
     // "potwór widzi gracza" - nie trzeba liczyć pola widzenia każdemu z osobna
     for (const m of lista) {
-      if (!m.asleep) continue;
+      if (!m.asleep || !wZasiegu(m)) continue;
       const widziany = cele.some(h => chebyshev(m.x, m.y, h.x, h.y) <= FOV_RADIUS && h.visible.has(`${m.x},${m.y}`));
       if (widziany && this.rng.chance(0.55)) {
         m.asleep = false;
@@ -1149,6 +1245,7 @@ function heroToJSON(h) {
     level: h.level, xp: h.xp,
     hunger: h.hunger,
     inventory: h.inventory,
+    plecak: { ...(h.plecak || PLECAK_START) },
     weapon: h.weapon ? h.weapon.id : null,
     armor: h.armor ? h.armor.id : null,
     hasAmulet: h.hasAmulet,
@@ -1181,6 +1278,17 @@ function heroFromJSON(h, index) {
   };
   for (const [d, b64] of Object.entries(h.memory || {})) hero.memory.set(Number(d), base64ToBytes(b64));
   hero.inventory = h.inventory || [];
+  // Zapis sprzed wprowadzenia przestrzeni nie niesie ani wymiarów, ani położeń.
+  // Rzeczy trzeba ułożyć od nowa, a plecak MUSI je pomieścić: zgubienie choćby
+  // jednej rzeczy przy wczytaniu byłoby po stronie gracza nieodróżnialne od
+  // kradzieży. Dlatego przy niepowodzeniu plecak rośnie, zamiast odrzucać.
+  hero.plecak = h.plecak ? { ...h.plecak } : { ...PLECAK_START };
+  if (!hero.inventory.every(i => Number.isInteger(i.px)) && !przepakuj(hero)) {
+    for (let wys = hero.plecak.h + 1; wys <= 24; wys++) {
+      hero.plecak = { w: hero.plecak.w, h: wys };
+      if (przepakuj(hero)) break;
+    }
+  }
   hero.weapon = hero.inventory.find(i => i.id === h.weapon) || null;
   hero.armor = hero.inventory.find(i => i.id === h.armor) || null;
   return hero;

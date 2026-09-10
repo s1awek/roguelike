@@ -7,8 +7,10 @@
 
 import { Game } from '../src/game.js';
 import { serialize, loadFromString } from '../src/serialize.js';
-import { itemLabel, itemStats } from '../src/items.js';
-import { statsHtml } from './opis.js';
+import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
+import { pojemnosc, zajetePola } from '../src/plecak.js';
+import { siatkaHtml, podepnijSiatke } from './plecak-ui.js';
+import { statsHtml, obejrzyjHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
@@ -146,6 +148,14 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // Oglądanie nic nie kosztuje, więc wychodzi się z niego dowolnym klawiszem,
+  // a przecinek podnosi od razu - bez wracania na mapę po tę samą decyzję.
+  if (mode === 'obejrzyj') {
+    if (k === ',' || k === 'g') { closeOverlay(); act({ type: 'pickup' }); return; }
+    closeOverlay();
+    return;
+  }
+
   if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') {
     if (k === 'Escape' || k === 'i' || k === 'q') { closeOverlay(); return; }
     const idx = k.length === 1 ? k.charCodeAt(0) - 97 : -1;
@@ -163,6 +173,7 @@ window.addEventListener('keydown', (e) => {
     case 'i': openInventory('inventory'); break;
     case 'd': openInventory('drop'); break;
     case 'w': openInventory('sniff'); break;
+    case 'x': pokazObejrzenie(); break;
     case '?': showRules(ruleSection); break;
     case 'S': doSave(); break;
     case 'L': doLoad(); break;
@@ -200,6 +211,20 @@ function useSlot(idx) {
   act({ type: action, index: idx });
 }
 
+/**
+ * Obejrzenie rzeczy leżącej pod nogami. Nie kosztuje tury i nie rusza świata -
+ * to odczytanie tego, co gracz ma przed oczami, a nie działanie.
+ */
+function pokazObejrzenie() {
+  const it = game.podNogami();
+  mode = 'obejrzyj';
+  const o = game.obejrzyj(it);
+  const nazwa = it ? itemLabel(it, game.appearances, game.identified, game.sniffed) : '';
+  panel.innerHTML = obejrzyjHtml(nazwa, o)
+    + `<p class="foot">${o ? '<kbd>,</kbd> podnosi. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+  overlay.hidden = false;
+}
+
 const INV_TITLE = { drop: 'Co wyrzucić?', sniff: 'Co powąchać?', inventory: 'Ekwipunek' };
 const INV_HINT = {
   drop: 'wyrzuca', sniff: 'wącha - tylko mikstury, koszt jednej tury', inventory: 'używa lub zakłada',
@@ -208,19 +233,23 @@ const INV_HINT = {
 function openInventory(which) {
   mode = which;
   const p = game.player;
+  const etykieta = (it) => itemLabel(it, game.appearances, game.identified, game.sniffed);
   const rows = p.inventory.map((it, i) => {
     const marks = [];
     if (p.weapon === it) marks.push('w dłoni');
     if (p.armor === it) marks.push('na sobie');
     const worn = marks.length ? `<span class="worn">(${marks.join(', ')})</span>` : '';
+    const ile = (it.ile || 1) > 1 ? `<span class="worn">x${it.ile}</span>` : '';
     return `<li class="item" data-i="${i}"><span class="key">${String.fromCharCode(97 + i)})</span>
       <canvas class="ico" width="44" height="44"></canvas>
-      <span class="nm">${escapeHtml(itemLabel(it, game.appearances, game.identified, game.sniffed))} ${worn}
+      <span class="nm">${escapeHtml(etykieta(it))} ${ile} ${worn}
       ${statsHtml(itemStats(it, p, game.identified))}</span></li>`;
   }).join('');
+  const poj = pojemnosc(p);
   panel.innerHTML = `
-    <h2>${INV_TITLE[which]} <span class="muted">${p.inventory.length}/16</span></h2>
-    <ul>${rows || '<li class="muted">(pusto)</li>'}</ul>
+    <h2>${INV_TITLE[which]} <span class="muted">${zajetePola(p)}/${poj} ${polaSlowo(poj)}</span></h2>
+    <div class="ekwipunek">${which === 'inventory' ? siatkaHtml(p, etykieta) : ''}
+      <ul>${rows || '<li class="muted">(pusto)</li>'}</ul></div>
     <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
       ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
   // Ikona rysowana tą samą funkcją co przedmiot leżący na podłodze. Dzięki temu
@@ -231,6 +260,17 @@ function openInventory(which) {
     const c = li.querySelector('canvas.ico');
     if (c && it) renderer.drawItemShape(c.getContext('2d'), it, 22, 22, 40, game, view);
     li.addEventListener('click', () => useSlot(Number(li.dataset.i)));
+  });
+  // Przekładanie w plecaku NIE jest działaniem w świecie: nie kosztuje tury
+  // i nie rusza gry, więc idzie prosto do silnika, z pominięciem `act`.
+  podepnijSiatke(panel, p, {
+    przeloz: (i, x, y, obrot) => {
+      if (i >= 0) game.przelozWPlecaku(p, i, x, y, obrot);
+      openInventory(which);
+    },
+    uzyj: (i) => useSlot(i),
+    rysuj: (c, it) => renderer.drawItemShape(c.getContext('2d'), it,
+      c.width / 2, c.height / 2, Math.min(c.width, c.height) - 8, game, view),
   });
   overlay.hidden = false;
 }

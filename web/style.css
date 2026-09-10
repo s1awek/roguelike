@@ -280,3 +280,72 @@ kbd {
 #podpis a:hover { color: var(--gold); border-bottom-color: var(--gold); }
 #podpis .sep { color: var(--line); }
 #foot #hint { display: flex; align-items: baseline; }
+
+/* ---------- plecak na siatce ----------
+ *
+ * Tło pól jest rysowane gradientem, a nie osobnymi węzłami: rzeczy leżą na
+ * siatce przez `grid-area`, a automatyczne rozmieszczanie CSS-owe OMIJA pola
+ * zajęte przez elementy ustawione jawnie - kafle tła wypadałyby więc spod
+ * przedmiotów i siatka miałaby dziury dokładnie tam, gdzie coś leży.
+ */
+#panel .plecak { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+#panel .siatka {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--kol), var(--pole));
+  grid-template-rows: repeat(var(--wier), var(--pole));
+  background-color: #0b0d14;
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: var(--pole) var(--pole);
+  border: 1px solid #2b3143;
+  border-radius: 6px;
+  touch-action: none;
+  user-select: none;
+}
+#panel .siatka .rzecz {
+  position: relative;
+  margin: 2px;
+  border: 1px solid #38405a;
+  border-radius: 5px;
+  background: #171b26;
+  cursor: grab;
+}
+#panel .siatka .rzecz:hover { background: #1e2434; border-color: #4c5678; }
+#panel .siatka .rzecz.noszone { border-color: var(--green); }
+#panel .siatka .rzecz.ciagniete { opacity: .3; cursor: grabbing; }
+#panel .siatka .rzecz canvas { display: block; width: 100%; height: 100%; }
+#panel .siatka .rzecz .ile {
+  position: absolute; right: 3px; bottom: 0;
+  font-style: normal; font-size: 11px; color: var(--gold);
+}
+#panel .siatka .rzecz .na-sobie {
+  position: absolute; left: 4px; top: -2px;
+  font-style: normal; font-size: 15px; color: var(--green);
+}
+#panel .siatka .podglad { margin: 2px; border-radius: 5px; pointer-events: none; }
+#panel .siatka .podglad.ok { background: rgba(110, 231, 168, .18); border: 1px solid var(--green); }
+#panel .siatka .podglad.zle { background: rgba(255, 95, 109, .16); border: 1px solid var(--red); }
+#panel .zajetosc { margin: 0; font-size: 12px; color: var(--dim); }
+#panel .zajetosc b { color: var(--ink); }
+#panel .zajetosc .muted { color: var(--dimmer); }
+
+/* Ekwipunek w dwóch kolumnach: siatka po lewej, spis z literami po prawej.
+ * Spis zostaje, bo klawiatura ma działać tak samo jak przedtem - siatka jest
+ * dodatkiem dla myszy, a nie zamiennikiem sterowania. */
+#panel .ekwipunek { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+#panel .ekwipunek > ul { flex: 1 1 260px; margin: 0; }
+
+/* Karta obejrzanej rzeczy. */
+#panel ul.karta { list-style: none; margin: 6px 0 12px; padding: 0; }
+#panel ul.karta li { display: flex; gap: 10px; padding: 3px 0; }
+#panel ul.karta .etyk { color: var(--dimmer); min-width: 9.5em; }
+#panel ul.karta .cmp { font-style: normal; }
+#panel ul.karta .cmp.plus { color: var(--green); }
+#panel ul.karta .cmp.minus { color: var(--red); }
+#panel ul.karta .cmp.rowno { color: var(--dim); }
+#panel .werdykt { margin: 0 0 10px; padding: 8px 10px; border-radius: 6px; background: #12151f; }
+#panel .werdykt.plus { color: var(--green); border-left: 3px solid var(--green); }
+#panel .werdykt.minus { color: var(--red); border-left: 3px solid var(--red); }
+#panel .werdykt.rowno { color: var(--dim); border-left: 3px solid var(--line); }

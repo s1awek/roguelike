@@ -4,6 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
 import { Stol } from '../src/stol.js';
+import { mozna, dolozDoPlecaka } from '../src/plecak.js';
+import { WEAPONS } from '../src/items.js';
 
 /** Gra z uczestnikami postawionymi ręcznie: obok siebie albo daleko od siebie. */
 function stol(seed, ilu, { obokSiebie, opts = {} } = {}) {
@@ -155,4 +157,65 @@ test('KONTROLA PRZYRZĄDU: deklaracja od uczestnika po partii jest odrzucana', (
   assert.equal(s.zadeklaruj(1, KROK).ok, false);
   assert.equal(s.zadeklaruj(7, KROK).ok, false, 'przyjęto deklarację od nieistniejącego miejsca');
   assert.equal(s.zadeklaruj(0, KROK).ok, true, 'żywemu uczestnikowi odmówiono');
+});
+
+// ---------- porządkowanie plecaka nie jest ruchem w świecie ----------
+
+/** Wkłada broń danego rodzaju do plecaka tą samą drogą, co podniesienie z ziemi. */
+let idTestowe = 90000;
+function wloz(g, hero, type) {
+  const p = WEAPONS.find(w => w.type === type);
+  const it = { id: idTestowe++, kind: 'weapon', type: p.type, name: p.name, bonus: p.bonus, size: p.size };
+  assert.equal(dolozDoPlecaka(hero, it, (x) => g.etykieta(x)), 1, `nie zmieściło się: ${p.name}`);
+}
+
+test('przełożenie w plecaku nie kosztuje tury i nie czeka na sąsiada', () => {
+  // Dwoje uczestników stoi obok siebie, więc ich tura jest WSPÓLNA: żaden ruch
+  // nie zejdzie, dopóki oba miejsca nie zadeklarują. Porządkowanie plecaka musi
+  // przejść mimo to - inaczej przekładanie rzeczy byłoby zabraniem tury komuś,
+  // kto akurat walczy.
+  const { s, g } = stol('plecak-stol-1', 2, { obokSiebie: true });
+  const a = g.heroes[0];
+  wloz(g, a, 'mace');
+  const it = a.inventory.find(i => Number.isInteger(i.px));
+  assert.ok(it, 'uczestnik powinien mieć w plecaku cokolwiek ułożonego');
+  const index = a.inventory.indexOf(it);
+  const tura = g.turn;
+
+  // Puste pole liczone tą samą regułą co silnik, a nie zgadnięte.
+  let cel = null;
+  for (let y = 0; y < a.plecak.h && !cel; y++) {
+    for (let x = 0; x < a.plecak.w && !cel; x++) {
+      if ((x !== it.px || y !== it.py) && mozna(a, it, x, y, it.obrot || 0, it)) cel = { x, y };
+    }
+  }
+  assert.ok(cel, 'w startowym plecaku musi być dokąd przełożyć');
+
+  const r = s.przeloz(a.hid, { index, x: cel.x, y: cel.y, obrot: it.obrot || 0 });
+  assert.equal(r.ok, true, r.powod);
+  assert.equal(a.inventory[index].px, cel.x);
+  assert.equal(a.inventory[index].py, cel.y);
+  assert.equal(g.turn, tura, 'przekładanie zabrało turę');
+  assert.ok(!s.miejsca.get(a.hid).deklaracja,
+    'przekładanie nie może zostawiać po sobie deklaracji');
+});
+
+test('KONTROLA PRZYRZĄDU: stół odmawia przełożenia poza plecak i na zajęte pole', () => {
+  const { s, g } = stol('plecak-stol-2', 2, { obokSiebie: true });
+  const a = g.heroes[0];
+  wloz(g, a, 'mace');
+  wloz(g, a, 'dagger');
+  const index = a.inventory.findIndex(i => Number.isInteger(i.px));
+  const it = a.inventory[index];
+
+  assert.equal(s.przeloz(a.hid, { index, x: 99, y: 0, obrot: 0 }).ok, false, 'poza planszą');
+  assert.equal(s.przeloz(a.hid, { index: 99, x: 0, y: 0, obrot: 0 }).ok, false, 'nie ma takiej rzeczy');
+  assert.equal(s.przeloz(4242, { index, x: 0, y: 0, obrot: 0 }).ok, false, 'obce miejsce');
+
+  const inne = a.inventory.find((w, k) => k !== index && Number.isInteger(w.px));
+  if (inne) {
+    assert.equal(s.przeloz(a.hid, { index, x: inne.px, y: inne.py, obrot: inne.obrot || 0 }).ok, false,
+      'wolno było położyć rzecz na rzeczy');
+  }
+  assert.equal(a.inventory[index].px, it.px, 'odmowa nie może niczego przesunąć');
 });

@@ -5,7 +5,9 @@
 // zamiast rozjeżdżać się w lewy górny róg.
 
 import { WALL, FLOOR, STAIRS_DOWN, STAIRS_UP } from './map.js';
-import { itemLabel, itemGlyph, itemStats } from './items.js';
+import { itemLabel, itemGlyph, itemStats, polaSlowo } from './items.js';
+import { pojemnosc, zajetePola, ile as sztuk } from './plecak.js';
+import { opisWLinijkach } from './ocena.js';
 import { buildRules } from './rules.js';
 
 const ESC = '\x1b[';
@@ -117,7 +119,12 @@ const INV_HINT = {
 
 export function renderInventory(game, mode = 'inventory') {
   const p = game.player;
-  const lines = [`${C.bold}Ekwipunek${C.reset} (${p.inventory.length}/16)  ${C.grey}${INV_HINT[mode] || INV_HINT.inventory}, ESC = wróć${C.reset}`, ''];
+  // W terminalu nie ma układania: gracz widzi WYŁĄCZNIE zajętość, a rzeczy
+  // same znajdują sobie miejsce. Ta sama reguła co w przeglądarce - różni się
+  // tylko to, kto rozmieszcza.
+  const zaj = zajetePola(p), poj = pojemnosc(p);
+  const lines = [`${C.bold}Ekwipunek${C.reset} ${C.white}${zaj}/${poj} ${polaSlowo(poj)}${C.reset}`
+    + `  ${C.grey}${INV_HINT[mode] || INV_HINT.inventory}, ESC = wróć${C.reset}`, ''];
   if (!p.inventory.length) lines.push(`${C.grey}(pusto)${C.reset}`);
   p.inventory.forEach((it, i) => {
     const letter = String.fromCharCode(97 + i);
@@ -129,8 +136,10 @@ export function renderInventory(game, mode = 'inventory') {
     // zapada tutaj, więc tutaj muszą stać skutek i różnica wobec noszonego.
     const st = itemStats(it, p, game.identified);
     const barwa = st.znak === 'plus' ? C.brightGreen : st.znak === 'minus' ? C.brightRed : C.grey;
-    const opis = st.opis ? ` ${C.grey}[${st.opis}${st.porownanie ? `${C.reset}${barwa}, ${st.porownanie}` : ''}${C.reset}${C.grey}]${C.reset}` : '';
-    lines.push(`  ${C.brightYellow}${letter}${C.reset}) ${ITEM_COLOR[it.kind] || C.white}${itemGlyph(it)}${C.reset} ${itemLabel(it, game.appearances, game.identified, game.sniffed)}${suffix}${opis}`);
+    const czesci = [st.opis, st.miejsce ? `${st.miejsce}` : null].filter(Boolean).join(', ');
+    const opis = czesci ? ` ${C.grey}[${czesci}${st.porownanie ? `${C.reset}${barwa}, ${st.porownanie}` : ''}${C.reset}${C.grey}]${C.reset}` : '';
+    const krotnosc = sztuk(it) > 1 ? ` ${C.brightWhite || C.white}x${sztuk(it)}${C.reset}` : '';
+    lines.push(`  ${C.brightYellow}${letter}${C.reset}) ${ITEM_COLOR[it.kind] || C.white}${itemGlyph(it)}${C.reset} ${itemLabel(it, game.appearances, game.identified, game.sniffed)}${krotnosc}${suffix}${opis}`);
   });
   return lines;
 }
@@ -185,6 +194,27 @@ export function renderRules(index = 0, width = 76) {
 }
 
 /** Składa pełną klatkę. mode: 'map' | 'inventory' | 'drop' | 'sniff' | 'help' */
+/**
+ * Obejrzenie rzeczy leżącej pod nogami. Osobny ekran, a nie linijka w dzienniku,
+ * bo pytanie „brać czy nie brać" ma tu paść z kompletem liczb naraz: co to daje,
+ * ile to lepsze albo gorsze od noszonego i czy w ogóle się zmieści.
+ */
+export function renderObejrzyj(game) {
+  const it = game.podNogami();
+  if (!it) {
+    return [`${C.grey}Nie ma tu nic do obejrzenia.${C.reset}`, '', `${C.grey}Esc wraca.${C.reset}`];
+  }
+  const o = game.obejrzyj(it);
+  const [nazwa, ...reszta] = opisWLinijkach(game.etykieta(it), o);
+  const barwa = { plus: C.brightGreen, minus: C.brightRed, rowno: C.grey };
+  const out = [`${C.bold}${nazwa}${C.reset}`, ''];
+  for (const l of reszta) {
+    out.push(l === o.werdykt ? `  ${barwa[o.ton] || ''}${l}${C.reset}` : `  ${C.grey}${l}${C.reset}`);
+  }
+  out.push('', `${C.grey}, = podnieś   Esc = wróć${C.reset}`);
+  return out;
+}
+
 export function renderFrame(game, mode = 'map', extra = '', section = 0) {
   const width = Math.max(80, Math.min(process.stdout.columns || 80, 200));
   const pad = ' '.repeat(Math.max(0, Math.floor((width - game.level.w) / 2)));
@@ -192,6 +222,10 @@ export function renderFrame(game, mode = 'map', extra = '', section = 0) {
 
   if (mode === 'help') {
     out.push('', ...renderRules(section, Math.min(76, width - 6)).map(l => pad + l));
+    return clearScreen() + out.join('\n') + '\n';
+  }
+  if (mode === 'obejrzyj') {
+    out.push('', ...renderObejrzyj(game).map(l => pad + l));
     return clearScreen() + out.join('\n') + '\n';
   }
   if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') {
@@ -204,7 +238,7 @@ export function renderFrame(game, mode = 'map', extra = '', section = 0) {
   out.push(pad + renderStatus(game));
   out.push(...renderMap(game).map(l => pad + l));
   out.push(...renderMessages(game).map(l => pad + l));
-  out.push(pad + (extra || `${C.grey}? = zasady   i = ekwipunek   w = powąchaj   , = podnieś   > < = schody   S = zapis   Q = wyjście${C.reset}`));
+  out.push(pad + (extra || `${C.grey}? = zasady   i = ekwipunek   x = obejrzyj   , = podnieś   > < = schody   S = zapis   Q = wyjście${C.reset}`));
   return clearScreen() + out.join('\n') + '\n';
 }
 

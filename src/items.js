@@ -17,24 +17,34 @@ export const SCROLLS = [
   { type: 'enchantArmor', name: 'zwój wzmocnienia', weight: 8 },
 ];
 
+// `size` to [szerokość, wysokość] w polach plecaka. Kształt jest częścią
+// charakterystyki rzeczy tak samo jak premia do ataku: długi miecz jest lepszy
+// od sztyletu i JEDNOCZEŚNIE trudniejszy do upchnięcia - i to jest ta decyzja.
 export const WEAPONS = [
-  { type: 'dagger', name: 'sztylet', bonus: 1, weight: 20, minDepth: 1 },
-  { type: 'shortSword', name: 'krótki miecz', bonus: 2, weight: 16, minDepth: 1 },
-  { type: 'mace', name: 'buzdygan', bonus: 3, weight: 12, minDepth: 2 },
-  { type: 'longSword', name: 'długi miecz', bonus: 4, weight: 8, minDepth: 4 },
-  { type: 'warAxe', name: 'topór bojowy', bonus: 6, weight: 5, minDepth: 5 },
+  { type: 'dagger', name: 'sztylet', bonus: 1, weight: 20, minDepth: 1, size: [1, 2] },
+  { type: 'shortSword', name: 'krótki miecz', bonus: 2, weight: 16, minDepth: 1, size: [1, 3] },
+  { type: 'mace', name: 'buzdygan', bonus: 3, weight: 12, minDepth: 2, size: [2, 2] },
+  { type: 'longSword', name: 'długi miecz', bonus: 4, weight: 8, minDepth: 4, size: [1, 4] },
+  { type: 'warAxe', name: 'topór bojowy', bonus: 6, weight: 5, minDepth: 5, size: [2, 3] },
 ];
 
 export const ARMORS = [
-  { type: 'leather', name: 'kurta skórzana', bonus: 1, weight: 20, minDepth: 1 },
-  { type: 'studded', name: 'kurta ćwiekowana', bonus: 2, weight: 14, minDepth: 1 },
-  { type: 'chain', name: 'kolczuga', bonus: 3, weight: 10, minDepth: 3 },
-  { type: 'plate', name: 'zbroja płytowa', bonus: 5, weight: 5, minDepth: 5 },
+  { type: 'leather', name: 'kurta skórzana', bonus: 1, weight: 20, minDepth: 1, size: [2, 2] },
+  { type: 'studded', name: 'kurta ćwiekowana', bonus: 2, weight: 14, minDepth: 1, size: [2, 2] },
+  { type: 'chain', name: 'kolczuga', bonus: 3, weight: 10, minDepth: 3, size: [2, 3] },
+  { type: 'plate', name: 'zbroja płytowa', bonus: 5, weight: 5, minDepth: 5, size: [3, 3] },
 ];
 
 export const FOODS = [
-  { type: 'ration', name: 'racja żywnościowa', nutrition: 800, weight: 20 },
-  { type: 'apple', name: 'jabłko', nutrition: 250, weight: 12 },
+  { type: 'ration', name: 'racja żywnościowa', nutrition: 800, weight: 20, size: [2, 1] },
+  { type: 'apple', name: 'jabłko', nutrition: 250, weight: 12, size: [1, 1] },
+];
+
+// Większe schowanie na rzeczy - nagroda za schodzenie w głąb. Pojemność jest
+// jedyną rzeczą, którą ten przedmiot daje, i daje ją raz: po użyciu znika.
+export const PACKS = [
+  { type: 'travel', name: 'plecak podróżny', w: 6, h: 4, weight: 10, minDepth: 3, size: [2, 2] },
+  { type: 'great', name: 'wielki plecak', w: 6, h: 5, weight: 6, minDepth: 5, size: [2, 3] },
 ];
 
 /**
@@ -75,7 +85,7 @@ export function makeAppearances(rng) {
   return { potion, scroll };
 }
 
-export const GLYPHS = { potion: '!', scroll: '?', weapon: ')', armor: '[', food: '%', amulet: '"' };
+export const GLYPHS = { potion: '!', scroll: '?', weapon: ')', armor: '[', food: '%', amulet: '"', pack: '(' };
 
 let nextId = 1;
 export function resetItemIds() { nextId = 1; }
@@ -86,8 +96,10 @@ function make(kind, def, extra = {}) {
 
 /** Losowy przedmiot odpowiedni dla głębokości. */
 export function randomItem(rng, depth) {
+  const dostepnePlecaki = PACKS.filter(p => p.minDepth <= depth);
   const kind = rng.weighted([
     ['potion', 32], ['scroll', 22], ['weapon', 14], ['armor', 12], ['food', 20],
+    ...(dostepnePlecaki.length ? [['pack', 6]] : []),
   ]);
   switch (kind) {
     case 'potion': return make('potion', rng.weighted(POTIONS.map(p => [p, p.weight])));
@@ -101,6 +113,10 @@ export function randomItem(rng, depth) {
       const pool = ARMORS.filter(a => a.minDepth <= depth);
       const a = rng.weighted(pool.map(x => [x, x.weight]));
       return make('armor', a, { bonus: a.bonus, enchant: 0 });
+    }
+    case 'pack': {
+      const p = rng.weighted(dostepnePlecaki.map(x => [x, x.weight]));
+      return make('pack', p, { w: p.w, h: p.h });
     }
     default: {
       const f = rng.weighted(FOODS.map(x => [x, x.weight]));
@@ -149,6 +165,15 @@ export function itemGlyph(item) { return GLYPHS[item.kind] || '*'; }
 // To jest JEDNO źródło opisu dla terminala, wersji jednoosobowej i stołu (D-021):
 // żaden interfejs nie przepisuje tych liczb u siebie.
 
+const TABELE_KSZTALTOW = { weapon: WEAPONS, armor: ARMORS, food: FOODS, pack: PACKS };
+
+/** Kształt [szerokość, wysokość] w polach plecaka - z tablicy rodzaju. */
+export function ksztaltBazowy(it) {
+  const tab = TABELE_KSZTALTOW[it.kind];
+  const def = tab && tab.find(x => x.type === it.type);
+  return (def && def.size) || [1, 1];
+}
+
 /** Moc mikstury z tablicy - nigdy przepisana z pamięci. */
 export function potionPower(type) {
   const p = POTIONS.find(x => x.type === type);
@@ -159,6 +184,14 @@ export function potionPower(type) {
 export function bonusRazem(it) { return (it.bonus || 0) + (it.enchant || 0); }
 
 const zn = (n) => (n > 0 ? `+${n}` : `${n}`);
+
+/** Odmiana słowa „pole" - napis z błędem gramatycznym czyta się jak usterka. */
+export function polaSlowo(n) {
+  const a = Math.abs(n), d = a % 10, s = a % 100;
+  if (a === 1) return 'pole';
+  if (d >= 2 && d <= 4 && !(s >= 12 && s <= 14)) return 'pola';
+  return 'pól';
+}
 
 const POTION_EFFECT = {
   heal: (p) => `życie ${zn(p)}`,
@@ -184,8 +217,10 @@ const SCROLL_EFFECT = {
  * bo to jest sekret rozgrywki, a nie brakująca podpowiedź.
  */
 export function itemStats(item, hero = null, identified = null) {
-  const out = { opis: null, porownanie: null, znak: null, noszone: false };
+  const out = { opis: null, porownanie: null, znak: null, noszone: false, miejsce: null };
   if (!item) return out;
+  const [kw, kh] = ksztaltBazowy(item);
+  out.miejsce = `${kw}x${kh}`;
   const znane = identified ? identified.has(`${item.kind}:${item.type}`) : true;
 
   if (item.kind === 'weapon' || item.kind === 'armor') {
@@ -218,6 +253,17 @@ export function itemStats(item, hero = null, identified = null) {
   }
   if (item.kind === 'amulet') {
     out.opis = 'cel wyprawy - wynieś go schodami z pierwszego piętra';
+    return out;
+  }
+  if (item.kind === 'pack') {
+    out.opis = `plecak ${item.w}x${item.h} = ${item.w * item.h} ${polaSlowo(item.w * item.h)}`;
+    if (hero && hero.plecak) {
+      const teraz = hero.plecak.w * hero.plecak.h;
+      const roznica = item.w * item.h - teraz;
+      out.znak = roznica > 0 ? 'plus' : roznica < 0 ? 'minus' : 'rowno';
+      out.porownanie = roznica > 0 ? `większy o ${roznica} ${polaSlowo(roznica)}`
+        : roznica < 0 ? `mniejszy o ${-roznica} ${polaSlowo(roznica)}` : 'tyle samo co Twój';
+    }
     return out;
   }
   return out;
