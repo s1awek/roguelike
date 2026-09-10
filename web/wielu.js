@@ -9,10 +9,10 @@
 // drugi zadeklaruje własny.
 
 import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
-import { poloz, pojemnosc, zajetePola } from '../src/plecak.js';
+import { poloz, pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
 import { obejrzyj } from '../src/ocena.js';
 import { siatkaHtml, podepnijSiatke, trwaCiagniecie } from './plecak-ui.js';
-import { statsHtml, obejrzyjHtml, stanyHtml } from './opis.js';
+import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
@@ -32,7 +32,7 @@ const RULES = buildRules('web');
 
 let ja = null;              // {hid, token, name}
 let strumien = null;
-let mode = 'lobby';         // 'lobby' | 'map' | 'inventory' | 'drop' | 'sniff' | 'help' | 'over'
+let mode = 'lobby';         // 'lobby' | 'map' | 'inventory' | 'drop' | 'sniff' | 'stos' | 'obejrzyj' | 'help' | 'over'
 let ruleSection = 0;
 let zgloszone = null;       // ostatnie zgłoszone działanie, dopóki nie zeszła tura
 let turaZgloszenia = -1;
@@ -145,6 +145,10 @@ function otworzStrumien() {
     // gracz patrzyłby na siatkę sprzed zmiany. W trakcie chwytu odświeżenie
     // czeka, bo przerysowanie wyrwałoby rzecz z ręki.
     if (mode === 'inventory' && !trwaCiagniecie()) otworzPlecak('inventory');
+    // Kupka pod nogami też żyje: ktoś inny mógł z niej wziąć rzecz, gdy ja
+    // jeszcze zaznaczam. Zaznaczenie przeżywa odświeżenie, bo trzyma się
+    // identyfikatorów, a nie miejsc na liście.
+    if (mode === 'stos') odswiezStos();
     odswiezHud();
   };
   strumien.onerror = async () => {
@@ -219,8 +223,18 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (mode === 'obejrzyj') {
-    if (k === ',' || k === 'g') { zamknij(); zglos({ type: 'pickup' }); return; }
+    if (k === ',' || k === 'g') { zamknij(); podnies(); return; }
     zamknij();
+    return;
+  }
+
+  // Wybór z kupki. Zaznaczanie nie zamyka okna; podnosi dopiero Enter.
+  if (mode === 'stos') {
+    if (k === 'Escape' || k === 'q') { zamknij(); return; }
+    if (k === 'Enter') { potwierdzStos(); return; }
+    if (k === '*') { zaznaczWszystko(); return; }
+    const idx = k.length === 1 ? k.charCodeAt(0) - 97 : -1;
+    if (idx >= 0 && idx < stos.length) przelaczWybor(idx);
     return;
   }
 
@@ -233,7 +247,7 @@ window.addEventListener('keydown', (e) => {
   if (DIR[k]) { const [dx, dy] = DIR[k]; zglos({ type: 'move', dx, dy }); return; }
   switch (k) {
     case '.': case '5': zglos({ type: 'wait' }); break;
-    case ',': case 'g': zglos({ type: 'pickup' }); break;
+    case ',': case 'g': podnies(); break;
     case '>': zglos({ type: 'descend' }); break;
     case '<': zglos({ type: 'ascend' }); break;
     case 'i': otworzPlecak('inventory'); break;
@@ -250,10 +264,19 @@ window.addEventListener('keydown', (e) => {
 
 function zamknij() { mode = 'map'; overlay.hidden = true; }
 
+/**
+ * Użycie rzeczy przy stole. Panel zostaje otwarty - patrz ta sama reguła
+ * w wersji jednoosobowej. `zglos` deklaruje tylko z mapy, więc zamykamy panel
+ * na czas zgłoszenia i otwieramy z powrotem.
+ */
 function uzyj(idx) {
+  const which = mode;
   const typ = mode === 'drop' ? 'drop' : mode === 'sniff' ? 'sniff' : 'use';
+  const nadpisuje = zgloszone && cien.turn === turaZgloszenia;
   zamknij();
   zglos({ type: typ, index: idx });
+  if (nadpisuje) say('Zamiast poprzedniego zgłoszenia - przy stole wychodzi jedno działanie na turę.');
+  if (cien.ja && cien.ja.status === 'playing') otworzPlecak(which);
 }
 
 /**
@@ -278,6 +301,85 @@ function pokazObejrzenie() {
     : obejrzyjHtml(it ? etykieta(it) : '', o);
   panel.innerHTML = tresc
     + `<p class="foot">${it ? '<kbd>,</kbd> podnosi. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+  overlay.hidden = false;
+}
+
+// ---------- kupka pod nogami ----------
+
+let stos = [];
+let wybrane = new Set();
+
+/**
+ * Podniesienie przy stole. Wybór robi się U SIEBIE, z migawki - ale samo
+ * podniesienie idzie deklaracją, jak każde działanie w świecie. Migawka może
+ * być o turę stara, więc serwer i tak sprawdza, co naprawdę leży pod nogami:
+ * bierze przecięcie listy z kaflem, a nie to, co przysłał klient.
+ */
+function podnies() {
+  const p = cien.ja;
+  const pod = (cien.items || []).filter(i => i.x === p.x && i.y === p.y);
+  if (pod.length <= 1) { zglos({ type: 'pickup' }); return; }
+  stos = pod;
+  wybrane = new Set(pod.map(i => i.id));
+  pokazStos();
+}
+
+/** Kupka po nowej migawce: te same rzeczy, jeżeli nadal leżą. */
+function odswiezStos() {
+  const p = cien.ja;
+  if (!p) return;
+  stos = (cien.items || []).filter(i => i.x === p.x && i.y === p.y);
+  if (!stos.length) { zamknij(); say('Nic już tu nie leży.'); return; }
+  const sa = new Set(stos.map(i => i.id));
+  wybrane = new Set([...wybrane].filter(id => sa.has(id)));
+  pokazStos();
+}
+
+function przelaczWybor(i) {
+  const it = stos[i];
+  if (!it) return;
+  if (wybrane.has(it.id)) wybrane.delete(it.id); else wybrane.add(it.id);
+  pokazStos();
+}
+
+function zaznaczWszystko() {
+  wybrane = wybrane.size === stos.length ? new Set() : new Set(stos.map(i => i.id));
+  pokazStos();
+}
+
+function potwierdzStos() {
+  const ids = stos.filter(i => wybrane.has(i.id)).map(i => i.id);
+  zamknij();
+  if (ids.length) zglos({ type: 'pickup', ids });
+}
+
+function pokazStos() {
+  mode = 'stos';
+  const p = cien.ja;
+  const etykieta = (it) => itemLabel(it, cien.appearances, cien.identified, cien.sniffed);
+  const naSiatce = !!(p.plecak && p.plecak.w);
+  const lista = stos.map((it) => {
+    const o = naSiatce ? obejrzyj(it, p, cien.identified, etykieta) : null;
+    return {
+      nazwa: etykieta(it),
+      opis: itemStats(it, p, cien.identified).opis,
+      pola: naSiatce ? `${poleRzeczy(it)} ${polaSlowo(poleRzeczy(it))}` : '',
+      wybrane: wybrane.has(it.id),
+      werdykt: o ? o.werdykt : '',
+      ton: o ? o.ton : '',
+    };
+  });
+  const zajmie = naSiatce
+    ? stos.filter(i => wybrane.has(i.id)).reduce((a, i) => a + poleRzeczy(i), 0) : 0;
+  // Starszy stół nie przysyła wymiarów plecaka. Wtedy bilans pól nie ma z czego
+  // powstać, więc pokazujemy sam wybór - uboższy widok, nie wywrotka (W-24).
+  panel.innerHTML = stosHtml(lista, { zajmie, wolne: naSiatce ? wolnePola(p) : zajmie });
+  panel.querySelectorAll('li.wybor').forEach(li => {
+    const it = stos[Number(li.dataset.i)];
+    const c = li.querySelector('canvas.ico');
+    if (c && it) renderer.drawItemShape(c.getContext('2d'), it, 22, 22, 40, cien, view);
+    li.addEventListener('click', () => przelaczWybor(Number(li.dataset.i)));
+  });
   overlay.hidden = false;
 }
 
@@ -330,7 +432,7 @@ function otworzPlecak(which) {
     : `${p.inventory.length} rzeczy`;
   panel.innerHTML = `
     <h2>${INV_TITLE[which]} <span class="muted">${licznik}</span></h2>
-    <div class="ekwipunek">${which === 'inventory' && naSiatce ? siatkaHtml(p, etykieta) : ''}
+    <div class="ekwipunek">${which === 'inventory' && naSiatce ? siatkaHtml(p, etykieta, { kosz: true }) : ''}
       <ul>${rows || '<li class="muted">(pusto)</li>'}</ul></div>
     <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
       ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
@@ -346,6 +448,24 @@ function otworzPlecak(which) {
       otworzPlecak(which);
     },
     uzyj: (i) => uzyj(i),
+    // Wyrzucenie idzie normalną drogą: deklaracja do stołu i czekanie na turę.
+    // Przekładanie wyżej wolno robić u siebie, wyrzucania NIE - rzecz ląduje
+    // na podłodze, więc widzą ją inni.
+    // Panel zostaje otwarty, bo wyrzucanie rzadko dotyczy jednej rzeczy.
+    //
+    // Ale przy stole wyrzucenie to DZIAŁANIE, a na turę przypada jedno: druga
+    // rzecz przeciągnięta na kosz przed rozstrzygnięciem tury zastępuje
+    // pierwszą deklarację, zamiast dołożyć się do niej. Gracz musi o tym
+    // wiedzieć, inaczej wygląda to jak zgubienie rzeczy przez grę.
+    wyrzuc: (i) => {
+      const nadpisuje = zgloszone && cien.turn === turaZgloszenia;
+      zamknij();                       // `zglos` deklaruje tylko z mapy
+      zglos({ type: 'drop', index: i });
+      say(nadpisuje
+        ? 'Zamiast poprzedniego zgłoszenia - przy stole wychodzi jedna rzecz na turę.'
+        : 'Wyrzucenie zgłoszone: rzecz wypadnie, gdy zejdzie tura.');
+      otworzPlecak(which);
+    },
     rysuj: (c, it) => renderer.drawItemShape(c.getContext('2d'), it,
       c.width / 2, c.height / 2, Math.min(c.width, c.height) - 8, cien, view),
   });
@@ -466,6 +586,31 @@ window.addEventListener('resize', () => { if (cien.poziom) renderer.resize(cien)
 setInterval(odswiezStol, 2500);
 odswiezStol();
 
+/**
+ * Pasek trybu turowego schodzi bohaterowi z drogi.
+ *
+ * Zgłoszenie właściciela: pasek wisiał na sztywno u góry planszy i przy
+ * bohaterze stojącym przy górnej krawędzi zasłaniał kawałek mapy, na którym
+ * toczyła się gra. Zasłonięcie grywalnego pola jest gorsze niż brak podpowiedzi.
+ *
+ * Próg jest DWUSTRONNY (0,42 i 0,58 wysokości), a nie jeden na środku. Przy
+ * jednym progu bohater idący dokładnie przez środek ekranu przerzucałby pasek
+ * z góry na dół co klatkę - kamera dojeżdża płynnie, więc jego pozycja drga
+ * wokół progu nawet gdy gracz stoi.
+ */
+let paskiNaDole = false;
+function ustawPasekTurowy() {
+  const pasek = $('turowy');
+  if (pasek.hidden) return;
+  const p = cien.ja;
+  const duch = view.sprites.get('@') || { x: p.x, y: p.y };
+  const { py } = renderer.punktPola(duch.x, duch.y);
+  const wys = renderer.cssH || 1;
+  if (!paskiNaDole && py < wys * 0.42) paskiNaDole = true;
+  else if (paskiNaDole && py > wys * 0.58) paskiNaDole = false;
+  pasek.classList.toggle('nadole', paskiNaDole);
+}
+
 // ---------- pętla klatek ----------
 
 let last = performance.now();
@@ -476,6 +621,7 @@ function frame(now) {
   view.step(dt);
   if (cien.ja && cien.kafle && cien.poziom.w > 0) {
     renderer.draw(cien, view, dt);
+    ustawPasekTurowy();
   }
   requestAnimationFrame(frame);
 }

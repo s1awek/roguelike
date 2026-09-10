@@ -380,6 +380,8 @@ export class Game {
 
   monsterAt(x, y) { return this.monsters.find(m => m.x === x && m.y === y && m.hp > 0); }
   itemAt(x, y) { return this.items.find(i => i.x === x && i.y === y); }
+  /** Wszystko, co leży na jednym kaflu. Rzeczy wolno układać w stos (D-016). */
+  itemsAt(x, y) { return this.items.filter(i => i.x === x && i.y === y); }
 
   // ---------- statystyki bojowe ----------
 
@@ -528,7 +530,7 @@ export class Game {
       switch (action.type) {
         case 'move': return this.tryMove(action.dx, action.dy);
         case 'wait': return true;
-        case 'pickup': return this.pickUp();
+        case 'pickup': return this.pickUp(action.ids || null);
         case 'descend': return this.descend();
         case 'ascend': return this.ascend();
         case 'use': return this.useItem(action.index);
@@ -819,32 +821,61 @@ export class Game {
 
   /** Rzecz leżąca pod nogami uczestnika. */
   podNogami(hero = this.player) { return this.itemAt(hero.x, hero.y); }
+  /** Cały stos pod nogami - to z niego gracz wybiera, co wziąć. */
+  stosPodNogami(hero = this.player) { return this.itemsAt(hero.x, hero.y); }
 
-  pickUp() {
-    const it = this.itemAt(this.player.x, this.player.y);
-    if (!it) { this.message('Nie ma tu nic do podniesienia.'); return false; }
+  /**
+   * Podniesienie z podłogi.
+   *
+   * Bez argumentu bierze wierzchnią rzecz - tak, jak działało to zawsze i tak,
+   * jak nadal działa klawisz `,`. Z listą identyfikatorów bierze WYBRANE rzeczy
+   * z tego samego kafla, i to jest odpowiedź na zgłoszenie właściciela: gdy na
+   * jednym polu leży kilka rzeczy, przebieranie ich po kolei (podnieś, wyrzuć
+   * niepotrzebne, podnieś następne) było karą za sam układ podłogi.
+   *
+   * Cały wybór kosztuje JEDNĄ turę, a nie po jednej za sztukę. To jest zmiana
+   * na korzyść gracza i trzeba ją nazwać wprost: schylenie się po trzy rzeczy
+   * naraz jest tańsze niż trzy schylenia. Bot z tego nie korzysta, więc seria
+   * pomiarowa równowagi tego nie zmierzy - dotyczy wyłącznie człowieka
+   * i wyłącznie kafli z kilkoma rzeczami (D-043).
+   */
+  pickUp(wybor = null) {
+    const stos = this.stosPodNogami();
+    if (!stos.length) { this.message('Nie ma tu nic do podniesienia.'); return false; }
+    // Lista przychodzi z sieci przy stole, więc nie ufamy jej kształtowi.
+    const lista = Array.isArray(wybor) ? wybor : null;
+    const chciane = lista === null ? [stos[0]] : stos.filter(i => lista.includes(i.id));
+    if (!chciane.length) { this.message('Nic nie wybrano.'); return false; }
 
-    const bylo = sztuk(it);
-    const wziete = dolozDoPlecaka(this.player, it, (x) => this.etykieta(x));
-    if (wziete === 0) {
-      // Odmowa, nie utrata: rzecz zostaje na podłodze, tura nie mija.
+    const wziete = [], zostalo = [];
+    for (const it of chciane) {
+      const bylo = sztuk(it);
+      const ile = dolozDoPlecaka(this.player, it, (x) => this.etykieta(x));
+      if (ile === 0) { zostalo.push(it); continue; }
+      if (ile >= bylo) this.items.splice(this.items.indexOf(it), 1);
+      else it.ile = bylo - ile;
+      wziete.push({ it, ile, reszta: bylo - ile });
+      if (it.kind === 'amulet') this.player.hasAmulet = true;
+    }
+
+    if (!wziete.length) {
+      // Odmowa, nie utrata: rzeczy zostają na podłodze, tura nie mija.
+      const it = zostalo[0];
       this.message(`Nie ma miejsca w plecaku (${wolnePola(this.player)} z ${pojemnosc(this.player)} pól wolnych, `
         + `a to zajmuje ${poleRzeczy(it)}).`);
       return false;
     }
-    if (wziete >= bylo) {
-      this.items.splice(this.items.indexOf(it), 1);
-    } else {
-      it.ile = bylo - wziete;   // reszta zostaje pod nogami
-    }
 
-    if (it.kind === 'amulet') {
-      this.player.hasAmulet = true;
+    if (wziete.some(w => w.it.kind === 'amulet')) {
       this.message('Bierzesz Amulet Otchłani. Wracaj na powierzchnię!');
-    } else {
-      const ogon = wziete < bylo ? ` (${bylo - wziete} zostaje - brak miejsca)` : '';
-      const krotnosc = wziete > 1 ? ` x${wziete}` : '';
-      this.message(`Podnosisz: ${this.etykieta(it)}${krotnosc}.${ogon}`);
+    }
+    const opis = wziete.filter(w => w.it.kind !== 'amulet').map(w =>
+      `${this.etykieta(w.it)}${w.ile > 1 ? ` x${w.ile}` : ''}${w.reszta > 0 ? ` (${w.reszta} zostaje - brak miejsca)` : ''}`);
+    if (opis.length) this.message(`Podnosisz: ${opis.join(', ')}.`);
+    // Rzeczy, które się nie zmieściły, mają zostać nazwane. Cisza po wybraniu
+    // pięciu rzeczy i wzięciu dwóch wygląda jak zgubienie trzech.
+    if (zostalo.length) {
+      this.message(`Nie zmieściło się: ${zostalo.map(i => this.etykieta(i)).join(', ')}.`);
     }
     return true;
   }

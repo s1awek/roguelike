@@ -45,6 +45,15 @@ if (args.includes('--continue')) {
 }
 
 let mode = 'map';
+let wybrane = new Set();          // zaznaczone rzeczy z kupki pod nogami
+
+/** Jedna rzecz idzie od razu, kilka otwiera wybór. */
+function podnies() {
+  const stos = game.stosPodNogami();
+  if (stos.length <= 1) { mode = 'map'; game.act({ type: 'pickup' }); return; }
+  wybrane = new Set(stos.map(i => i.id));
+  mode = 'stos';
+}
 let section = 0;        // otwarty rozdział księgi zasad
 let extra = '';
 
@@ -61,7 +70,7 @@ function draw() {
     process.stdout.write(clearScreen() + renderGameOver(game) + `\n  ${C.grey}Dowolny klawisz kończy.${C.reset}\n`);
     return;
   }
-  process.stdout.write(renderFrame(game, mode, extra, section));
+  process.stdout.write(renderFrame(game, mode, extra, section, wybrane));
   extra = '';
 }
 
@@ -94,8 +103,28 @@ function handleKey(key) {
   // Oglądanie nic nie kosztuje, więc wychodzi się z niego dowolnym klawiszem
   // poza podniesieniem - a podniesienie działa od razu, bez wracania na mapę.
   if (mode === 'obejrzyj') {
-    if (key === ',' || key === 'g') { game.act({ type: 'pickup' }); mode = 'map'; return; }
+    if (key === ',' || key === 'g') { podnies(); return; }
     mode = 'map';
+    return;
+  }
+
+  // Kupka pod nogami: zaznaczanie NIE zamyka ekranu, podnosi dopiero Enter.
+  if (mode === 'stos') {
+    if (key === 'ESC' || key === 'q') { mode = 'map'; return; }
+    if (key === 'ENTER' || key === '\r' || key === '\n') {
+      const ids = game.stosPodNogami().filter(i => wybrane.has(i.id)).map(i => i.id);
+      mode = 'map';
+      if (ids.length) game.act({ type: 'pickup', ids });
+      return;
+    }
+    const stos = game.stosPodNogami();
+    if (key === '*') {
+      wybrane = wybrane.size === stos.length ? new Set() : new Set(stos.map(i => i.id));
+      return;
+    }
+    const i = key.length === 1 ? key.charCodeAt(0) - 97 : -1;
+    const it = stos[i];
+    if (it) { if (wybrane.has(it.id)) wybrane.delete(it.id); else wybrane.add(it.id); }
     return;
   }
 
@@ -105,7 +134,9 @@ function handleKey(key) {
     if (idx >= 0 && idx < game.player.inventory.length) {
       const action = mode === 'drop' ? 'drop' : mode === 'sniff' ? 'sniff' : 'use';
       game.act({ type: action, index: idx });
-      mode = 'map';
+      // Ekran zostaje otwarty: wyjście z ekwipunku ma być świadomą decyzją
+      // (Esc albo `i`), a nie skutkiem ubocznym użycia rzeczy.
+      if (game.player.status !== 'playing') mode = 'map';
     }
     return;
   }
@@ -114,7 +145,7 @@ function handleKey(key) {
 
   switch (key) {
     case '.': case '5': game.act({ type: 'wait' }); break;
-    case ',': case 'g': game.act({ type: 'pickup' }); break;
+    case ',': case 'g': podnies(); break;
     case '>': game.act({ type: 'descend' }); break;
     case '<': game.act({ type: 'ascend' }); break;
     case 'i': mode = 'inventory'; break;

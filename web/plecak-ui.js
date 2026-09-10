@@ -25,8 +25,15 @@ export const POLE_PX = 44;
 let ciagniete = null;
 export function trwaCiagniecie() { return ciagniete !== null; }
 
-/** Siatka plecaka z rzeczami na swoich miejscach. */
-export function siatkaHtml(p, etykieta) {
+/**
+ * Siatka plecaka z rzeczami na swoich miejscach.
+ *
+ * `kosz` dokłada z boku pole „wyrzuć". Wyrzucanie przez przeciągnięcie jest
+ * czymś innym niż przekładanie: przekładanie nie rusza świata i nie kosztuje
+ * tury, a wyrzucenie to działanie jak każde inne. Dlatego kosz pojawia się
+ * tylko tam, gdzie wywołujący podał, co z tym zrobić.
+ */
+export function siatkaHtml(p, etykieta, { kosz = false } = {}) {
   const P = p.plecak || { w: 5, h: 4 };
   const rzeczy = p.inventory.map((it, i) => {
     if (!Number.isInteger(it.px)) return '';
@@ -46,8 +53,11 @@ export function siatkaHtml(p, etykieta) {
       <div class="siatka" style="--kol:${P.w}; --wier:${P.h}; --pole:${POLE_PX}px">
         ${rzeczy}<div class="podglad" hidden></div>
       </div>
+      ${kosz ? `<div class="kosz"><span class="ikona">↷</span><b>wyrzuć</b>
+        <em>przeciągnij tutaj</em></div>` : ''}
       <p class="zajetosc"><b>${zaj}</b> z <b>${poj}</b> ${polaSlowo(poj)} zajęte
-        <span class="muted">- przeciągnij, żeby przełożyć; <kbd>spacja</kbd> obraca</span></p>
+        <span class="muted">- przeciągnij, żeby przełożyć; <kbd>spacja</kbd> obraca${
+          kosz ? '; przeciągnij na kosz, żeby wyrzucić' : ''}</span></p>
     </div>`;
 }
 
@@ -56,14 +66,24 @@ export function siatkaHtml(p, etykieta) {
  *
  * `przeloz(index, x, y, obrot)` ma przełożyć rzecz i odświeżyć widok;
  * `uzyj(index)` woła się przy kliknięciu bez przeciągnięcia;
+ * `wyrzuc(index)` - upuszczenie na koszu (nieobowiązkowe);
  * `rysuj(canvas, item)` maluje ikonę tą samą kredką, co przedmiot na podłodze.
  */
-export function podepnijSiatke(root, p, { przeloz, uzyj, rysuj }) {
+export function podepnijSiatke(root, p, { przeloz, uzyj, wyrzuc, rysuj }) {
   const siatka = root.querySelector('.siatka');
   if (!siatka) return;
   const P = p.plecak || { w: 5, h: 4 };
   const podglad = siatka.querySelector('.podglad');
+  const kosz = wyrzuc ? root.querySelector('.kosz') : null;
   ciagniete = null;
+
+  /** Czy kursor stoi nad koszem. Liczone z prostokąta, nie z `elementFromPoint`:
+   *  ciągnięta rzecz bywa pod kursorem i przesłaniałaby kosz. */
+  const nadKoszem = (ev) => {
+    if (!kosz) return false;
+    const r = kosz.getBoundingClientRect();
+    return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+  };
 
   root.querySelectorAll('.rzecz').forEach((el) => {
     const it = p.inventory[Number(el.dataset.i)];
@@ -82,6 +102,17 @@ export function podepnijSiatke(root, p, { przeloz, uzyj, rysuj }) {
   // Rzecz trzyma się miejsca chwytu, a nie kursora - inaczej duży przedmiot
   // skakałby rogiem pod mysz i nie dałoby się go wsunąć w lukę.
   const odswiezPodglad = () => {
+    // Nad koszem nie ma czego podglądać na siatce - liczy się tylko to, że
+    // rzecz wyleci. Podświetlenie idzie wtedy na kosz.
+    if (nadKoszem(ciagniete.ostatni)) {
+      podglad.hidden = true;
+      kosz.classList.add('celuje');
+      ciagniete.cel = null;
+      ciagniete.doKosza = true;
+      return;
+    }
+    if (kosz) kosz.classList.remove('celuje');
+    ciagniete.doKosza = false;
     const pole = polePod(ciagniete.ostatni);
     const x = pole.x - ciagniete.chwytX, y = pole.y - ciagniete.chwytY;
     const r = wymiary({ ...ciagniete.it, obrot: ciagniete.obrot });
@@ -123,15 +154,17 @@ export function podepnijSiatke(root, p, { przeloz, uzyj, rysuj }) {
 
   const koniec = () => {
     if (!ciagniete) return;
-    const { el, it, ruszony, obrot, cel } = ciagniete;
+    const { el, it, ruszony, obrot, cel, doKosza } = ciagniete;
     el.classList.remove('ciagniete');
     podglad.hidden = true;
+    if (kosz) kosz.classList.remove('celuje');
     window.removeEventListener('pointermove', ruch);
     window.removeEventListener('pointerup', koniec);
     window.removeEventListener('keydown', klawisz, true);
     const idx = Number(el.dataset.i);
     ciagniete = null;
     if (!ruszony) { uzyj(idx); return; }
+    if (doKosza && wyrzuc) { wyrzuc(idx); return; }
     if (cel && cel.ok && (cel.x !== it.px || cel.y !== it.py || obrot !== (it.obrot || 0))) {
       przeloz(idx, cel.x, cel.y, obrot);
     } else {
@@ -152,7 +185,7 @@ export function podepnijSiatke(root, p, { przeloz, uzyj, rysuj }) {
         chwytY: Math.min(Math.max(0, pole.y - it.py), r.h - 1),
         obrot: it.obrot || 0,
         startX: ev.clientX, startY: ev.clientY,
-        ruszony: false, cel: null, ostatni: ev,
+        ruszony: false, cel: null, doKosza: false, ostatni: ev,
       };
       window.addEventListener('pointermove', ruch);
       window.addEventListener('pointerup', koniec);

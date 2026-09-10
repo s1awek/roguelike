@@ -6,7 +6,7 @@
 
 import { WALL, FLOOR, STAIRS_DOWN, STAIRS_UP } from './map.js';
 import { itemLabel, itemGlyph, itemStats, polaSlowo } from './items.js';
-import { pojemnosc, zajetePola, ile as sztuk } from './plecak.js';
+import { pojemnosc, zajetePola, poleRzeczy, wolnePola, ile as sztuk } from './plecak.js';
 import { opisWLinijkach } from './ocena.js';
 import { buildRules } from './rules.js';
 import { stanyBohatera } from './stany.js';
@@ -227,7 +227,33 @@ export function renderObejrzyj(game) {
   return out;
 }
 
-export function renderFrame(game, mode = 'map', extra = '', section = 0) {
+/**
+ * Wybór z kupki pod nogami. `wybrane` to zbiór identyfikatorów - ten sam
+ * kształt danych co w obu wersjach przeglądarkowych, żeby zachowanie
+ * („zaznaczam, potem zatwierdzam") nie rozjechało się między wersjami.
+ */
+export function renderStos(game, wybrane) {
+  const stos = game.stosPodNogami();
+  const p = game.player;
+  const out = [`${C.bold}Pod nogami leży ${stos.length}:${C.reset}`, ''];
+  stos.forEach((it, i) => {
+    const zazn = wybrane.has(it.id);
+    const pola = poleRzeczy(it);
+    const st = itemStats(it, p, game.identified);
+    out.push(`  ${zazn ? C.brightGreen + '[x]' : C.grey + '[ ]'}${C.reset} `
+      + `${C.bold}${String.fromCharCode(97 + i)})${C.reset} ${game.etykieta(it)}`
+      + `  ${C.grey}${pola} ${polaSlowo(pola)}${st.opis ? ` - ${st.opis}` : ''}${C.reset}`);
+  });
+  const zajmie = stos.filter(i => wybrane.has(i.id)).reduce((a, i) => a + poleRzeczy(i), 0);
+  const wolne = wolnePola(p);
+  const barwa = zajmie > wolne ? C.brightRed : C.grey;
+  out.push('', `  ${barwa}Wybrane zajmą ${zajmie} z ${wolne} wolnych pól`
+    + `${zajmie > wolne ? ' - tyle się nie zmieści' : ''}.${C.reset}`);
+  out.push('', `${C.grey}litera = zaznacz   * = wszystko   Enter = podnieś   Esc = wróć${C.reset}`);
+  return out;
+}
+
+export function renderFrame(game, mode = 'map', extra = '', section = 0, wybrane = null) {
   const width = Math.max(80, Math.min(process.stdout.columns || 80, 200));
   const pad = ' '.repeat(Math.max(0, Math.floor((width - game.level.w) / 2)));
   const out = [];
@@ -240,10 +266,18 @@ export function renderFrame(game, mode = 'map', extra = '', section = 0) {
     out.push('', ...renderObejrzyj(game).map(l => pad + l));
     return clearScreen() + out.join('\n') + '\n';
   }
+  if (mode === 'stos') {
+    out.push('', ...renderStos(game, wybrane || new Set()).map(l => pad + l));
+    return clearScreen() + out.join('\n') + '\n';
+  }
   if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') {
     const titles = { drop: 'Co wyrzucić?', sniff: 'Co powąchać?' };
     const title = titles[mode] ? `${C.bold}${titles[mode]}${C.reset}` : '';
     out.push('', ...(title ? [pad + title, ''] : []), ...renderInventory(game, mode).map(l => pad + l));
+    // Ekran ekwipunku nie zamyka się po użyciu rzeczy, więc skutek tego użycia
+    // musi być widoczny TUTAJ - inaczej gracz wypija miksturę i nie wie, co się
+    // stało, dopóki nie wróci na mapę.
+    out.push('', ...renderMessages(game).map(l => pad + l));
     return clearScreen() + out.join('\n') + '\n';
   }
 

@@ -237,6 +237,10 @@ kbd {
 }
 #turowy.czeka { border-color: #4a2026; }
 #turowy.czeka b { color: var(--red); }
+/* Bohater przy górnej krawędzi: pasek schodzi pod planszę, nad linijkę notki.
+   Przeskok jest natychmiastowy - płynne przejście przez środek ekranu
+   przeciągałoby zasłonięcie na kilkanaście klatek. */
+#turowy.nadole { top: auto; bottom: 52px; }
 
 #notice {
   position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
@@ -372,3 +376,22 @@ kbd {
 #hud .stan.krytycznie .num { color: var(--red); font-weight: 700; }
 #hud .stan.krytycznie { animation: pulsStanu 1.1s ease-in-out infinite; }
 @keyframes pulsStanu { 50% { opacity: .45; } }
+
+/* ---------- kosz: wyrzucanie przeciągnięciem ---------- */
+/* Stoi obok siatki, nie pod nią: ruch w bok jest krótszy i nie myli się
+   z przekładaniem w obrębie plecaka. */
+#panel .kosz {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 10px 14px; margin-top: 8px;
+  border: 1px dashed var(--dim); border-radius: 8px;
+  color: var(--dim); text-align: center; user-select: none;
+}
+#panel .kosz .ikona { font-size: 20px; line-height: 1; }
+#panel .kosz b { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
+#panel .kosz em { font-size: 11px; font-style: normal; opacity: .7; }
+/* Podświetla się dopiero, gdy rzecz naprawdę nad nim wisi - żeby upuszczenie
+   nigdy nie było niespodzianką. */
+#panel .kosz.celuje {
+  border-color: var(--red); border-style: solid; color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}

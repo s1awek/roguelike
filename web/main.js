@@ -8,9 +8,9 @@
 import { Game } from '../src/game.js';
 import { serialize, loadFromString } from '../src/serialize.js';
 import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
-import { pojemnosc, zajetePola } from '../src/plecak.js';
+import { pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
 import { siatkaHtml, podepnijSiatke } from './plecak-ui.js';
-import { statsHtml, obejrzyjHtml, stanyHtml } from './opis.js';
+import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
@@ -34,7 +34,7 @@ const renderer = new Renderer(canvas);
 const view = new View();
 
 const params = new URLSearchParams(location.search);
-let mode = 'map';                // 'map' | 'inventory' | 'drop' | 'sniff' | 'help' | 'over'
+let mode = 'map';                // 'map' | 'inventory' | 'drop' | 'sniff' | 'stos' | 'obejrzyj' | 'help' | 'over'
 const RULES = buildRules('web');
 let ruleSection = 0;
 let walk = null;
@@ -151,8 +151,20 @@ window.addEventListener('keydown', (e) => {
   // Oglądanie nic nie kosztuje, więc wychodzi się z niego dowolnym klawiszem,
   // a przecinek podnosi od razu - bez wracania na mapę po tę samą decyzję.
   if (mode === 'obejrzyj') {
-    if (k === ',' || k === 'g') { closeOverlay(); act({ type: 'pickup' }); return; }
+    if (k === ',' || k === 'g') { closeOverlay(); podnies(); return; }
     closeOverlay();
+    return;
+  }
+
+  // Wybór z kupki. Zaznaczanie NIE zamyka okna - zamyka je dopiero Enter albo
+  // Esc. O to prosił właściciel wprost: „nie tak, że raz klikamy i okienko
+  // znika, tylko zaznaczamy i zatwierdzamy".
+  if (mode === 'stos') {
+    if (k === 'Escape' || k === 'q') { closeOverlay(); return; }
+    if (k === 'Enter') { potwierdzStos(); return; }
+    if (k === '*') { zaznaczWszystko(); return; }
+    const idx = k.length === 1 ? k.charCodeAt(0) - 97 : -1;
+    if (idx >= 0 && idx < stos.length) przelaczWybor(idx);
     return;
   }
 
@@ -167,7 +179,7 @@ window.addEventListener('keydown', (e) => {
 
   switch (k) {
     case '.': case '5': act({ type: 'wait' }); break;
-    case ',': case 'g': act({ type: 'pickup' }); break;
+    case ',': case 'g': podnies(); break;
     case '>': act({ type: 'descend' }); break;
     case '<': act({ type: 'ascend' }); break;
     case 'i': openInventory('inventory'); break;
@@ -205,10 +217,21 @@ canvas.addEventListener('click', (e) => {
 
 function closeOverlay() { mode = 'map'; overlay.hidden = true; }
 
+/**
+ * Użycie rzeczy z ekwipunku. Panel ZOSTAJE otwarty.
+ *
+ * Właściciel ujął to regułą, która obowiązuje w całym interfejsie: „wyjście
+ * z ekwipunku powinno być świadomą decyzją, a nie automatyczną konsekwencją
+ * jakiejś akcji". Zamykanie panelu po każdym użyciu kazało otwierać go od nowa
+ * przy wypiciu drugiej mikstury albo wyrzuceniu drugiej rzeczy.
+ */
 function useSlot(idx) {
+  const which = mode;
   const action = mode === 'drop' ? 'drop' : mode === 'sniff' ? 'sniff' : 'use';
-  closeOverlay();
   act({ type: action, index: idx });
+  // Wyjątkiem jest koniec partii: nie ma już czego układać w plecaku.
+  if (game.player.status === 'playing') openInventory(which);
+  else closeOverlay();
 }
 
 /**
@@ -222,6 +245,67 @@ function pokazObejrzenie() {
   const nazwa = it ? itemLabel(it, game.appearances, game.identified, game.sniffed) : '';
   panel.innerHTML = obejrzyjHtml(nazwa, o)
     + `<p class="foot">${o ? '<kbd>,</kbd> podnosi. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+  overlay.hidden = false;
+}
+
+// ---------- kupka pod nogami ----------
+
+let stos = [];                     // rzeczy leżące pod nogami, gdy okno otwarte
+let wybrane = new Set();           // identyfikatory zaznaczonych
+
+/**
+ * Podniesienie z podłogi. Jedna rzecz idzie od razu - okno wyboru przy jednej
+ * pozycji byłoby kliknięciem za dużo. Kilka rzeczy otwiera wybór.
+ */
+function podnies() {
+  const pod = game.stosPodNogami();
+  if (pod.length <= 1) { act({ type: 'pickup' }); return; }
+  stos = pod;
+  wybrane = new Set(pod.map(i => i.id));   // domyślnie wszystko - najczęstszy zamiar
+  pokazStos();
+}
+
+function przelaczWybor(i) {
+  const it = stos[i];
+  if (!it) return;
+  if (wybrane.has(it.id)) wybrane.delete(it.id); else wybrane.add(it.id);
+  pokazStos();
+}
+
+function zaznaczWszystko() {
+  wybrane = wybrane.size === stos.length ? new Set() : new Set(stos.map(i => i.id));
+  pokazStos();
+}
+
+function potwierdzStos() {
+  const ids = stos.filter(i => wybrane.has(i.id)).map(i => i.id);
+  closeOverlay();
+  if (ids.length) act({ type: 'pickup', ids });
+}
+
+function pokazStos() {
+  mode = 'stos';
+  const p = game.player;
+  const etykieta = (it) => itemLabel(it, game.appearances, game.identified, game.sniffed);
+  const lista = stos.map((it) => {
+    const o = game.obejrzyj(it);
+    return {
+      nazwa: etykieta(it),
+      opis: itemStats(it, p, game.identified).opis,
+      pola: `${poleRzeczy(it)} ${polaSlowo(poleRzeczy(it))}`,
+      wybrane: wybrane.has(it.id),
+      werdykt: o ? o.werdykt : '',
+      ton: o ? o.ton : '',
+    };
+  });
+  const zajmie = stos.filter(i => wybrane.has(i.id)).reduce((a, i) => a + poleRzeczy(i), 0);
+  panel.innerHTML = stosHtml(lista, { zajmie, wolne: wolnePola(p) });
+  panel.querySelectorAll('li.wybor').forEach(li => {
+    const it = stos[Number(li.dataset.i)];
+    const c = li.querySelector('canvas.ico');
+    if (c && it) renderer.drawItemShape(c.getContext('2d'), it, 22, 22, 40, game, view);
+    li.addEventListener('click', () => przelaczWybor(Number(li.dataset.i)));
+  });
   overlay.hidden = false;
 }
 
@@ -248,7 +332,7 @@ function openInventory(which) {
   const poj = pojemnosc(p);
   panel.innerHTML = `
     <h2>${INV_TITLE[which]} <span class="muted">${zajetePola(p)}/${poj} ${polaSlowo(poj)}</span></h2>
-    <div class="ekwipunek">${which === 'inventory' ? siatkaHtml(p, etykieta) : ''}
+    <div class="ekwipunek">${which === 'inventory' ? siatkaHtml(p, etykieta, { kosz: true }) : ''}
       <ul>${rows || '<li class="muted">(pusto)</li>'}</ul></div>
     <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
       ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
@@ -269,6 +353,15 @@ function openInventory(which) {
       openInventory(which);
     },
     uzyj: (i) => useSlot(i),
+    // Wyrzucenie JEST działaniem w świecie - kosztuje turę i idzie przez `act`,
+    // inaczej niż przekładanie tuż wyżej.
+    // Ekwipunek zostaje otwarty: wyrzucanie rzadko dotyczy jednej rzeczy, a
+    // zamykanie panelu po każdej kazałoby otwierać go od nowa pięć razy pod rząd.
+    wyrzuc: (i) => {
+      act({ type: 'drop', index: i });
+      if (game.player.status === 'playing') openInventory(which);
+      else closeOverlay();
+    },
     rysuj: (c, it) => renderer.drawItemShape(c.getContext('2d'), it,
       c.width / 2, c.height / 2, Math.min(c.width, c.height) - 8, game, view),
   });

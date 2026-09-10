@@ -55,3 +55,34 @@ export function stanyHtml(hero) {
       <span class="num">${esc(s.etykieta)}</span>
     </div>`).join('');
 }
+
+/**
+ * Wybór z kupki leżącej pod nogami.
+ *
+ * Zgłoszenie właściciela: „jeżeli kilka rzeczy leży na jednym kwadracie, to
+ * powinno się otworzyć menu, w którym pokażemy, co chcemy podnieść - i nie tak,
+ * że raz klikamy i okienko znika, tylko zaznaczamy i zatwierdzamy". Stąd dwa
+ * kroki: zaznaczanie nie zamyka okna, dopiero Enter podnosi.
+ *
+ * `lista` to pozycje `{ nazwa, opis, pola, wybrane, werdykt, ton }`, a `bilans`
+ * mówi, ile pól zajmie wybór i ile jest wolnych - bo najczęstszy zawód przy
+ * podnoszeniu z kupki brzmi „zaznaczyłem pięć, weszły dwie".
+ */
+export function stosHtml(lista, bilans) {
+  const rows = lista.map((w, i) => `
+    <li class="item wybor${w.wybrane ? ' on' : ''}" data-i="${i}">
+      <span class="ptak">${w.wybrane ? '✔' : ''}</span>
+      <span class="key">${String.fromCharCode(97 + i)}</span>
+      <canvas class="ico" width="44" height="44"></canvas>
+      <span class="nm">${esc(w.nazwa)} <span class="worn">${esc(w.pola)}</span>
+        ${w.opis ? `<span class="st">${esc(w.opis)}</span>` : ''}
+        ${w.werdykt ? `<em class="cmp ${w.ton || ''}">${esc(w.werdykt)}</em>` : ''}</span>
+    </li>`).join('');
+  const zle = bilans.zajmie > bilans.wolne;
+  return `<h2>Pod nogami <span class="muted">${lista.length} rzeczy</span></h2>
+    <ul class="stos">${rows}</ul>
+    <p class="bilans ${zle ? 'minus' : 'rowno'}">Wybrane zajmą <b>${bilans.zajmie}</b>
+      z <b>${bilans.wolne}</b> wolnych pól${zle ? ' - tyle się nie zmieści' : ''}.</p>
+    <p class="foot"><kbd>Enter</kbd> podnosi zaznaczone. Litera albo kliknięcie zaznacza,
+      <kbd>*</kbd> zaznacza wszystko, <kbd>Esc</kbd> wraca.</p>`;
+}
