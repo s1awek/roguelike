@@ -34,6 +34,8 @@ async function serwer(args = []) {
       return { code: r.status, body: await r.json() };
     },
     stol: async () => (await fetch(`${baza}/api/stol`)).json(),
+    moje: async (hid, token) =>
+      (await fetch(`${baza}/api/moje?hid=${hid}&token=${encodeURIComponent(token)}`)).status,
     koniec: () => p.kill(),
   };
 }
@@ -82,5 +84,19 @@ test('KONTROLA PRZYRZĄDU: przy podniesionym pułapie ta sama seria zajmuje wię
     const przyjete = wyniki.filter(r => r.code === 200).length;
     assert.equal(przyjete, 5,
       `pułap 5 przyjął ${przyjete} - test nie mierzy pułapu, tylko coś innego`);
+  } finally { s.koniec(); }
+});
+
+test('stół potrafi powiedzieć, czy zapamiętane miejsce jeszcze istnieje', async () => {
+  // Znak miejsca leży w `sessionStorage` przeglądarki i przeżywa RESTART serwera,
+  // po którym nie znaczy już nic. Bez tego pytania klient dobijał się strumieniem
+  // do nieistniejącego miejsca, dostawał 403 w pętli i nie miał jak wrócić
+  // do ekranu wejścia - a zapora „mam już miejsce" nie pozwalała mu wejść od nowa.
+  const s = await serwer();
+  try {
+    const r = await s.dosiadz('Wracacz');
+    assert.equal(await s.moje(r.body.hid, r.body.token), 200, 'ważne miejsce uznane za nieistniejące');
+    assert.equal(await s.moje(r.body.hid, 'nie-ten-znak'), 403, 'obcy znak przyjęty jako własny');
+    assert.equal(await s.moje(999, r.body.token), 403, 'miejsce spoza stołu uznane za istniejące');
   } finally { s.koniec(); }
 });

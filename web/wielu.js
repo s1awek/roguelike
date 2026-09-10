@@ -114,7 +114,38 @@ function otworzStrumien() {
     if (cien.ja.status !== 'playing' && mode !== 'over') koniec();
     odswiezHud();
   };
-  strumien.onerror = () => { say('Zerwane połączenie ze stołem, próbuję dalej...', 4000); };
+  strumien.onerror = async () => {
+    // Zerwanie połączenia i NIEISTNIEJĄCE miejsce wyglądają w `EventSource`
+    // tak samo, a różnią się wszystkim: pierwsze mija samo, drugiego nie
+    // naprawi żadna liczba ponowień. Po restarcie serwera znak z poprzedniego
+    // stołu jest bezwartościowy, więc trzeba to sprawdzić i wrócić do lobby -
+    // inaczej gracz ogląda „próbuję dalej" bez końca, a przycisk wejścia jest
+    // zablokowany, bo miejsce formalnie ma.
+    if (ja && !(await miejsceIstnieje(ja))) return doLobby(
+      'Stół został podniesiony od nowa - Twoja poprzednia partia przepadła. Wejdź jeszcze raz.');
+    say('Zerwane połączenie ze stołem, próbuję dalej...', 4000);
+  };
+}
+
+/** Czy zapamiętane miejsce nadal istnieje po stronie stołu. */
+async function miejsceIstnieje(m) {
+  try {
+    const r = await fetch(`/api/moje?hid=${m.hid}&token=${encodeURIComponent(m.token)}`);
+    return r.status === 200;
+  } catch { return true; }   // brak sieci to nie dowód, że miejsca nie ma
+}
+
+/** Powrót do ekranu wejścia z czystym stanem. */
+function doLobby(powod) {
+  if (strumien) { strumien.close(); strumien = null; }
+  ja = null;
+  sessionStorage.removeItem('roguelike:miejsce');
+  mode = 'lobby';
+  $('lobby').hidden = false;
+  const przycisk = $('wejdz');
+  przycisk.disabled = false;
+  przycisk.textContent = 'Wejdź do lochu';
+  if (powod) say(powod, 8000);
 }
 
 function zglos(action) {
@@ -319,8 +350,14 @@ $('imie').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('wejdz')
 const zapamietane = sessionStorage.getItem('roguelike:miejsce');
 if (zapamietane) {
   // Odświeżenie strony nie ma znaczyć nowej postaci - miejsce przy stole jest
-  // to samo, dopóki trwa sesja przeglądarki.
-  try { ja = JSON.parse(zapamietane); otworzStrumien(); } catch { /* wejście od nowa */ }
+  // to samo, dopóki trwa sesja przeglądarki. Ale znak przeżywa też restart
+  // serwera, po którym nie znaczy już nic, więc pytamy stół, zanim na nim
+  // cokolwiek zbudujemy.
+  try {
+    const m = JSON.parse(zapamietane);
+    if (await miejsceIstnieje(m)) { ja = m; otworzStrumien(); }
+    else doLobby('Poprzedni stół już nie istnieje - wejdź jeszcze raz.');
+  } catch { doLobby(); }
 }
 
 /**

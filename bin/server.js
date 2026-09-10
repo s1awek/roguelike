@@ -266,6 +266,20 @@ const server = createServer(async (req, res) => {
     } catch (e) { return json(res, 400, { blad: e.message }); }
   }
 
+  /**
+   * Czy zapamiętane miejsce jeszcze istnieje.
+   *
+   * Przeglądarka trzyma znak miejsca w `sessionStorage`, który przeżywa nie tylko
+   * odświeżenie strony, ale i RESTART SERWERA - a po restarcie żaden stary znak
+   * nie jest już ważny, bo stół zaczyna się od nowa. Bez tego pytania klient
+   * dobijał się strumieniem do nieistniejącego miejsca i dostawał 403 w pętli,
+   * nie mając jak wrócić do lobby.
+   */
+  if (path === '/api/moje') {
+    const w = uwierzytelnij(Number(u.searchParams.get('hid')), u.searchParams.get('token'));
+    return json(res, w ? 200 : 403, w ? { ok: true } : { blad: 'miejsce już nie istnieje' });
+  }
+
   if (path === '/api/strumien') {
     const hid = Number(u.searchParams.get('hid'));
     const w = uwierzytelnij(hid, u.searchParams.get('token'));
