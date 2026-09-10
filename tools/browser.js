@@ -90,6 +90,12 @@ const api = {
     await S('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
     await new Promise(r => setTimeout(r, 60));
   },
+  /** Wymuszony rozmiar okna widoku - do prób na ekranach innych niż domyślny. */
+  async metrics(width, height) {
+    await S('Emulation.setDeviceMetricsOverride',
+      { width, height, deviceScaleFactor: 1, mobile: false });
+    await new Promise(r => setTimeout(r, 400));
+  },
   async shot(path) {
     const { data } = await S('Page.captureScreenshot', { format: 'png' });
     writeFileSync(path, Buffer.from(data, 'base64'));

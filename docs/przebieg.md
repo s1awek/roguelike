@@ -470,6 +470,55 @@ Zrzut ekranu byłby tu tańszy niż trzy rundy pomiarów pośrednich - i to jest
 właściwy wniosek na przyszłość: **gdy zgłoszenie dotyczy tego, co widać, dowodem
 jest obraz, a nie odczyt z modelu dokumentu.**
 
+### W-16: czarny ekran, bo pasek uczestników przejął wiersz planszy
+
+Trzecia wada z tego samego zgłoszenia i najkosztowniejsza w diagnozie, bo objaw
+był całkowicie milczący: pasek stanu żył, tury leciały, znacznik kontaktu
+wypisywał widzianych przeciwników, konsola była pusta, serwer wysyłał migawki -
+a plansza była czarna.
+
+Przyczyna to jedna linia arkusza. `#shell` był siatką o TRZECH wierszach
+(`grid-template-rows: auto 1fr auto`) pod trzech potomków wersji jednoosobowej:
+pasek stanu, plansza, dziennik. Wersja wieloosobowa dołożyła czwartego - pasek
+uczestników nad planszą - i **on przejął wiersz `1fr`**, a plansza zsunęła się do
+wiersza `auto`. Płótno jest pozycjonowane absolutnie, więc nie wnosi wysokości:
+plansza dostała zero pikseli, a `overflow: hidden` obciął rysunek w całości.
+Na zrzucie właściciela widać to wprost - pasek „przy stole" stoi wyśrodkowany
+w połowie okna, bo zajmuje cały elastyczny wiersz.
+
+Naprawa: kolumna elastyczna zamiast siatki o stałej liczbie wierszy. Nie zależy
+ani od liczby, ani od kolejności potomków - każdy pasek bierze swoją wysokość,
+plansza resztę - więc dołożenie kolejnego paska w przyszłości niczego nie wywróci.
+
+**Przyrząd, który tego nie widział, i przyrząd, który widzi.** Poprzednie próby
+czytały model dokumentu: `mode`, `roguelike.cien.turn`, `element.hidden`. Wszystkie
+te odczyty były PRAWDZIWE i wszystkie mówiły „działa", bo gra faktycznie działała -
+tylko w kontenerze o zerowej wysokości. Nowa próba liczy **niepuste piksele na
+płótnie** przez `getImageData`, czyli mierzy to samo, co widzi oko. Kontrola na
+przypadku znanym-złym (siatka cofnięta): wysokość planszy 0, płótno w domyślnym
+300x150, udział narysowanych pikseli 0. Po naprawie, mierzone na dwóch rozmiarach
+okna: plansza 1194 px i 624 px, płótno zgodne z kontenerem, udział 3,8% i 5,5% -
+przy 2,8% i 8,0% na znanej-dobrej wersji jednoosobowej w tych samych warunkach.
+Zgodność z wersją jednoosobową jest tu istotniejsza niż sama liczba, bo świeżo
+odsłonięta komnata to z natury kilka procent planszy.
+
+**Trzecia nauka o tym samym.** W-15 i W-16 to ta sama pomyłka metodyczna w dwóch
+odsłonach: pytanie dotyczyło tego, co widzi człowiek, a mierzyłem stan modelu
+dokumentu. Za pierwszym razem kosztowało to odrzucenie trafnej hipotezy
+właściciela, za drugim dwa fałszywe komunikaty „gra się uruchamia poprawnie".
+Liczba „1400x200" stała w wyjściu mojej własnej próby na długo przed diagnozą -
+płótno o wysokości 200 px to wartość minimalna z `Math.max(200, ...)`, czyli
+gotowy dowód, że kontener ma zero wysokości. Przeczytałem ją i przepuściłem, bo
+szukałem wyjątku, a nie geometrii. **Gdy zgłoszenie dotyczy tego, co widać,
+pierwszym dowodem ma być obraz.** Zrzut ekranu od właściciela rozstrzygnął
+w kilka sekund to, czego trzy rundy pomiarów pośrednich nie ruszyły.
+
+**Uboczne, o zakłócaniu pomiaru przez przyrząd:** przy powtórnym przebiegu sonda
+dosiadła stołu dwa razy, a trzecią próbę odbił pułap miejsc na adres (D-031) -
+i płótno zostało w domyślnym 300x150, co wyglądało jak nawrót wady. Próby chodzą
+teraz po stole testowym z podniesionym pułapem (`--miejsc-na-adres`), a nie po
+stole właściciela.
+
 ## Wątek 4: czytelność, minimapa, autozapis (2026-09-10)
 
 Trzy zgłoszenia właściciela po pierwszej dłuższej rozgrywce w przeglądarce:

@@ -47,6 +47,13 @@ function say(text, ms = 2600) {
   el.hidden = false;
 }
 
+/** Gasi notkę natychmiast, nie czekając na jej termin. */
+function schowajNotke() {
+  notice = '';
+  noticeUntil = 0;
+  $('notice').hidden = true;
+}
+
 // ---------- rozmowa z serwerem ----------
 
 async function post(sciezka, body) {
@@ -97,6 +104,8 @@ async function dosiadz(name) {
   }
 }
 
+let pierwszyWidok = false;
+
 /** Przejście z ekranu wejścia do lochu. */
 function doMapy() {
   mode = 'map';
@@ -123,6 +132,8 @@ function otworzStrumien() {
     }
     // Zapasowo, gdyby migawka wyprzedziła przejście do mapy.
     if (mode === 'lobby') { doMapy(); renderer.resize(cien); }
+    // Widok lochu przyszedł, więc zapowiedź czekania nie ma już czego zapowiadać.
+    if (!pierwszyWidok) { pierwszyWidok = true; schowajNotke(); }
     // Tura zeszła, więc zgłoszenie zostało rozstrzygnięte.
     if (cien.turn !== turaZgloszenia) zgloszone = null;
     if (cien.ja.status !== 'playing' && mode !== 'over') koniec();
