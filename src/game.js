@@ -50,6 +50,8 @@ export class Game {
     // a druga ścieżka rozeszłaby się z pierwszą przy pierwszym strojeniu.
     this.heroes = [];
     this.active = 0;
+    // Licznik do POMIARU starć, nie część stanu gry - nie wchodzi do zapisu.
+    this.stats = { pvpHits: 0, fightsLost: 0 };
     this.heroes.push(this.makeHero(opts.name ?? 'Ty'));
 
     if (!opts.deferStart) this.enterLevel(1, 'start');
@@ -130,9 +132,78 @@ export class Game {
   get monsters() { return this.here.monsters; }
   get items() { return this.here.items; }
 
-  message(text) {
-    this.messages.push({ turn: this.turn, text });
-    if (this.messages.length > 200) this.messages.shift();
+  message(text) { this.tell(this.player, text); }
+
+  /** Komunikat do dziennika KONKRETNEGO uczestnika - dziennik jest osobisty. */
+  tell(hero, text) {
+    if (!hero) return;
+    hero.messages.push({ turn: this.turn, text });
+    if (hero.messages.length > 200) hero.messages.shift();
+  }
+
+  isHero(x) { return this.heroes.includes(x); }
+
+  /** Żywi uczestnicy na danym poziomie, w STAŁEJ kolejności - od kolejności
+   *  zależy zużycie generatora losowego, więc nie wolno jej uzależnić od niczego. */
+  heroesOn(depth) {
+    return this.heroes.filter(h => h.status === 'playing' && h.depth === depth);
+  }
+
+  heroAt(x, y, depth, except = null) {
+    return this.heroes.find(h => h !== except && h.status === 'playing'
+      && h.depth === depth && h.x === x && h.y === y) || null;
+  }
+
+  /**
+   * Inni uczestnicy, z którymi ten jest w KONTAKCIE - czyli tacy, których widzi.
+   *
+   * To jest granica, na której tura przestaje być prywatna i staje się wspólna.
+   * Kontakt idzie po polu widzenia, a pole widzenia jest w tej grze symetryczne
+   * (kryterium 3 pierwotnej spec-a), więc „A widzi B" znaczy też „B widzi A"
+   * i nie trzeba pytać dwa razy.
+   *
+   * Świadomie NIE po wejściu na poziom: przy kilku uczestnikach cały poziom
+   * czekałby na najwolniejszego, a przy dziesięciu byłoby to nie do gry.
+   */
+  contacts(hero) {
+    return this.heroes.filter(o => o !== hero && o.status === 'playing'
+      && o.depth === hero.depth && hero.visible.has(`${o.x},${o.y}`));
+  }
+
+  monsterOn(depth, x, y) {
+    const e = this.levels.get(depth);
+    return e ? e.monsters.find(m => m.x === x && m.y === y && m.hp > 0) : undefined;
+  }
+
+  /**
+   * Dołącza uczestnika do trwającej partii.
+   *
+   * Domyślnie ROZSTAWIA go po poziomie, a nie stawia na schodach wejściowych.
+   * Wyszło to z pierwszego pomiaru pojedynku: gdy wszyscy wchodzą tymi samymi
+   * schodami, każda partia zaczyna się bójką na wejściu, jeszcze przed
+   * znalezieniem czegokolwiek - czyli spotkanie nie jest wtedy wydarzeniem,
+   * tylko podatkiem od wejścia.
+   */
+  addHero(name = null, depth = 1, { scatter = true } = {}) {
+    const hero = this.makeHero(name ?? `Gracz ${this.heroes.length + 1}`);
+    this.heroes.push(hero);
+    if (scatter) this.scatterHero(hero, depth);
+    else this.placeHero(hero, depth, 'start');
+    return hero;
+  }
+
+  /** Stawia uczestnika na wolnym polu poziomu, z dala od innych uczestników. */
+  scatterHero(hero, depth = hero.depth || 1) {
+    if (!this.levels.has(depth)) this.levels.set(depth, this.buildLevel(depth));
+    hero.depth = depth;
+    const entry = this.levels.get(depth);
+    const inni = this.heroes
+      .filter(h => h !== hero && h.depth === depth)
+      .map(h => ({ x: h.x, y: h.y }));
+    const p = this.freeTile(entry.level, entry.monsters, entry.items, inni);
+    if (p) { hero.x = p.x; hero.y = p.y; }
+    this.updateFOV(hero);
+    return hero;
   }
 
   /** Losowe wolne pole podłogi, na którym nikt nie stoi i nic nie leży. */
@@ -194,21 +265,34 @@ export class Game {
     return { level, monsters, items };
   }
 
-  enterLevel(depth, from = 'down') {
+  enterLevel(depth, from = 'down') { this.placeHero(this.player, depth, from); }
+
+  placeHero(hero, depth, from = 'down') {
     if (depth < 1) depth = 1;
     if (!this.levels.has(depth)) this.levels.set(depth, this.buildLevel(depth));
-    this.depth = depth;
-    const L = this.here.level;
+    hero.depth = depth;
+    const entry = this.levels.get(depth);
+    const L = entry.level;
     const spot = from === 'up' ? L.downPos : L.upPos; // wracając z dołu stajemy przy schodach w dół
-    this.player.x = spot.x;
-    this.player.y = spot.y;
+    hero.x = spot.x;
+    hero.y = spot.y;
     // gdyby na schodach stał potwór, przesuwamy go, zamiast wpychać gracza w potwora
-    const blocker = this.monsters.find(m => m.x === spot.x && m.y === spot.y);
+    const blocker = entry.monsters.find(m => m.x === spot.x && m.y === spot.y);
     if (blocker) {
-      const p = this.freeTile(L, this.monsters, this.items, [spot]);
+      const p = this.freeTile(L, entry.monsters, entry.items, [spot]);
       if (p) { blocker.x = p.x; blocker.y = p.y; }
     }
-    this.updateFOV();
+    // Gdyby na wejściu stał już inny uczestnik, schodzimy o pole obok. BEZ losowania:
+    // obecność drugiego gracza nie może przesuwać strumienia losowego, bo wtedy
+    // partia jednoosobowa i wieloosobowa z tego samego ziarna to dwa różne lochy.
+    if (this.heroAt(hero.x, hero.y, depth, hero)) {
+      for (const [nx, ny] of neighbors(spot.x, spot.y, (x, y) => L.isWalkable(x, y))) {
+        if (this.heroAt(nx, ny, depth, hero)) continue;
+        if (entry.monsters.some(m => m.x === nx && m.y === ny && m.hp > 0)) continue;
+        hero.x = nx; hero.y = ny; break;
+      }
+    }
+    this.updateFOV(hero);
   }
 
   updateFOV(hero = this.player) {
@@ -232,14 +316,14 @@ export class Game {
 
   // ---------- statystyki bojowe ----------
 
-  playerAttack() {
-    const w = this.player.weapon;
-    return this.player.str + (w ? w.bonus + (w.enchant || 0) : 0);
+  playerAttack(hero = this.player) {
+    const w = hero.weapon;
+    return hero.str + (w ? w.bonus + (w.enchant || 0) : 0);
   }
 
-  playerDefense() {
-    const a = this.player.armor;
-    return this.player.def + (a ? a.bonus + (a.enchant || 0) : 0);
+  playerDefense(hero = this.player) {
+    const a = hero.armor;
+    return hero.def + (a ? a.bonus + (a.enchant || 0) : 0);
   }
 
   // ---------- działania gracza ----------
@@ -249,30 +333,129 @@ export class Game {
    * Działania odrzucone (ruch w ścianę, brak przedmiotu) NIE zużywają tury.
    */
   act(action) {
-    if (this.status !== 'playing') return false;
-    let spent = false;
-
-    switch (action.type) {
-      case 'move': spent = this.tryMove(action.dx, action.dy); break;
-      case 'wait': spent = true; break;
-      case 'pickup': spent = this.pickUp(); break;
-      case 'descend': spent = this.descend(); break;
-      case 'ascend': spent = this.ascend(); break;
-      case 'use': spent = this.useItem(action.index); break;
-      case 'drop': spent = this.dropItem(action.index); break;
-      case 'sniff': spent = this.sniff(action.index); break;
-      default: spent = false;
-    }
-
-    if (spent) {
-      this.turn++;
-      this.monstersAct();
-      this.tickRegen();
-      this.tickHunger();
-      this.updateFOV();
-      if (this.player.hp <= 0 && this.status === 'playing') this.die(this.deathCause || 'rany');
-    }
+    if (this.player.status !== 'playing') return false;
+    const hero = this.player;
+    const spent = this.applyAction(hero, action);
+    if (spent) { this.turn++; this.worldTurn([hero]); }
     return spent;
+  }
+
+  /**
+   * Jedna tura WSPÓLNA. Wszyscy uczestnicy deklarują działanie, wszystkie
+   * działania biorą skutek w tej samej turze, dopiero potem rusza się świat.
+   *
+   * To jest odpowiedź na dwie rzeczy naraz. Po pierwsze, nikt nie dostaje
+   * darmowej serii ciosów: nie istnieje przebieg, w którym jeden uderza dwa
+   * razy, a drugi nie ma między tymi ciosami możliwości zadziałania. Po drugie,
+   * wycofanie się jest zawsze możliwe, bo krok w tył bierze skutek w tej samej
+   * turze co cios przeciwnika. Wariant „blok N ruchów" dawałby drugiemu
+   * graczowi N darmowych ciosów, co przy tych punktach życia jest śmiercią.
+   *
+   * Uczestnik bez deklaracji stoi bezczynnie - bezczynność jednego nie
+   * zatrzymuje partii (kryterium 18 spec-a).
+   *
+   * `actions`: Map hid -> działanie. Zwraca Map hid -> czy tura zeszła.
+   */
+  resolveTurn(actions = new Map()) {
+    // Uczestnicy tury ustalani PRZED działaniami: kto wchodził w turę żywy,
+    // ten ją do końca odbywa, choćby w jej trakcie wygrał albo padł.
+    const uczestnicy = this.heroes.filter(h => h.status === 'playing');
+    const spent = new Map();
+    for (const hero of uczestnicy) {
+      const a = actions.get(hero.hid) ?? { type: 'wait' };
+      spent.set(hero.hid, this.applyAction(hero, a));
+    }
+    this.turn++;
+    this.worldTurn(uczestnicy);
+    return spent;
+  }
+
+  /**
+   * Działanie JEDNEGO uczestnika, bez ruszania świata.
+   *
+   * Uczestnik czynny jest przestawiany na czas działania. Dzięki temu wszystkie
+   * metody napisane w liczbie pojedynczej (`this.player`, `this.messages`,
+   * `this.identified`) działają dla tego, kto właśnie działa - bez drugiej
+   * ścieżki kodu i bez przewlekania uczestnika przez kilkanaście podpisów.
+   */
+  applyAction(hero, action) {
+    const prev = this.active;
+    this.active = this.heroes.indexOf(hero);
+    try {
+      switch (action.type) {
+        case 'move': return this.tryMove(action.dx, action.dy);
+        case 'wait': return true;
+        case 'pickup': return this.pickUp();
+        case 'descend': return this.descend();
+        case 'ascend': return this.ascend();
+        case 'use': return this.useItem(action.index);
+        case 'drop': return this.dropItem(action.index);
+        case 'sniff': return this.sniff(action.index);
+        default: return false;
+      }
+    } finally {
+      this.active = prev;
+    }
+  }
+
+  /**
+   * Świat odpowiada: potwory na każdym zamieszkanym poziomie, potem ciała.
+   *
+   * `uczestnicy` to ci, którzy WCHODZILI w turę żywi - a nie ci, którzy ją
+   * przeżyli. Różnica jest o jeden punkt głodu i wyszła z pomiaru, nie z lektury:
+   * gracz, który w tej samej turze wygrał, w pierwotnym silniku nadal zgłodniał
+   * i nadal mógł oberwać. Filtr „tylko żywi" cicho by to zmienił.
+   */
+  worldTurn(uczestnicy = this.heroes.filter(h => h.status === 'playing')) {
+    const poziomy = new Map();
+    for (const h of uczestnicy) {
+      if (!poziomy.has(h.depth)) poziomy.set(h.depth, []);
+      poziomy.get(h.depth).push(h);
+    }
+    for (const [d, cele] of poziomy) this.monstersActOn(d, cele);
+
+    for (const hero of uczestnicy) {
+      this.tickRegen(hero);
+      this.tickHunger(hero);
+      this.updateFOV(hero);
+      if (hero.hp <= 0 && hero.status === 'playing') {
+        // Przegrane starcie z innym uczestnikiem NIE kończy partii (kryterium 21).
+        if (hero.lastHitBy && this.isHero(hero.lastHitBy)) this.loseFight(hero, hero.lastHitBy);
+        else this.die(hero, hero.deathCause || 'rany');
+      }
+    }
+  }
+
+  /**
+   * Stawka przegranego starcia z innym uczestnikiem. **D-022:** przegrany gubi
+   * cały dobytek i budzi się piętro wyżej, ale gra dalej.
+   *
+   * Sens: skoro całą regułą tury jest „przelicz siły i wycofaj się", to kara za
+   * złe przeliczenie nie może brzmieć „koniec zabawy" - inaczej każde spotkanie
+   * znowu jest zakładem o wszystko. Amulet też wypada, więc odebranie go komuś
+   * jest realnym sposobem wygrania wyścigu.
+   *
+   * To jedno miejsce w silniku. Zmiana stawki na inną (śmierć, zgoda na walkę)
+   * jest zmianą tej metody i niczego więcej.
+   */
+  loseFight(hero, winner) {
+    this.stats.fightsLost++;
+    const entry = this.levels.get(hero.depth);
+    for (const it of [...hero.inventory]) {
+      it.x = hero.x; it.y = hero.y;
+      entry.items.push(it);
+    }
+    const ile = hero.inventory.length;
+    hero.inventory = [];
+    hero.weapon = null;
+    hero.armor = null;
+    hero.hasAmulet = false;
+    hero.hp = Math.max(1, Math.floor(hero.maxHp * 0.25));
+    hero.lastHitBy = null;
+    hero.deathCause = null;
+    this.tell(hero, `${cap(winner.name)} kładzie Cię na deski. Gubisz dobytek (${ile}) i uciekasz w górę.`);
+    this.tell(winner, `${cap(hero.name)} pada bez czucia. Dobytek zostaje na ziemi.`);
+    this.placeHero(hero, Math.max(1, hero.depth - 1), 'up');
   }
 
   tryMove(dx, dy) {
@@ -281,6 +464,9 @@ export class Game {
     if (!L.inBounds(nx, ny)) return false;
     const m = this.monsterAt(nx, ny);
     if (m) { this.attack(this.player, m); return true; }
+    // wejście na innego uczestnika to cios, tak samo jak wejście na potwora
+    const other = this.heroAt(nx, ny, this.player.depth, this.player);
+    if (other) { this.attack(this.player, other); return true; }
     if (!L.isWalkable(nx, ny)) return false;
     // zakaz ścinania rogów - ta sama reguła co w szukaniu drogi
     if (dx !== 0 && dy !== 0 && (!L.isWalkable(this.player.x + dx, this.player.y) || !L.isWalkable(this.player.x, this.player.y + dy))) return false;
@@ -293,54 +479,69 @@ export class Game {
     return true;
   }
 
+  /**
+   * Cios. Napastnikiem i celem może być uczestnik ALBO potwór - obrażenia liczą
+   * się na tych samych zasadach, więc gracz kontra gracz nie jest osobną
+   * mechaniką, tylko tym samym ciosem skierowanym w kogoś innego.
+   *
+   * Kolejność losowań (kość obrażeń, potem redukcja) jest nietykalna: od niej
+   * zależy, czy partia jednoosobowa z danego ziarna przebiega jak przed zmianą.
+   */
   attack(attacker, defender) {
-    const isPlayer = attacker === this.player;
-    const atkPower = isPlayer ? this.playerAttack() : attacker.str;
-    const defPower = isPlayer ? defender.def : this.playerDefense();
+    const aHero = this.isHero(attacker);
+    const dHero = this.isHero(defender);
+    const atkPower = aHero ? this.playerAttack(attacker) : attacker.str;
+    const defPower = dHero ? this.playerDefense(defender) : defender.def;
     const raw = this.rng.dice(1, Math.max(1, atkPower));
     const mitigation = this.rng.int(defPower + 1);
     const dmg = Math.max(0, raw - mitigation);
 
-    const aName = isPlayer ? 'Trafiasz' : `${cap(attacker.name)} trafia`;
     if (dmg <= 0) {
-      this.message(isPlayer ? `Chybiasz - ${defender.name} unika ciosu.` : `${cap(attacker.name)} chybia.`);
+      if (aHero) this.tell(attacker, `Chybiasz - ${defender.name} unika ciosu.`);
+      if (dHero) this.tell(defender, `${cap(attacker.name)} chybia.`);
       return;
     }
-    if (isPlayer) {
-      defender.hp -= dmg;
-      this.message(`${aName} ${defender.name} (${dmg}).`);
-      if (defender.hp <= 0) this.killMonster(defender);
-    } else {
-      this.player.hp -= dmg;
-      this.deathCause = `zabity przez: ${attacker.name}`;
-      this.message(`${aName} Ciebie (${dmg}).`);
+
+    defender.hp -= dmg;
+    if (aHero && dHero) this.stats.pvpHits++;
+    if (aHero) this.tell(attacker, `Trafiasz ${defender.name} (${dmg}).`);
+    if (dHero) {
+      defender.deathCause = `zabity przez: ${attacker.name}`;
+      defender.lastHitBy = attacker;
+      this.tell(defender, `${cap(attacker.name)} trafia Ciebie (${dmg}).`);
+    } else if (defender.hp <= 0) {
+      this.killMonster(defender, aHero ? attacker : null);
     }
   }
 
-  killMonster(m) {
-    this.message(`${cap(m.name)} pada.`);
-    this.player.kills++;
-    this.gainXp(m.xp);
-    const idx = this.monsters.indexOf(m);
-    if (idx >= 0) this.monsters.splice(idx, 1);
+  killMonster(m, killer = this.player) {
+    const depth = killer ? killer.depth : this.depth;
+    const entry = this.levels.get(depth);
+    this.tell(killer, `${cap(m.name)} pada.`);
+    if (killer) {
+      killer.kills++;
+      this.gainXp(killer, m.xp);
+    }
+    const idx = entry.monsters.indexOf(m);
+    if (idx >= 0) entry.monsters.splice(idx, 1);
     if (m.boss) {
       const amulet = makeAmulet();
       amulet.id = this.newId();
       amulet.x = m.x; amulet.y = m.y;
-      this.items.push(amulet);
-      this.message('Z ciała wypada Amulet Otchłani! Zabierz go na powierzchnię.');
+      entry.items.push(amulet);
+      this.tell(killer, 'Z ciała wypada Amulet Otchłani! Zabierz go na powierzchnię.');
     }
   }
 
-  gainXp(amount) {
-    this.player.xp += amount;
-    while (this.player.xp >= xpForLevel(this.player.level + 1)) {
-      this.player.level++;
-      this.player.maxHp += 10;
-      this.player.hp += 10;
-      this.player.str += 1;
-      if (this.player.level % 2 === 0) this.player.def += 1;
-      this.message(`Awansujesz na poziom ${this.player.level}!`);
+  gainXp(hero, amount) {
+    hero.xp += amount;
+    while (hero.xp >= xpForLevel(hero.level + 1)) {
+      hero.level++;
+      hero.maxHp += 10;
+      hero.hp += 10;
+      hero.str += 1;
+      if (hero.level % 2 === 0) hero.def += 1;
+      this.tell(hero, `Awansujesz na poziom ${hero.level}!`);
     }
   }
 
@@ -537,7 +738,7 @@ export class Game {
       return false;
     }
     if (this.depth === 1) {
-      if (this.player.hasAmulet) { this.win(); return true; }
+      if (this.player.hasAmulet) { this.win(this.player); return true; }
       this.message('Nie wrócisz z pustymi rękami. Amulet czeka w głębi.');
       return false;
     }
@@ -548,19 +749,27 @@ export class Game {
 
   // ---------- świat odpowiada ----------
 
-  monstersAct() {
-    const L = this.level;
-    const awake = this.monsters.filter(m => !m.asleep && m.hp > 0);
+  monstersActOn(depth, cele = this.heroesOn(depth)) {
+    const entry = this.levels.get(depth);
+    if (!entry) return;
+    const L = entry.level;
+    const lista = entry.monsters;
+    // Cele w stałej kolejności tablicy uczestników. Pole odległości ma WIELE
+    // źródeł, więc każdy potwór schodzi w dół w stronę najbliższego z nich -
+    // jeden przebieg na poziom, nie jeden na potwora.
+    if (!cele.length) return;
+
+    const awake = lista.filter(m => !m.asleep && m.hp > 0);
 
     // budzenie: FOV jest symetryczny, więc "gracz widzi potwora" znaczy też
     // "potwór widzi gracza" - nie trzeba liczyć pola widzenia każdemu z osobna
-    for (const m of this.monsters) {
+    for (const m of lista) {
       if (!m.asleep) continue;
-      const dist = chebyshev(m.x, m.y, this.player.x, this.player.y);
-      if (dist <= FOV_RADIUS && this.isVisible(m.x, m.y) && this.rng.chance(0.55)) {
+      const widziany = cele.some(h => chebyshev(m.x, m.y, h.x, h.y) <= FOV_RADIUS && h.visible.has(`${m.x},${m.y}`));
+      if (widziany && this.rng.chance(0.55)) {
         m.asleep = false;
         awake.push(m);
-      } else if (dist <= 1) {
+      } else if (cele.some(h => chebyshev(m.x, m.y, h.x, h.y) <= 1)) {
         m.asleep = false;
         awake.push(m);
       }
@@ -568,18 +777,19 @@ export class Game {
     if (awake.length === 0) return;
 
     const passable = (x, y) => L.isWalkable(x, y);
-    const field = distanceField([{ x: this.player.x, y: this.player.y }], passable, { limit: 40 });
+    const field = distanceField(cele.map(h => ({ x: h.x, y: h.y })), passable, { limit: 40 });
 
     for (const m of awake) {
       if (m.hp <= 0) continue;
       if (m.regen && m.hp < m.maxHp) m.hp = Math.min(m.maxHp, m.hp + m.regen);
 
-      if (chebyshev(m.x, m.y, this.player.x, this.player.y) === 1) {
-        this.attack(m, this.player);
+      const sasiad = cele.find(h => chebyshev(m.x, m.y, h.x, h.y) === 1);
+      if (sasiad) {
+        this.attack(m, sasiad);
         continue;
       }
       if (m.erratic && this.rng.chance(0.4)) {
-        const opts = neighbors(m.x, m.y, passable).filter(([nx, ny]) => !this.monsterAt(nx, ny) && !(nx === this.player.x && ny === this.player.y));
+        const opts = neighbors(m.x, m.y, passable).filter(([nx, ny]) => !this.monsterOn(depth, nx, ny) && !this.heroAt(nx, ny, depth));
         if (opts.length) { const [nx, ny] = this.rng.pick(opts); m.x = nx; m.y = ny; }
         continue;
       }
@@ -590,48 +800,52 @@ export class Game {
       for (const [nx, ny] of neighbors(m.x, m.y, passable)) {
         const d = field.get(`${nx},${ny}`);
         if (d === undefined || d >= bestD) continue;
-        if (this.monsterAt(nx, ny)) continue;
-        if (nx === this.player.x && ny === this.player.y) continue;
+        if (this.monsterOn(depth, nx, ny)) continue;
+        if (this.heroAt(nx, ny, depth)) continue;
         bestD = d; best = [nx, ny];
       }
       if (best) { m.x = best[0]; m.y = best[1]; }
     }
   }
 
+  /** Zgodność w tył dla wywołań z zewnątrz silnika. */
+  monstersAct() { this.monstersActOn(this.depth); }
+
   /** Powolna regeneracja życia. Bez niej partia jest ciągiem strat bez odbicia
    *  i nie da się jej wygrać niezależnie od umiejętności - patrz D-005. */
-  tickRegen() {
-    const p = this.player;
+  tickRegen(hero = this.player) {
+    const p = hero;
     if (p.hp <= 0 || p.hp >= p.maxHp) return;
     if (p.hunger <= 0) return; // głodujący się nie regeneruje
     const interval = Math.max(8, 24 - p.level);
     if (this.turn % interval === 0) p.hp = Math.min(p.maxHp, p.hp + 1);
   }
 
-  tickHunger() {
-    this.player.hunger--;
-    if (this.player.hunger === 200) this.message('Robisz się głodny.');
-    if (this.player.hunger === 50) this.message('Jesteś bardzo głodny!');
-    if (this.player.hunger <= 0) {
-      this.player.hunger = 0;
+  tickHunger(hero = this.player) {
+    hero.hunger--;
+    if (hero.hunger === 200) this.tell(hero, 'Robisz się głodny.');
+    if (hero.hunger === 50) this.tell(hero, 'Jesteś bardzo głodny!');
+    if (hero.hunger <= 0) {
+      hero.hunger = 0;
       if (this.turn % 3 === 0) {
-        this.player.hp -= 1;
-        this.deathCause = 'głód';
-        if (this.turn % 15 === 0) this.message('Umierasz z głodu...');
+        hero.hp -= 1;
+        hero.deathCause = 'głód';
+        hero.lastHitBy = null;   // głód nie jest przegranym starciem
+        if (this.turn % 15 === 0) this.tell(hero, 'Umierasz z głodu...');
       }
     }
   }
 
-  die(cause) {
-    this.status = 'dead';
-    this.cause = cause;
-    this.message(`Ginisz. Przyczyna: ${cause}.`);
+  die(hero = this.player, cause = 'rany') {
+    hero.status = 'dead';
+    hero.cause = cause;
+    this.tell(hero, `Ginisz. Przyczyna: ${cause}.`);
   }
 
-  win() {
-    this.status = 'won';
-    this.cause = 'wyniesiono Amulet Otchłani';
-    this.message('Wychodzisz na światło dnia z Amuletem Otchłani. ZWYCIĘSTWO!');
+  win(hero = this.player) {
+    hero.status = 'won';
+    hero.cause = 'wyniesiono Amulet Otchłani';
+    this.tell(hero, 'Wychodzisz na światło dnia z Amuletem Otchłani. ZWYCIĘSTWO!');
   }
 
   score() {

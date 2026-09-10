@@ -7,7 +7,7 @@
 // Trasa jest zapamiętywana między turami. Liczenie A* od nowa co turę działa tak
 // samo, ale tysiąc partii po kilka tysięcy tur robi z tego kwadrans zamiast minuty.
 
-import { findPath, distanceField, chebyshev } from './path.js';
+import { findPath, distanceField, chebyshev, neighbors } from './path.js';
 import { STAIRS_DOWN, STAIRS_UP } from './map.js';
 
 const LOW_HP = 0.4;
@@ -421,5 +421,141 @@ function result(game, outcome, cause) {
     kills: game.player.kills,
     hasAmulet: game.player.hasAmulet,
     score: game.score(),
+  };
+}
+
+// ---------- pojedynek: dwóch (lub więcej) graczy automatycznych w jednym lochu ----------
+
+/**
+ * Warstwa walki gracz-gracz doklejona NA bota, a nie w nim.
+ *
+ * Bot z `Bot` jest przyrządem pomiarowym i musi zostać w pełni powtarzalny
+ * (kryterium 24 spec-a wielu graczy), dlatego nie wie nic o innych uczestnikach.
+ * Zachowanie wobec drugiego gracza siedzi tutaj: bij, gdy masz siłę, odejdź,
+ * gdy jej nie masz. Tyle wystarcza, żeby ZMIERZYĆ, czy reguła tury daje się
+ * rozstrzygać - i czy da się z niej wyjść żywym.
+ */
+function decydujWPojedynku(game, hero, bot) {
+  const wrogowie = game.contacts(hero);
+  const sasiad = wrogowie.find(o => chebyshev(hero.x, hero.y, o.x, o.y) === 1);
+  if (sasiad) {
+    const slabo = hero.hp < hero.maxHp * 0.45;
+    if (!slabo) {
+      return { type: 'move', dx: Math.sign(sasiad.x - hero.x), dy: Math.sign(sasiad.y - hero.y) };
+    }
+    // Wycofanie: pole obok, dalej od przeciwnika, wolne i przejezdne. Bez losowania.
+    const L = game.levels.get(hero.depth).level;
+    let cel = null, najdalej = chebyshev(hero.x, hero.y, sasiad.x, sasiad.y);
+    for (const [nx, ny] of neighbors(hero.x, hero.y, (x, y) => L.isWalkable(x, y))) {
+      const d = chebyshev(nx, ny, sasiad.x, sasiad.y);
+      if (d <= najdalej) continue;
+      if (game.monsterOn(hero.depth, nx, ny) || game.heroAt(nx, ny, hero.depth, hero)) continue;
+      najdalej = d; cel = [nx, ny];
+    }
+    if (cel) return { type: 'move', dx: cel[0] - hero.x, dy: cel[1] - hero.y };
+  }
+  return bot.decide(game);
+}
+
+/**
+ * Rozgrywa partię kilku graczy automatycznych w jednym lochu i zwraca pomiar.
+ *
+ * Reguła tury jest tu użyta dokładnie tak, jak ma działać na serwerze:
+ * uczestnicy w kontakcie odbywają turę WSPÓLNĄ (obaj deklarują w ciemno, oba
+ * działania biorą skutek naraz), a uczestnik samotny idzie własnym tempem
+ * i na nikogo nie czeka.
+ */
+export function playDuel(game, opts = {}) {
+  const maxTurns = opts.maxTurns ?? MAX_TURNS;
+  const stallLimit = opts.stallLimit ?? 500;
+  const boty = game.heroes.map(() => new Bot());
+
+  // UWAGA na `spotkania`/`rozejscia`: to liczniki PRZEJŚĆ stanu „ktokolwiek jest
+  // w kontakcie". Przy dwóch graczach mówią to, co się wydaje. Przy dziesięciu
+  // NASYCAJĄ SIĘ, bo ktoś jest w kontakcie niemal zawsze, więc przejść jest mało
+  // mimo że kontaktu jest dużo. Do gęstości spotkań służy `turyUczestnikowWKontakcie`
+  // podzielone przez `turyUczestnikow` - to nie saturuje.
+  const pom = {
+    spotkania: 0, rozejscia: 0, turyWspolne: 0, turyWolne: 0,
+    turyUczestnikow: 0, turyUczestnikowWKontakcie: 0,
+    ciosyMiedzyGraczami: 0, przegraneStarcia: 0, odrzucone: 0,
+  };
+  let byłKontakt = false;
+  let znak = -1, ostatniPostep = 0;
+
+  const zyje = () => game.heroes.filter(h => h.status === 'playing');
+
+  try {
+    while (game.turn < maxTurns && zyje().length > 0) {
+      const grupy = [];
+      const wziete = new Set();
+      for (const h of zyje()) {
+        if (wziete.has(h.hid)) continue;
+        const razem = [h, ...game.contacts(h).filter(o => !wziete.has(o.hid))];
+        for (const x of razem) wziete.add(x.hid);
+        grupy.push(razem);
+      }
+
+      const kontakt = grupy.some(g => g.length > 1);
+      if (kontakt && !byłKontakt) pom.spotkania++;
+      if (!kontakt && byłKontakt) pom.rozejscia++;
+      byłKontakt = kontakt;
+
+      for (const grupa of grupy) {
+        pom.turyUczestnikow += grupa.length;
+        if (grupa.length > 1) pom.turyUczestnikowWKontakcie += grupa.length;
+        if (grupa.length === 1) {
+          const h = grupa[0];
+          if (h.status !== 'playing') continue;
+          const prev = game.active;
+          game.active = h.hid;
+          const akcja = decydujWPojedynku(game, h, boty[h.hid]);
+          const spent = game.act(akcja);   // własne tempo: nikt na nikogo nie czeka
+          game.active = prev;
+          if (!spent) { pom.odrzucone++; boty[h.hid].invalidate(); }
+          else pom.turyWolne++;
+        } else {
+          // DEKLARACJE NAJPIERW, WSZYSTKIE - nikt nie widzi cudzego działania
+          const akcje = new Map();
+          for (const h of grupa) {
+            const prev = game.active;
+            game.active = h.hid;
+            akcje.set(h.hid, decydujWPojedynku(game, h, boty[h.hid]));
+            game.active = prev;
+          }
+          const spent = game.resolveTurn(akcje);
+          pom.turyWspolne++;
+          for (const [hid, ok] of spent) if (!ok) { pom.odrzucone++; boty[hid].invalidate(); }
+        }
+      }
+
+      const mark = game.heroes.map(h => `${h.depth}:${h.x},${h.y}:${h.hp}:${h.xp}`).join('|');
+      if (mark !== znak) { znak = mark; ostatniPostep = game.turn; }
+      else if (game.turn - ostatniPostep > stallLimit) {
+        return wynikDuelu(game, pom, 'stalled', `brak postępu przez ${stallLimit} tur`);
+      }
+    }
+  } catch (e) {
+    const r = wynikDuelu(game, pom, 'crash', e.message);
+    r.error = e;
+    return r;
+  }
+
+  if (game.turn >= maxTurns && zyje().length > 0) return wynikDuelu(game, pom, 'stalled', 'limit tur');
+  return wynikDuelu(game, pom, 'done', null);
+}
+
+function wynikDuelu(game, pom, outcome, reason) {
+  pom.ciosyMiedzyGraczami = game.stats.pvpHits;
+  pom.przegraneStarcia = game.stats.fightsLost;
+  return {
+    outcome, reason,
+    turns: game.turn,
+    heroes: game.heroes.map(h => ({
+      name: h.name, status: h.status, cause: h.cause,
+      depth: h.depth, hp: h.hp, level: h.level, xp: h.xp,
+      kills: h.kills, hasAmulet: h.hasAmulet,
+    })),
+    ...pom,
   };
 }

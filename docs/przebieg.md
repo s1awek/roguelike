@@ -423,3 +423,134 @@ zero wywrotek, zero partii bez rozstrzygnięcia, 9 kontroli przyrządu przeszło
   (`mikst-v4-727`, brak w serii z nowym zwojem) to najpewniej ta sama odmiana
   pułapki decyzyjnej bota co przy W-6. Nie diagnozowana. Rozstrzygnęłaby ją ta
   sama instrumentacja.
+
+## Wątek 6: wielu graczy w jednym lochu - silnik i reguła tury (2026-09-10)
+
+Zgłoszenie właściciela: dwóch albo więcej graczy niezależnie eksplorujących ten sam
+poziom, a gdy się zobaczą - tura wspólna, tak żeby spotkanie nie kończyło się
+automatyczną śmiercią jednego z nich, ale i nie ciągnęło się w nieskończoność.
+Zakres tego wątku to **wyłącznie silnik i reguła tury**. Warstwy sieciowej,
+serwera ani interfejsu jeszcze nie ma - graczami są tu programy sterujące.
+
+### Kształt przebudowy: liczba pojedyncza jako WIDOK na mnogą
+
+Silnik miał 76 miejsc mówiących `game.player`, `game.depth`, `game.messages`.
+Dwa oczywiste wyjścia były oba złe. Przepisanie wszystkich 76 miejsc na jawny
+uczestnik znaczy dużą, ryzykowną łatkę bez żadnego zysku dla gry jednoosobowej.
+Osobna klasa na grę wieloosobową znaczy dwie ścieżki kodu, które rozjadą się przy
+pierwszym strojeniu równowagi.
+
+Wybrane trzecie: `this.heroes` to lista, `this.player` to **czytnik** na
+`heroes[active]`, a każde pole osobiste (`depth`, `visible`, `messages`,
+`identified`, `sniffed`, `status`) ma czytnik i zapisywacz kierujący do
+uczestnika czynnego. Wszystkie 76 miejsc działa bez zmiany, a gra jednoosobowa
+to po prostu lista o jednym elemencie - **ta sama ścieżka kodu**, nie zgodność
+wstecz.
+
+### Odcisk zachowania jako osobny przyrząd
+
+Ta przebudowa zmieniała format zapisu, więc `fingerprint()` z `src/save.js` nie
+mógł niczego pilnować: on liczy skrót z serializacji, a serializacja miała się
+zmienić celowo. Kryterium 1 spec-a (powtarzalność z ziarna) też nie łapie
+regresji, bo nowy kod jest powtarzalny wewnętrznie i po prostu powtarza coś
+innego.
+
+Stąd osobny przyrząd, zrobiony **przed** pierwszą zmianą w silniku:
+`.workspace/odcisk-zachowania.mjs` rozgrywa 60 pełnych partii botem i liczy
+skrót z przebiegu - wynik, tura, głębokość, położenie, życie, poziom, głód,
+stan losowania, zawartość plecaka, rozpoznane rodzaje, potwory, liczba
+komunikatów. `[ustalone]` Odcisk `dcd469162d5390df` przed przebudową i po całej
+przebudowie. Kontrola przyrządu: na celowo zepsutej kopii silnika odcisk się
+przesuwa, więc przyrząd nie jest ślepy.
+
+### Dwa razy zgłosił zmianę i dwa razy miał rację
+
+`[ustalone - odcisk 60 partii]` **Krok pierwszy zmienił zachowanie na wszystkich
+60 ziarnach.** Nie w silniku: `countExplored()` w `src/bot.js` i test zapisu
+czytały `game.here.memory`, które przestało istnieć. Bot dostawał więc puste
+pole i chodził inaczej. Naprawa jednolinijkowa (`game.memoryOf(game.player)`),
+odcisk wrócił.
+
+`[ustalone - ślad pole-po-polu dla ziarna `odcisk-0`]` **Krok drugi zmienił
+zachowanie ponownie.** Tu zamiast zgadywać wypakowałem poprzedni commit obok
+(`git archive HEAD | tar -x`) i porównałem surowy ślad tury po turze. Jedyna
+różnica: `glod=560` wobec `glod=561`. Przyczyna: stary `act()` przeliczał
+regenerację, głód i pole widzenia **także w turze, w której gracz zginął albo
+wygrał**, a nowy filtr `status === 'playing'` tę turę pomijał. Naprawa: skład
+uczestników tury ustala się **przed** działaniami i jedzie dalej jako argument;
+stanem pilnowane jest już tylko samo umieranie. Różnica o jedną jednostkę głodu
+- dokładnie ten rodzaj rozbieżności, który wygląda na zaokrąglenie i przechodzi
+bez sprawdzenia.
+
+### Reguła tury: dlaczego nie bloki po pięć ruchów
+
+Propozycja właściciela (blok trzech albo pięciu ruchów na przemian) została
+odrzucona rachunkiem, nie gustem: przy życiu 30-45 i ciosie 4-10 blok pięciu
+ruchów daje drugiemu w kolejności pięć darmowych ciosów. Spotkanie rozstrzyga
+wtedy kolejność, a nie decyzja. Zamiast tego tura wspólna rozstrzyga się
+jednocześnie - patrz D-023.
+
+`[ustalone - 200 partii, `bin/duel.js`, dwóch graczy automatycznych]`
+
+| miara | wartość |
+|---|---|
+| partie | 200, z tego rozstrzygnięte 200 |
+| wywrotki | 0 |
+| partie bez rozstrzygnięcia | 0 |
+| spotkania | 2699 |
+| rozejścia | 2699 |
+| ciosy między graczami | 8182 |
+| przegrane starcia | 1879 (9,4 na partię) |
+| tury uczestników w kontakcie | 105 494 z 1 127 176, czyli 9,4% |
+| tury wspólne | 52 747, czyli 4,7% tur uczestników |
+| partie bez ani jednego spotkania | 10 |
+
+Liczba rozejść równa liczbie spotkań jest tu wynikiem mocnym: **każde spotkanie
+się skończyło**, żadne nie utknęło w zabawie w kotka i myszkę do końca partii.
+Osiem tysięcy ciosów przy niecałych dwóch tysiącach przegranych starć znaczy,
+że wymiana ciosów zwykle kończy się odskokiem, a nie rozstrzygnięciem.
+
+### Pułapka miary, złapana przed postawieniem wniosku
+
+`spotkania` i `rozejscia` liczą **przejścia stanu globalnego** „ktokolwiek jest
+w kontakcie" na „nikt nie jest". Przy dwóch graczach to jest dobra miara. Przy
+dziesięciu **nasyca się i zaczyna kłamać w drugą stronę**: im więcej kontaktu,
+tym rzadziej zdarza się chwila, w której nikt nikogo nie widzi, więc licznik
+spotkań SPADA, choć kontaktu jest więcej. Miara niewrażliwa na liczbę
+uczestników to `turyUczestnikowWKontakcie / turyUczestnikow`, i ona weszła do
+przyrządu. Wniosek o wpływie rozmiaru mapy był już postawiony na tej pierwszej
+i został wycofany przed zapisaniem.
+
+`[ustalone - po jednej serii na rozmiar, 10 graczy]` Rozmiar mapy wobec udziału
+tur w kontakcie i przegranych starć na partię: 76x20 -> 32,8% i 30,6;
+120x32 -> 38,2% i 21,8; 160x44 -> 44,0% i 18,0. Kierunek przegranych starć jest
+oczekiwany (więcej miejsca, rzadsze starcia), kierunek udziału kontaktu jest
+przeciwny do intuicji. **Mechanizmu NIE ustalono**, a pomiar ma zaplątaną
+zmienną: liczba potworów i przedmiotów zależy w tej grze od głębokości, nie od
+powierzchni, więc większa mapa jest jednocześnie pustsza i wolniej się zwiedza.
+Rozstrzygnęłaby to seria z gęstością skalowaną do powierzchni.
+
+### Co zostało zmierzone, a nie przeczytane z kodu
+
+- odcisk zachowania 60 partii przed i po przebudowie, plus kontrola przyrządu
+  na zepsutej kopii silnika
+- 200 partii dwóch graczy automatycznych, liczby w tabeli wyżej
+- 14 nowych testów jednostkowych do kryteriów spec-a, w tym dwie kontrole
+  przyrządu (śmierć z głodu nie jest przegranym starciem; wąchanie poza
+  zakresem plecaka nie wywraca gry)
+- wczytanie PRAWDZIWEGO zapisu w formacie 1, wyprodukowanego przed przebudową
+  (po niej nie da się go już wytworzyć)
+
+### Czego NIE sprawdzono
+
+- `[niezweryfikowane]` Rozgrywka z udziałem CZŁOWIEKA w trybie wieloosobowym.
+  Graczami byli tu wyłącznie programy sterujące. Nie ma warstwy sieciowej,
+  serwera, ani sposobu, żeby dwie osoby usiadły do tej samej partii.
+- `[niezweryfikowane]` Zachowanie przy wielu uczestnikach na RÓŻNYCH poziomach
+  jednocześnie mierzone było tylko ubocznie, bez osobnej serii.
+- `[niezweryfikowane]` Czy 25% życia i utrata dobytku to stawka dobrze wyważona
+  w odczuciu człowieka. Liczby mówią, że spotkania się kończą; nie mówią, czy
+  kara jest sprawiedliwa.
+- `[hipoteza]` Bot pojedynkowy (`decydujWPojedynku`) atakuje powyżej 45% życia,
+  a poniżej odskakuje. Ten próg nie był strojony, wzięty z pierwszego strzału.
+  Wpływ na powyższe liczby nie jest zmierzony.
