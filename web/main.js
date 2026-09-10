@@ -10,7 +10,7 @@ import { serialize, loadFromString } from '../src/serialize.js';
 import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
 import { pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
 import { siatkaHtml, podepnijSiatke } from './plecak-ui.js';
-import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml } from './opis.js';
+import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml, dziennikHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
@@ -334,6 +334,7 @@ function openInventory(which) {
     <h2>${INV_TITLE[which]} <span class="muted">${zajetePola(p)}/${poj} ${polaSlowo(poj)}</span></h2>
     <div class="ekwipunek">${which === 'inventory' ? siatkaHtml(p, etykieta, { kosz: true }) : ''}
       <ul>${rows || '<li class="muted">(pusto)</li>'}</ul></div>
+    ${dziennikHtml(game.messages)}
     <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
       ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
   // Ikona rysowana tą samą funkcją co przedmiot leżący na podłodze. Dzięki temu

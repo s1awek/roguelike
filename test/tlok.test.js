@@ -65,7 +65,10 @@ test('milczący człowiek w grupie zatrzymuje wszystkich wokół siebie', () => 
   const botyPrzyCzlowieku = Math.min(...[...zCzlowiekiem.entries()]
     .filter(([hid]) => hid !== 0).map(([, n]) => n));
 
-  assert.ok(botySame >= 30, `same boty powinny działać swobodnie, a mają ${botySame} działań`);
+  // Próg 15 z zapasem: w tłoku najwolniejszy bot i tak traci część zgłoszeń na
+  // ruchy w pole zajęte przez sąsiada (odmowa nie kosztuje tury), więc liczba
+  // jest wyraźnie niższa niż u bota mającego wolną drogę - zmierzone 20 wobec 75.
+  assert.ok(botySame >= 15, `same boty powinny działać swobodnie, a mają ${botySame} działań`);
   assert.ok(botyPrzyCzlowieku * 4 < botySame,
     `milczący człowiek nie spowolnił grupy: ${botyPrzyCzlowieku} wobec ${botySame} działań`);
   assert.equal(najmniej(sameBoty) > 0, true);
@@ -99,6 +102,61 @@ test('KONTROLA PRZYRZĄDU: gdy człowiek deklaruje, spowolnienia nie ma', () => 
   // cokolwiek innego niż milczenie, wynik nie ruszyłby się z miejsca.
   const dzialania = przebieg(stol, 30, (s) => s.zadeklaruj(0, { type: 'wait' }));
   const boty = [...dzialania.entries()].filter(([hid]) => hid !== 0).map(([, n]) => n);
-  assert.ok(Math.min(...boty) >= 30,
+  assert.ok(Math.min(...boty) >= 15,
     `deklarujący człowiek nie powinien nikogo wstrzymywać, a najwolniejszy ma ${Math.min(...boty)} działań`);
+});
+
+// ---------- odpoczynek w towarzystwie (W-27) ----------
+
+/**
+ * Gra z dwoma poobijanymi uczestnikami, którzy stoją naprzeciw siebie.
+ *
+ * `blisko` decyduje, czy drugi jest widoczny. To jedyna różnica między
+ * przypadkiem badanym a kontrolą - reszta stanu jest identyczna, więc każda
+ * różnica w decyzji bierze się z obecności drugiego uczestnika, a nie
+ * z przypadkowego położenia czy zdrowia.
+ */
+function dwochPoobijanych({ blisko }) {
+  const g = new Game('odpoczynek');
+  const a = g.heroes[0];
+  const b = g.addHero('Drugi', 1);
+  for (const h of [a, b]) {
+    h.hp = Math.floor(h.maxHp * 0.4);       // poniżej progu odpoczynku (0.65)
+    h.hunger = 1000;                        // głód nie może być powodem decyzji
+  }
+  const L = g.levels.get(1).level;
+  if (blisko) {
+    // Tuż obok, ale NIE w zwarciu - w zwarciu decyduje reguła pojedynku,
+    // a badana jest reguła odpoczynku.
+    for (let d = 3; d < 12; d++) {
+      if (L.isWalkable(a.x + d, a.y)) { b.x = a.x + d; b.y = a.y; break; }
+    }
+  } else {
+    b.x = a.x; b.y = a.y;                   // ustawiany niżej poza zasięg wzroku
+    for (let d = 30; d < 90; d++) if (L.isWalkable(d, L.h - 3)) { b.x = d; b.y = L.h - 3; break; }
+  }
+  // Potwory precz - reguła odpoczynku pyta o nie osobno i zaciemniłyby pomiar.
+  g.levels.get(1).monsters.length = 0;
+  for (const h of [a, b]) g.updateFOV(h);
+  return { g, a, b };
+}
+
+test('poobijany bot NIE odpoczywa, gdy widzi innego uczestnika', () => {
+  const { g, a, b } = dwochPoobijanych({ blisko: true });
+  assert.ok(g.contacts(a).includes(b), 'próba źle ustawiona - uczestnicy się nie widzą');
+  g.active = a.hid;
+  const akcja = new Bot().decide(g);
+  assert.notEqual(akcja.type, 'wait',
+    'bot stanął na odpoczynek naprzeciw innego uczestnika - tak powstaje pokój pełny nieruchomych botów');
+});
+
+test('KONTROLA PRZYRZĄDU: ten sam poobijany bot SAM odpoczywa', () => {
+  // Gdyby ten test też był zielony, poprzedni nie mierzyłby obecności drugiego
+  // uczestnika, tylko cokolwiek innego - na przykład to, że reguła odpoczynku
+  // w ogóle przestała działać.
+  const { g, a, b } = dwochPoobijanych({ blisko: false });
+  assert.equal(g.contacts(a).includes(b), false, 'kontrola źle ustawiona - uczestnicy się widzą');
+  g.active = a.hid;
+  assert.equal(new Bot().decide(g).type, 'wait',
+    'samotny poobijany bot powinien odpoczywać - inaczej zmiana zabiła regułę zamiast ją zawęzić');
 });

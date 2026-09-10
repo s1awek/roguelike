@@ -12,7 +12,7 @@ import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
 import { poloz, pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
 import { obejrzyj } from '../src/ocena.js';
 import { siatkaHtml, podepnijSiatke, trwaCiagniecie } from './plecak-ui.js';
-import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml } from './opis.js';
+import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml, dziennikHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
@@ -145,7 +145,10 @@ function otworzStrumien() {
     // Otwarty plecak żyje razem z migawką - inaczej po podniesieniu rzeczy
     // gracz patrzyłby na siatkę sprzed zmiany. W trakcie chwytu odświeżenie
     // czeka, bo przerysowanie wyrwałoby rzecz z ręki.
-    if (mode === 'inventory' && !trwaCiagniecie()) otworzPlecak('inventory');
+    // Odświeżenie dotyczy WSZYSTKICH ekranów plecaka, nie samego spisu: wynik
+    // powąchania przychodzi dopiero z rozstrzygnięciem tury, więc ekran wąchania
+    // zamrożony na starej migawce nigdy by go nie pokazał.
+    if (['inventory', 'drop', 'sniff'].includes(mode) && !trwaCiagniecie()) otworzPlecak(mode);
     // Kupka pod nogami też żyje: ktoś inny mógł z niej wziąć rzecz, gdy ja
     // jeszcze zaznaczam. Zaznaczenie przeżywa odświeżenie, bo trzyma się
     // identyfikatorów, a nie miejsc na liście.
@@ -478,6 +481,7 @@ function otworzPlecak(which) {
     <h2>${INV_TITLE[which]} <span class="muted">${licznik}</span></h2>
     <div class="ekwipunek">${which === 'inventory' && naSiatce ? siatkaHtml(p, etykieta, { kosz: true }) : ''}
       <ul>${rows || '<li class="muted">(pusto)</li>'}</ul></div>
+    ${dziennikHtml(cien.messages)}
     <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
       ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
   panel.querySelectorAll('li.item').forEach(li => {
@@ -605,7 +609,10 @@ function odswiezHud() {
   // która się zawiesiła. Pole `tura` przychodzi ze stołu; przy starszym
   // serwerze go nie ma i pasek zachowuje się jak dotąd (uboższy, nie zepsuty).
   const pasek = $('turowy');
-  pasek.hidden = !wKontakcie;
+  // Pasek NIE znika z układu, tylko gaśnie: `hidden` zabierałby jego wysokość,
+  // a wtedy każde wejście w kontakt i wyjście z niego podskakiwałoby całym
+  // ekranem. Miejsce jest zarezerwowane na stałe, zmienia się tylko treść.
+  pasek.classList.toggle('pusty', !wKontakcie);
   if (wKontakcie) {
     const t = cien.tura || null;
     const toJa = t ? t.wspolna && t.jaMilcze : !zgloszone;

@@ -1208,3 +1208,52 @@ który wyklucza jedną przyczynę. Kosztowało jedno podejście, żeby zauważy�
 z dwóch pierwszych przebiegów brakowało jedynego elementu obecnego w zgłoszeniu: człowieka.
 Zgłaszający był częścią mierzonego układu, a mierzyłem układ bez niego.
 
+### W-27: pokój pełny nieruchomych botów - one nie stały, one odpoczywały
+
+**Zgłoszenie i moja pierwsza, niepełna odpowiedź.** Właściciel zgłosił skupisko botów
+w pokoju przy schodach na drugim piętrze. Odpowiedziałem pomiarem z W-26 - że milczący
+człowiek wstrzymuje wspólną turę - i **przemilczałem drugą połowę pytania**. Właściciel
+sam to wychwycił: „to na pewno nie przez to, że ja blokowałem turę, no bo skąd by się
+boty wzięły w jednym pokoju przez to, że blokowałem turę". Miał rację. W-26 wyjaśnia,
+dlaczego stały nieruchomo, i nie wyjaśnia ani trochę, dlaczego było ich tam tyle.
+
+**Pomiar bez człowieka** (`.workspace/proba-skupisko.mjs`, 8 botów, 6 minut czasu stołu,
+podstawiony zegar, ślad położeń co 30 s):
+
+```
+ 60s  Ty(5,5)hp6   Bot 3(5,1)hp7   Bot 6(2,2)hp8    Bot 7(5,3)hp4
+120s  Ty(5,5)hp8   Bot 3(5,1)hp9   Bot 6(2,2)hp10   Bot 7(5,3)hp6
+300s  Ty(5,5)hp15  Bot 3(5,1)hp16  Bot 6(2,2)hp17   Bot 7(5,3)hp13
+```
+
+Cztery minuty, te same współrzędne co do pola, rosnące punkty życia. Skład grup
+w kontakcie zamrożony na `[4,2,1,1]` przez całe pięć minut. Odrzuconych ruchów
+najwyżej 13 na uczestnika, czyli to NIE było zakleszczenie na blokowanym przejściu.
+
+**Przyczyna.** `src/bot.js` reguła 6b: przy zdrowiu poniżej 65% i „braku zagrożenia"
+bot staje i regeneruje. „Brak zagrożenia" znaczyło wyłącznie **brak widocznego POTWORA**,
+bo reguła powstała dla gry jednoosobowej, w której w lochu nie ma nikogo innego. Przy
+stole daje to ciąg zdarzeń: wszyscy schodzący lądują na tym samym polu (schody w górę
+nowego piętra), spotykają się, biją, każdy schodzi poniżej progu - i wszyscy naraz
+stają na odpoczynek w tym samym pokoju. Kolejny bot wchodzi po schodach prosto
+w zbiegowisko. Opis właściciela („jeden za drugim tam wskakiwał i tyle") jest opisem
+mechanizmu, nie wrażeniem.
+
+**Naprawa.** Do warunku odpoczynku dochodzi `game.contacts(p).length === 0`. Skutek na
+tym samym ziarnie: udział próbek ze skupiskiem 4+ spadł z **76,4% na 30,6%**; na dwóch
+innych ziarnach 2,8% i 9,7%.
+
+**Dowód, że gra jednoosobowa nie drgnęła** (bo tam też chodzi ten sam bot, a on jest
+przyrządem do mierzenia równowagi): 300 partii na tych samych ziarnach, drzewo sprzed
+zmiany kontra drzewo po zmianie, kopie uruchamiane osobno. Wszystkie liczby identyczne
+co do cyfry - 64 zwycięstwa, 236 śmierci, 4562 tury średnio, 169 partii na dnie,
+0 wywrotek, 0 bez rozstrzygnięcia. W partii jednoosobowej `contacts` zwraca pustą listę,
+więc nowy warunek nie ma czego dotknąć.
+
+**Nauka podwójna.** Po pierwsze: odpowiedź na zgłoszenie może być prawdziwa i wciąż
+niepełna - W-26 był poprawnym pomiarem odpowiadającym na połowę pytania, a druga połowa
+odezwała się dopiero dlatego, że pytający jej pilnował. Po drugie: seria porównawcza
+puszczona w tle robiła `git stash` na pliku, przy którym trwała praca, więc test przez
+chwilę badał kod sprzed zmiany i zapalił się na czerwono bez powodu. Pomiar
+porównawczy należy uruchamiać na OSOBNEJ kopii drzewa, nie przestawiając bieżącej.
+

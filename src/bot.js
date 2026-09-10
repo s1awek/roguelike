@@ -205,7 +205,17 @@ export class Bot {
 
     // 6b. odpoczynek: przy nadszarpniętym zdrowiu i braku zagrożenia lepiej poczekać,
     //     niż wejść w kolejną walkę. Kosztuje głód, więc tylko gdy jest co jeść.
-    if (!monsterInSight && p.hp / p.maxHp < 0.65 && (p.hunger > 400 || inv.some(it => it.kind === 'food'))) {
+    //
+    // „Brak zagrożenia" długo znaczyło wyłącznie „nie widzę potwora", bo reguła
+    // powstała dla gry jednoosobowej, w której nikogo innego w lochu nie ma.
+    // Przy stole dawało to obraz zgłoszony przez właściciela: czterech
+    // poobijanych uczestników stoi nieruchomo w jednym pokoju przez kilka minut,
+    // każdy uznając pozostałych za element wystroju (W-27). W partii jednoosobowej
+    // `contacts` zwraca pustą listę, więc równowaga mierzona serią 1000 partii
+    // nie zmienia się ani o jotę.
+    const ludzieWZasiegu = game.contacts ? game.contacts(p).length > 0 : false;
+    if (!monsterInSight && !ludzieWZasiegu && p.hp / p.maxHp < 0.65
+        && (p.hunger > 400 || inv.some(it => it.kind === 'food'))) {
       if (p.hunger < HUNGRY + 150) {
         const i = inv.findIndex(it => it.kind === 'food');
         if (i >= 0) return { type: 'use', index: i };

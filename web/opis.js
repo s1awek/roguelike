@@ -86,3 +86,21 @@ export function stosHtml(lista, bilans) {
     <p class="foot"><kbd>Enter</kbd> podnosi zaznaczone. Litera albo kliknięcie zaznacza,
       <kbd>*</kbd> zaznacza wszystko, <kbd>Esc</kbd> wraca.</p>`;
 }
+
+/**
+ * Ostatnie linijki dziennika DO WNĘTRZA panelu.
+ *
+ * Ekran plecaka zasłania dziennik na dole strony, więc skutek działania
+ * podjętego w plecaku - wynik powąchania, komunikat o wyrzuceniu, odmowa -
+ * lądował za panelem i był widoczny dopiero po jego zamknięciu. Zgłoszenie
+ * właściciela: „wiadomość pojawia się w tle i dopiero po zamknięciu okna
+ * inwentarza widać, jaki był wynik operacji". Skutek ma być widoczny tam,
+ * gdzie stoi wzrok w chwili działania.
+ */
+export function dziennikHtml(messages, ile = 3) {
+  const ostatnie = (messages || []).slice(-ile);
+  if (!ostatnie.length) return '';
+  const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  return `<ul class="dziennik-panel">${ostatnie.map(m => `<li>${esc(m.text)}</li>`).join('')}</ul>`;
+}
+
