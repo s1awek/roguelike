@@ -1,0 +1,111 @@
+:root {
+  --bg: #06070b;
+  --panel: #0e1017;
+  --line: #1e2230;
+  --ink: #cfd4de;
+  --dim: #757d8d;
+  --warm: #ffbe6e;
+  --gold: #ffd666;
+  --red: #ff5f6d;
+  --green: #6ee7a8;
+  --font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 13px/1.5 var(--font);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#shell { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+
+/* ---------- pasek stanu ---------- */
+#hud {
+  display: flex; align-items: center; gap: 22px;
+  padding: 9px 16px;
+  background: linear-gradient(180deg, #12151e, #0b0d14);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+#hud .lbl { color: var(--dim); letter-spacing: .08em; font-size: 11px; }
+#hud .hp { display: flex; align-items: center; gap: 9px; }
+#hud .bar {
+  width: 148px; height: 10px; border-radius: 5px;
+  background: #1b1f2b; overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.6);
+}
+#hud .bar i { display: block; height: 100%; width: 100%; border-radius: 5px; transition: width .18s ease, background .18s ease; }
+#hud .num { font-variant-numeric: tabular-nums; }
+
+#hud .stats { display: flex; gap: 18px; flex-wrap: wrap; }
+#hud .stats span { display: flex; flex-direction: column; line-height: 1.15; }
+#hud .stats b { font-weight: 600; font-variant-numeric: tabular-nums; }
+#hud .stats em { font-style: normal; font-size: 10px; color: var(--dim); letter-spacing: .05em; }
+
+#hud .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.tag {
+  padding: 3px 9px; border-radius: 999px; font-size: 11px;
+  border: 1px solid var(--line); color: var(--dim); white-space: nowrap;
+}
+.tag.warn { color: var(--gold); border-color: #45391c; }
+.tag.bad  { color: var(--red); border-color: #4a2026; }
+.tag.gold { color: #0d0a02; background: var(--gold); border-color: var(--gold); font-weight: 700; letter-spacing: .06em; }
+
+/* ---------- płótno ---------- */
+/* Płótno ma jawną szerokość w pikselach. Jako zwykły element siatki wymuszałoby
+   przez to minimalną szerokość rodzica, więc pomiar `#stage` po zmniejszeniu okna
+   zwracał starą wartość i układ potrafił rosnąć, ale nigdy maleć. Wyjęcie płótna
+   z przepływu (`absolute`) plus `min-*: 0` odcina to sprzężenie. */
+#shell { min-width: 0; }
+#stage { position: relative; overflow: hidden; min-width: 0; min-height: 0; }
+#map { position: absolute; top: 0; left: 0; display: block; cursor: crosshair; }
+
+/* ---------- dziennik ---------- */
+#foot { border-top: 1px solid var(--line); background: #0a0c12; padding: 8px 16px 10px; }
+#log { list-style: none; margin: 0 0 6px; padding: 0; height: 4.5em; overflow: hidden; }
+#log li { color: var(--dim); }
+#log li:last-child { color: var(--ink); }
+#log li.fresh { animation: pop .35s ease; }
+@keyframes pop { from { opacity: 0; transform: translateY(4px); } }
+#hint { margin: 0; color: #4d5666; font-size: 11px; }
+
+/* ---------- nakładki ---------- */
+#overlay {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: rgba(4,5,9,.78); backdrop-filter: blur(3px); z-index: 10;
+}
+#overlay[hidden] { display: none; }
+#panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 22px 26px; min-width: 380px; max-width: min(680px, 92vw);
+  max-height: 86vh; overflow: auto;
+  box-shadow: 0 22px 60px rgba(0,0,0,.65);
+}
+#panel h2 { margin: 0 0 14px; font-size: 15px; letter-spacing: .04em; font-weight: 600; }
+#panel h2.win { color: var(--gold); }
+#panel h2.lose { color: var(--red); }
+#panel .muted { color: var(--dim); }
+#panel ul { list-style: none; margin: 0; padding: 0; }
+#panel li.item {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 5px 8px; border-radius: 6px; cursor: pointer;
+}
+#panel li.item:hover { background: #171b26; }
+#panel li.item .key { color: var(--gold); width: 1.4em; }
+#panel li.item .worn { color: var(--green); font-size: 11px; }
+#panel dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; margin: 0 0 14px; }
+#panel dt { color: var(--dim); }
+#panel dd { margin: 0; font-variant-numeric: tabular-nums; }
+#panel .keys { display: grid; grid-template-columns: 8.5em 1fr; gap: 4px 14px; margin: 0 0 16px; }
+#panel .keys b { color: var(--warm); font-weight: 600; }
+#panel .foot { margin-top: 16px; color: var(--dim); font-size: 11px; }
+kbd {
+  background: #1a1f2b; border: 1px solid #262c3a; border-bottom-width: 2px;
+  border-radius: 4px; padding: 1px 5px; font: inherit; font-size: 11px;
+}
+
+#panel canvas.ico { width: 22px; height: 22px; flex: 0 0 22px; align-self: center; }

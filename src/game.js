@@ -18,6 +18,7 @@ import { computeFOV } from './fov.js';
 import { distanceField, neighbors, chebyshev } from './path.js';
 import { randomItem, makeAmulet, makeAppearances, itemLabel } from './items.js';
 import { spawnMonster, spawnBoss } from './monsters.js';
+import { bytesToBase64, base64ToBytes } from './bytes.js';
 
 export const MAX_DEPTH = 8;
 export const FOV_RADIUS = 8;
@@ -534,7 +535,7 @@ export class Game {
         level: entry.level.toJSON(),
         monsters: entry.monsters,
         items: entry.items,
-        memory: Buffer.from(entry.memory).toString('base64'),
+        memory: bytesToBase64(entry.memory),
       };
     }
     return {
@@ -585,7 +586,7 @@ export class Game {
         level: Level.fromJSON(e.level),
         monsters: e.monsters,
         items: e.items,
-        memory: new Uint8Array(Buffer.from(e.memory, 'base64')),
+        memory: base64ToBytes(e.memory),
       });
     }
     g.updateFOV();

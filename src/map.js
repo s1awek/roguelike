@@ -5,6 +5,8 @@
 // jest jednak hipotezą do czasu zmierzenia, więc kontrola po fakcie i tak istnieje
 // w testach, na tysiącu poziomów, z niezależnym floodfillem napisanym w teście.
 
+import { bytesToBase64, base64ToBytes } from './bytes.js';
+
 export const WALL = 0;
 export const FLOOR = 1;
 export const STAIRS_DOWN = 2;
@@ -47,7 +49,7 @@ export class Level {
   toJSON() {
     return {
       w: this.w, h: this.h, depth: this.depth,
-      tiles: Buffer.from(this.tiles).toString('base64'),
+      tiles: bytesToBase64(this.tiles),
       rooms: this.rooms,
       upPos: this.upPos, downPos: this.downPos,
     };
@@ -55,7 +57,7 @@ export class Level {
 
   static fromJSON(o) {
     const l = new Level(o.w, o.h, o.depth);
-    l.tiles = new Uint8Array(Buffer.from(o.tiles, 'base64'));
+    l.tiles = base64ToBytes(o.tiles);
     l.rooms = o.rooms.map(r => ({ ...r }));
     l.upPos = o.upPos;
     l.downPos = o.downPos;

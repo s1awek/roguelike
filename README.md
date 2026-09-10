@@ -1,11 +1,17 @@
 # Roguelike
 
-Terminalowa gra roguelike w czystym Node. Osiem poziomów lochu, na dnie Smok
-Otchłani, wygrywa ten, kto wyniesie Amulet na powierzchnię.
+Gra roguelike w czystym Node. Osiem poziomów lochu, na dnie Smok Otchłani,
+wygrywa ten, kto wyniesie Amulet na powierzchnię.
+
+Dwie skóry na jednym silniku: **terminalowa** (znaki ANSI) i **graficzna**
+(płótno w przeglądarce). Zasady, losowanie i zapisy są wspólne - to ten sam
+`Game`, a nie dwie gry.
 
 Zero zależności zewnętrznych. Nic do zainstalowania poza samym Node (>= 20).
 
 ```bash
+npm run web                       # wersja graficzna: http://localhost:8080/web/
+
 node bin/play.js                  # nowa gra
 node bin/play.js --seed jaskinia  # ten sam loch za każdym razem
 node bin/play.js --continue       # wznów zapis
@@ -46,9 +52,15 @@ leczy, raz truje - dowiesz się, dopiero gdy wypijesz.
 | [`src/items.js`](src/items.js) | przedmioty i losowanie wyglądów per rozgrywka |
 | [`src/monsters.js`](src/monsters.js) | bestiariusz i przeciwnik ostateczny |
 | [`src/game.js`](src/game.js) | silnik: tury, walka, głód, awanse, poziomy |
-| [`src/save.js`](src/save.js) | zapis, wznowienie, **odcisk stanu** |
+| [`src/serialize.js`](src/serialize.js) | serializacja stanu, **bez zależności od środowiska** |
+| [`src/save.js`](src/save.js) | zapis do pliku, **odcisk stanu** (tylko Node) |
+| [`src/bytes.js`](src/bytes.js) | base64 bez `Buffer` - wspólne dla terminala i przeglądarki |
 | [`src/render.js`](src/render.js) | rysowanie w terminalu |
 | [`src/bot.js`](src/bot.js) | gracz automatyczny (całkowicie deterministyczny) |
+| [`web/draw.js`](web/draw.js) | rysowanie na płótnie: kafle, światło, sylwetki |
+| [`web/view.js`](web/view.js) | stan wizualny - płynny ruch, błyski, liczby obrażeń |
+| [`web/main.js`](web/main.js) | wejście, HUD, zapis w przeglądarce |
+| [`bin/serve.js`](bin/serve.js) | serwer plików statycznych, bez zależności |
 
 ## Trzy rzeczy zrobione inaczej, niż wyszłoby domyślnie
 
@@ -71,6 +83,35 @@ pomiarowego (patrz [`docs/przebieg.md`](docs/przebieg.md), W-5 i W-6).
 
 Wynik ostatniej serii: **1000 partii, 318 zwycięstw (31,8%), 682 śmierci,
 zero zakleszczeń, zero wywrotek**, średnio 4321 tur na partię, 552 s.
+
+## Wersja graficzna
+
+```bash
+npm run web        # potem http://localhost:8080/web/
+```
+
+Serwer jest potrzebny wyłącznie dlatego, że moduły ES nie ładują się z `file://`.
+Serwuje katalog projektu, bo `web/` importuje silnik wprost z `src/` - bez
+budowania, bez pakowania, bez kopii kodu gry.
+
+Sterowanie jest to samo co w terminalu, z jednym dodatkiem: **kliknięcie w poznane
+pole** rusza marsz, który sam się zatrzymuje, gdy w polu widzenia pojawi się
+potwór, gdy spadną punkty życia albo gdy pod nogami znajdzie się przedmiot.
+
+Co rysunek mówi, a czego nie mówi:
+
+- **Jasne i ciepłe** - widzisz teraz. **Zimne i przygaszone** - pamiętasz
+  z wcześniej, więc ruchu potworów tam nie zobaczysz. **Czarne** - nieznane.
+  To dokładnie ten sam podział co w terminalu; grafika nie daje przewagi.
+- Barwa flaszki to jej **wygląd**, nie działanie. Ta sama barwa znaczy to samo
+  przez całą rozgrywkę - ale co znaczy, trzeba sprawdzić. Ikona w plecaku jest
+  rysowana tą samą funkcją co przedmiot na podłodze, więc nie da się ich rozjechać.
+- Kamera idzie za graczem, gdy poziom nie mieści się na ekranie w czytelnej skali;
+  na szerokim ekranie pokazuje cały poziom naraz.
+
+Zapisy są **wymienne między wersjami**: ten sam JSON, bajt w bajt. Wersja
+terminalowa trzyma go w pliku (`~/.roguelike-save.json`), graficzna w pamięci
+przeglądarki (`localStorage`).
 
 ## Odbiór
 

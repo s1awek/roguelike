@@ -164,3 +164,83 @@ tego przebiegu. **Nie twierdzę, że zakleszczenia są wyeliminowane** - twierdz
   (`--help`, odmowa startu bez terminala). Sterowanie klawiaturą **nie zostało
   przeklikane przez człowieka** - to jedyne miejsce, gdzie odbiór opiera się na
   lekturze kodu, a nie na przebiegu.
+
+## Wersja graficzna (2026-09-10)
+
+Silnik dał się przenieść do przeglądarki bez zmiany zasad: `src/game.js` i cała
+jego rodzina nie importowały niczego z `node:`. Rozcięcia wymagał wyłącznie
+`src/save.js`, który mieszał czystą serializację z dostępem do dysku - część
+czysta wyjechała do `src/serialize.js`, plikowa została.
+
+Odbiór szedł **przez prowadzenie prawdziwej przeglądarki**, nie przez lekturę
+kodu: sterownik po protokole debugowania Chrome (`bin`-owo nieobecny, plik roboczy
+poza repozytorium, ~90 linii, zero zależności - Node 22 ma wbudowanego klienta
+WebSocket) wciskał klawisze, klikał, zmieniał rozmiar okna, robił zrzuty i zbierał
+konsolę. Sceny do oglądania budował bot: partie prowadzone do stanu „poziom 3,
+dwa potwory w polu widzenia, niepełne życie" i „poziom 8, smok w polu widzenia".
+
+### W-7: `Buffer is not defined` przy wczytywaniu zapisu
+
+`[ustalone - komunikat odczytany ze zrzutu ekranu, poziom nie drgnął z 1]`
+Cztery miejsca w `src/game.js` i `src/map.js` kodowały tablice bajtów przez
+`Buffer.from(...).toString('base64')`. W Node działa, w przeglądarce `Buffer`
+nie istnieje. Wada była **niewidoczna z poziomu kodu w Node** - tam wszystkie
+34 testy przechodziły - i **niewidoczna w konsoli przeglądarki**, bo `loadFromString`
+łapie każdy wyjątek i zamienia go w komunikat dla gracza (spec §7). Wyszła dopiero
+z odczytania paska komunikatu na zrzucie.
+
+Naprawa: `src/bytes.js` na `btoa`/`atob`. Kontrola: zapis wytworzony jeszcze
+starym kodem wczytuje się nowym i serializuje z powrotem do **identycznego**
+napisu, więc odciski stanu i zapisy z terminala pozostają ważne.
+
+### W-8: układ potrafił rosnąć, ale nigdy maleć
+
+`[ustalone - trzy pomiary szerokości płótna: 2560 -> 560 -> 1024]`
+Płótno ma jawną szerokość w pikselach. Jako zwykły element siatki wymuszało przez
+to minimalną szerokość rodzica, więc po zmniejszeniu okna pomiar `#stage`
+zwracał **starą, większą wartość** i przeliczenie kafli dostawało nieprawdziwe
+wejście. Objaw: po powiększeniu okna i zmniejszeniu go z powrotem gracz znikał
+poza kadrem, a widok pokazywał losowy fragment mapy.
+
+Wada nie zgłasza się jako błąd - konsola była czysta przez cały czas. Naprawa:
+płótno wyjęte z przepływu (`position: absolute`) plus `min-width/min-height: 0`.
+
+### W-9: wczytanie skończonej partii nie pokazywało ekranu końcowego
+
+`[ustalone - stan `dead` po wczytaniu, brak nakładki]` Ekran końcowy pokazywał
+wyłącznie `act()`. Zapis zrobiony tuż przed śmiercią wczytywał się więc do
+planszy, na której nic nie reaguje i nic tego nie tłumaczy.
+
+### Pułapka przyrządu, nie gry
+
+`[ustalone - nasłuch `keydown` wypisał odebrane nazwy klawiszy]` Sterownik
+wysyłał wielkie litery bez bitu Shift, więc do strony docierało `l` zamiast `L` -
+czyli „ruch w prawo" zamiast „wczytaj". Wyglądało to jak wada wczytywania i przez
+jedną rundę było diagnozowane jako wada gry. Rozstrzygnęło dopiero zapytanie
+strony wprost, co odbiera, zamiast wnioskowania z zachowania.
+
+### Co sprawdzone przebiegiem, a nie lekturą
+
+| Rzecz | Dowód |
+|---|---|
+| ruch klawiszami | tura 0 -> 6 po 9 wciśnięciach (3 zablokowane ścianą) |
+| ekwipunek, pomoc, wyjście z nakładek | tryb `map` -> `inventory` -> `map` |
+| marsz po kliknięciu | gracz (27,12) -> (22,12), 5 tur, zatrzymał się sam |
+| zapis i wznowienie w przeglądarce | tura 23 -> zapis -> 26 -> wczytanie -> 23 |
+| śmierć i ekran końcowy | HP 5 -> ataki -> status `dead`, tryb `over` |
+| liczby obrażeń i błysk trafienia | zrzut z `-5` nad trollem i `-4` nad graczem |
+| zgodność zapisów z wersją terminalową | ponowna serializacja identyczna z oryginałem |
+| okno 2560, 1440, 1024, 560 px | płótno przelicza się w obie strony |
+| konsola przeglądarki | zero błędów i wyjątków w każdym przebiegu |
+
+### Czego nadal NIE sprawdzono
+
+- `[niezweryfikowane]` Rozgrywka z udziałem **człowieka** - w obu wersjach.
+  Klawisze były wciskane przez sterownik, nie przez palce.
+- `[niezweryfikowane]` Zachowanie na urządzeniu dotykowym. Marsz po kliknięciu
+  powinien działać, ale nie ma sterowania gestami ani przycisków ekranowych.
+- `[niezweryfikowane]` Przeglądarki inne niż oparte na Chromium.
+- `[hipoteza]` Wydajność przy bardzo dużym oknie. Rysowanie jest ograniczane do
+  kafli mieszczących się na ekranie, więc nie powinno rosnąć z rozmiarem mapy -
+  ale liczby klatek nie mierzono.
+
