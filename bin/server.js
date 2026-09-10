@@ -29,6 +29,8 @@ const ZIARNO = arg('--seed', `stol-${Date.now()}`);
 const LIMIT_MIEJSC = Number(arg('--limit', 12));
 const LASKA_MS = Number(arg('--laska', 60000));   // ile czekamy na powrót rozłączonego
 const TICK_MS = 60;
+const ZADAN_NA_SEKUNDE = Number(arg('--limit-zadan', 25));
+const STRUMIENI_NA_MIEJSCE = 3;
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -149,6 +151,35 @@ function wyslijWidok(hid, w) {
 
 // ---------- HTTP ----------
 
+/**
+ * Prosty przydział żądań na adres - wiadro z żetonami.
+ *
+ * Gra turowa nie potrzebuje więcej niż kilku żądań na sekundę od jednego
+ * gracza: jedno na naciśnięcie klawisza. Bez tego ogranicznika pojedynczy
+ * klient w pętli zajmuje procesor pętli stołu i psuje partię wszystkim
+ * pozostałym - a przy grze wystawionej publicznie nie ma powodu zakładać,
+ * że każdy klient jest życzliwy.
+ *
+ * Świadomie NIE jest to zabezpieczenie przed napastnikiem z wielu adresów.
+ * Takie rzeczy załatwia warstwa przed serwerem, nie ten plik.
+ */
+const wiadra = new Map();   // adres -> {zetony, kiedy}
+function przepusc(adres) {
+  const t = Date.now();
+  let w = wiadra.get(adres);
+  if (!w) { w = { zetony: ZADAN_NA_SEKUNDE, kiedy: t }; wiadra.set(adres, w); }
+  w.zetony = Math.min(ZADAN_NA_SEKUNDE, w.zetony + (t - w.kiedy) * ZADAN_NA_SEKUNDE / 1000);
+  w.kiedy = t;
+  if (w.zetony < 1) return false;
+  w.zetony -= 1;
+  return true;
+}
+// Wiadra po adresach, których dawno nie było, nie mogą rosnąć bez końca.
+setInterval(() => {
+  const t = Date.now();
+  for (const [a, w] of wiadra) if (t - w.kiedy > 300000) wiadra.delete(a);
+}, 60000).unref?.();
+
 function json(res, code, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -171,6 +202,11 @@ function cialo(req) {
 const server = createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   const path = decodeURIComponent(u.pathname);
+  const adres = req.socket.remoteAddress || '?';
+
+  if (path.startsWith('/api/') && !przepusc(adres)) {
+    return json(res, 429, { blad: 'za dużo żądań, zwolnij' });
+  }
 
   if (path === '/api/stol') {
     return json(res, 200, {
@@ -211,6 +247,13 @@ const server = createServer(async (req, res) => {
       // Bez tego pośrednik buforujący trzymałby strumień do końca partii.
       'X-Accel-Buffering': 'no',
     });
+    // Kilka kart tej samej osoby to normalne, ale nie kilkadziesiąt: każdy
+    // strumień to kopia migawki na każdą turę.
+    if (w.strumienie.size >= STRUMIENI_NA_MIEJSCE) {
+      const najstarszy = w.strumienie.values().next().value;
+      w.strumienie.delete(najstarszy);
+      try { najstarszy.end(); } catch { /* już zamknięty */ }
+    }
     res.write(': otwarte\n\n');
     w.strumienie.add(res);
     w.dziennikDo = 0;

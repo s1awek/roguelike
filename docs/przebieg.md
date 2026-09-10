@@ -613,6 +613,36 @@ warstwę korzystającą z tej samej funkcji do czegoś innego.
 - wczytanie PRAWDZIWEGO zapisu w formacie 1, wyprodukowanego przed przebudową
   (po niej nie da się go już wytworzyć)
 
+### Serwer pod obciążeniem
+
+Warstwa serwera nie miała żadnego pomiaru, więc dostała własny:
+`.workspace/proba-obciazenie.mjs` sadza ośmiu klientów naraz przy stole z
+czterema botami, każdy z własnym strumieniem, i zgłasza ruchy przez 45 sekund.
+W połowie próby jeden klient **zrywa połączenie bez pożegnania**, w trakcie
+tury wspólnej - bo to jest ten przypadek, który realnie psuje serwer chodzący
+bez opieki.
+
+`[ustalone - `.workspace/proba-obciazenie.mjs`, 12 uczestników, mapa 120x32]`
+
+| miara | wartość |
+|---|---|
+| uczestników przy stole | 12 (8 ludzi, 4 boty) |
+| zgłoszeń działania | 2922 |
+| odmów serwera | 0 |
+| migawek na klienta | 499 przy 366 rundach |
+| tura po próbie | 1527 |
+| klienci bez migawki dłużej niż 8 s | 0 |
+| urwane połączenie zatrzymało resztę | nie - tura szła dalej |
+
+Największa liczba graczy widzianych naraz przez jednego klienta: 3. Jeden
+klient zginął od potworów w trakcie próby, co nie przeszkodziło pozostałym.
+Po próbie serwer nadal odpowiada na pytanie o stan stołu.
+
+Czego ta próba NIE pokazuje: zachowania przy wystawieniu do sieci publicznej.
+Nie ma ograniczenia liczby żądań ani szyfrowania połączenia, a klienci byli tu
+życzliwi - nikt nie próbował zgłaszać po tysiąc działań na sekundę ani podawać
+tysiącznakowego imienia.
+
 ### Czy ktoś już to ma: rozpoznanie w sieci
 
 Pytanie właściciela z rozmowy: czy są gdzieś takie wersje jak nasza, webowe,
