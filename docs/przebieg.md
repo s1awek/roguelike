@@ -361,6 +361,37 @@ miejsca po rozłączeniu (D-029) - siedem porzuconych ciał wróciło do botów 
 okresie łaski, samo, bez żadnej interwencji. To pierwszy raz, gdy ten mechanizm
 zadziałał na człowieku, a nie w próbie.
 
+### W-13: naprawa W-12 zablokowała wejście po restarcie stołu
+
+Wada wprowadzona przez poprzednią naprawę i zgłoszona przez właściciela trzy minuty
+później, jednym wierszem z konsoli: `GET /api/strumien?hid=29&token=... 403`.
+
+Mechanizm jest złożeniem dwóch poprawnych zachowań. Znak miejsca leży
+w `sessionStorage`, żeby odświeżenie strony nie odbierało postaci - i przeżywa
+także RESTART serwera, po którym nie znaczy już nic, bo stół zaczyna się od zera.
+Dotąd kończyło się to nieszkodliwie: gracz klikał „Wejdź" i brał nowe miejsce.
+Zapora z W-12 (`if (ja) return`, żeby drugie kliknięcie nie brało kolejnego
+miejsca) zamknęła tę drogę - miejsce formalnie było, więc przycisk milczał,
+a strumień dobijał się w pętli do miejsca, którego nie ma.
+
+**Nauka:** zapora założona na „za dużo tego samego" musi umieć odróżnić stan
+ważny od nieważnego, inaczej zamienia usterkę hałaśliwą w cichą. Poprzednia
+wersja psuła się głośno i sama się naprawiała jednym kliknięciem; nowa nie dawała
+żadnego wyjścia poza wyczyszczeniem pamięci karty, o czym gracz nie ma skąd
+wiedzieć.
+
+Naprawa: stół odpowiada na pytanie, czy dany znak jeszcze coś znaczy
+(`GET /api/moje`), a klient pyta o to w dwóch miejscach - przy przywracaniu
+zapamiętanego miejsca i po zerwaniu strumienia. Zerwanie łącza i nieistniejące
+miejsce wyglądają w `EventSource` identycznie, a różnią się wszystkim: pierwsze
+mija samo, drugiego nie naprawi żadna liczba ponowień. Gdy miejsca nie ma, klient
+wraca do lobby z czystą pamięcią i mówi wprost, że poprzednia partia przepadła.
+
+Zmierzone sterownikiem na pełnej ścieżce: wejście, restart serwera pod działającą
+kartą, odświeżenie - klient wraca do lobby (`ja: null`, pamięć pusta, przycisk
+włączony) i ponowne wejście przechodzi. Test regresyjny pyta stół o znak ważny,
+o znak podrobiony i o miejsce spoza stołu.
+
 ## Wątek 4: czytelność, minimapa, autozapis (2026-09-10)
 
 Trzy zgłoszenia właściciela po pierwszej dłuższej rozgrywce w przeglądarce:
