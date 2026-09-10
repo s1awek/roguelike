@@ -144,6 +144,16 @@ body {
 #panel li.item:hover { background: #171b26; }
 #panel li.item .key { color: var(--gold); width: 1.4em; }
 #panel li.item .worn { color: var(--green); font-size: 11px; }
+
+/* Skutek przedmiotu obok nazwy: liczby tam, gdzie zapada decyzja o założeniu.
+   Różnica wobec noszonego jest kolorowana, bo to jedyna rzecz, którą gracz
+   czyta w biegu: zielone = zakładam, czerwone = zostawiam. */
+#panel li.item .nm { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+#panel li.item .st { color: var(--dimmer); font-size: 11px; letter-spacing: .01em; }
+#panel li.item .st .cmp { font-style: normal; }
+#panel li.item .st .cmp.plus { color: var(--green); }
+#panel li.item .st .cmp.minus { color: var(--red); }
+#panel li.item .st .cmp.rowno { color: var(--dim); }
 #panel dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; margin: 0 0 14px; }
 #panel dt { color: var(--dim); }
 #panel dd { margin: 0; font-variant-numeric: tabular-nums; }

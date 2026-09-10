@@ -5,7 +5,7 @@
 // zamiast rozjeżdżać się w lewy górny róg.
 
 import { WALL, FLOOR, STAIRS_DOWN, STAIRS_UP } from './map.js';
-import { itemLabel, itemGlyph } from './items.js';
+import { itemLabel, itemGlyph, itemStats } from './items.js';
 import { buildRules } from './rules.js';
 
 const ESC = '\x1b[';
@@ -122,7 +122,12 @@ export function renderInventory(game, mode = 'inventory') {
     if (p.weapon === it) marks.push('w dłoni');
     if (p.armor === it) marks.push('na sobie');
     const suffix = marks.length ? ` ${C.brightGreen}(${marks.join(', ')})${C.reset}` : '';
-    lines.push(`  ${C.brightYellow}${letter}${C.reset}) ${ITEM_COLOR[it.kind] || C.white}${itemGlyph(it)}${C.reset} ${itemLabel(it, game.appearances, game.identified, game.sniffed)}${suffix}`);
+    // Liczby przy przedmiocie, nie w księdze zasad: decyzja „zakładać czy nie"
+    // zapada tutaj, więc tutaj muszą stać skutek i różnica wobec noszonego.
+    const st = itemStats(it, p, game.identified);
+    const barwa = st.znak === 'plus' ? C.brightGreen : st.znak === 'minus' ? C.brightRed : C.grey;
+    const opis = st.opis ? ` ${C.grey}[${st.opis}${st.porownanie ? `${C.reset}${barwa}, ${st.porownanie}` : ''}${C.reset}${C.grey}]${C.reset}` : '';
+    lines.push(`  ${C.brightYellow}${letter}${C.reset}) ${ITEM_COLOR[it.kind] || C.white}${itemGlyph(it)}${C.reset} ${itemLabel(it, game.appearances, game.identified, game.sniffed)}${suffix}${opis}`);
   });
   return lines;
 }

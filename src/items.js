@@ -138,3 +138,87 @@ export function itemLabel(item, appearances, identified, sniffed = null) {
 }
 
 export function itemGlyph(item) { return GLYPHS[item.kind] || '*'; }
+
+// ---------- skutek przedmiotu w liczbach ----------
+//
+// Plecak, który pokazuje same nazwy, zmusza gracza do pamiętania tablic z księgi
+// zasad albo do zgadywania. „Kurta ćwiekowana" nic nie mówi o tym, czy jest
+// lepsza od noszonej kolczugi - a to jest cała decyzja, którą gracz ma podjąć.
+// Dlatego liczby idą tam, gdzie zapada decyzja: obok przedmiotu.
+//
+// To jest JEDNO źródło opisu dla terminala, wersji jednoosobowej i stołu (D-021):
+// żaden interfejs nie przepisuje tych liczb u siebie.
+
+/** Moc mikstury z tablicy - nigdy przepisana z pamięci. */
+export function potionPower(type) {
+  const p = POTIONS.find(x => x.type === type);
+  return p ? p.power : 0;
+}
+
+/** Premia przedmiotu razem z ostrzeniem/wzmocnieniem ze zwojów. */
+export function bonusRazem(it) { return (it.bonus || 0) + (it.enchant || 0); }
+
+const zn = (n) => (n > 0 ? `+${n}` : `${n}`);
+
+const POTION_EFFECT = {
+  heal: (p) => `życie ${zn(p)}`,
+  greaterHeal: (p) => `życie ${zn(p)}`,
+  strength: (p) => `siła ${zn(p)} na stałe`,
+  poison: (p) => `życie ${zn(-p)}`,
+};
+
+const SCROLL_EFFECT = {
+  identify: 'rozpoznaje zawartość plecaka',
+  magicMap: 'odkrywa mapę piętra',
+  teleport: 'przenosi w losowe miejsce',
+  enchantWeapon: 'broń w dłoni: atak +1',
+  enchantArmor: 'pancerz na sobie: obrona +1',
+};
+
+/**
+ * Co przedmiot daje albo zabiera - i co się zmieni, jeśli gracz go założy.
+ *
+ * `hero` może być prawdziwym bohaterem albo migawką ze stołu; porównanie idzie
+ * po `id`, bo migawka niesie KOPIE przedmiotów, nie te same obiekty.
+ * `identified` jest granicą uczciwości: nierozpoznana mikstura nie zdradza mocy,
+ * bo to jest sekret rozgrywki, a nie brakująca podpowiedź.
+ */
+export function itemStats(item, hero = null, identified = null) {
+  const out = { opis: null, porownanie: null, znak: null, noszone: false };
+  if (!item) return out;
+  const znane = identified ? identified.has(`${item.kind}:${item.type}`) : true;
+
+  if (item.kind === 'weapon' || item.kind === 'armor') {
+    const bron = item.kind === 'weapon';
+    const suma = bonusRazem(item);
+    out.opis = `${bron ? 'atak' : 'obrona'} ${zn(suma)}`;
+    const noszony = hero ? (bron ? hero.weapon : hero.armor) : null;
+    out.noszone = !!noszony && noszony.id === item.id;
+    if (hero && !out.noszone) {
+      const roznica = suma - (noszony ? bonusRazem(noszony) : 0);
+      out.znak = roznica > 0 ? 'plus' : roznica < 0 ? 'minus' : 'rowno';
+      out.porownanie = roznica > 0 ? `lepsze o ${roznica}`
+        : roznica < 0 ? `gorsze o ${-roznica}`
+        : 'bez zmiany';
+    }
+    return out;
+  }
+
+  if (item.kind === 'potion') {
+    out.opis = znane ? POTION_EFFECT[item.type](potionPower(item.type)) : 'nieznane działanie';
+    return out;
+  }
+  if (item.kind === 'scroll') {
+    out.opis = znane ? (SCROLL_EFFECT[item.type] || 'nieznane działanie') : 'nieznane działanie';
+    return out;
+  }
+  if (item.kind === 'food') {
+    out.opis = `sytość ${zn(item.nutrition || 0)}`;
+    return out;
+  }
+  if (item.kind === 'amulet') {
+    out.opis = 'cel wyprawy - wynieś go schodami z pierwszego piętra';
+    return out;
+  }
+  return out;
+}

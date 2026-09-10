@@ -202,6 +202,7 @@ export function buildRules(gdzie = 'doc') {
         { t: 'table', head: ['pancerz', 'premia do obrony', 'od poziomu'], rows:
           ARMORS.map(a => [a.name, `+${a.bonus}`, String(a.minDepth)]) },
         { t: 'p', text: `W plecaku mieści się ${INVENTORY_LIMIT} przedmiotów. Przedmioty wolno układać w stos na jednym polu, więc pełny plecak nigdy nie blokuje gry.` },
+        { t: 'p', text: 'Plecak sam podaje skutek każdej rzeczy i to, co się zmieni po założeniu: „obrona +2, gorsze o 1" znaczy, że kurta jest słabsza od noszonej kolczugi. Tych liczb nie trzeba przepisywać z tej tabeli ani pamiętać - stoją przy przedmiocie. Mikstury i zwoje pokazują działanie dopiero po rozpoznaniu.' },
       ],
     },
     {

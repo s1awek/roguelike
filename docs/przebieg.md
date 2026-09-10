@@ -1003,3 +1003,39 @@ mierzył geometrię komnaty, nie regułę. Poprawka to pole zapasowe w oprzyrzą
 (trzy pola podłogi w rzędzie) i powrót obu postaci na start przed każdą turą.
 Gdybym rozluźnił warunek zamiast poprawić oprzyrządowanie, wada z NaN przeszłaby
 niezauważona.
+
+### W-20: opis przedmiotu odsłonił liczby przepisane w silniku z pamięci
+
+Zgłoszenie było o interfejsie: plecak ma pokazywać, co daje miecz i co daje kurta.
+Robota wyglądała na czysto widokową - dopóki nie trzeba było odpowiedzieć na
+pytanie, SKĄD wziąć moc mikstury leczenia.
+
+W `src/game.js` stała funkcja `it_power(it)` zwracająca `30` dla mikstury pełni
+sił i `12` dla każdej innej, a trucizna miała w swojej gałęzi `const d = 8`.
+Tablica `POTIONS` w `src/items.js` niosła dokładnie te same liczby. Zgadzały się,
+więc nic nigdy nie zapaliło się na czerwono - i to jest cała pułapka: duplikat
+liczby nie jest usterką w chwili powstania, jest usterką odłożoną na dzień,
+w którym ktoś zmieni jedno miejsce. Test sprawdzający księgę zasad (`test/potions.test.js`)
+pilnował zgodności KSIĘGI z tablicą, ale nikt nie pilnował zgodności SILNIKA
+z tablicą, bo silnik nie wyglądał na miejsce, gdzie tablica jest przepisywana.
+
+Naprawa: `potionPower(type)` czyta z `POTIONS`, a `game.js` woła ją w trzech
+miejscach (leczenie, siła, trucizna). Po zmianie `npm test` daje 96/96 bez
+jednej poprawki w testach - czyli liczby faktycznie były identyczne i równowaga
+nie drgnęła. Dowodem jest tu ZERO zmian w wynikach, nie ich brak w oczach.
+
+Nowy test wiąże dwie strony jawnie: `test/inwentarz.test.js` sprawdza, że opis
+w plecaku obiecuje dokładnie tyle, ile silnik potem zabiera albo dodaje
+(„wypicie leczy DOKŁADNIE tyle, ile obiecuje opis"), oraz że zapowiedziana
+różnica ataku równa się realnej zmianie po założeniu broni. To jest jedyny
+rodzaj testu, który wyłapie rozjazd, gdy ktoś kiedyś ruszy tablicę.
+
+Kontrola przyrządu, dwa zasiewy: opis ignorujący zbiór rozpoznanych rodzajów
+(zdradzałby moc nierozpoznanej mikstury) - 2 testy na czerwono; różnica liczona
+zawsze wobec zera, jakby nic nie było noszone - 6 testów na czerwono. Po
+przywróceniu pliku 15/15 zielone. Bez tych dwóch zasiewów nie wiedziałbym, czy
+mierzę mechanikę, czy tylko własną zdolność do pisania zdań o niej.
+
+**Nauka:** zgłoszenie „pokaż mi liczbę" jest okazją, żeby sprawdzić, ile miejsc
+tę liczbę zna. Interfejs, który ma ją wyświetlić, musi ją skądś wziąć - i to
+pytanie znajduje duplikaty, których nie widać, dopóki nikt nie pyta.

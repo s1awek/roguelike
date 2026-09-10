@@ -7,7 +7,8 @@
 
 import { Game } from '../src/game.js';
 import { serialize, loadFromString } from '../src/serialize.js';
-import { itemLabel } from '../src/items.js';
+import { itemLabel, itemStats } from '../src/items.js';
+import { statsHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
@@ -214,7 +215,8 @@ function openInventory(which) {
     const worn = marks.length ? `<span class="worn">(${marks.join(', ')})</span>` : '';
     return `<li class="item" data-i="${i}"><span class="key">${String.fromCharCode(97 + i)})</span>
       <canvas class="ico" width="44" height="44"></canvas>
-      <span>${escapeHtml(itemLabel(it, game.appearances, game.identified, game.sniffed))}</span> ${worn}</li>`;
+      <span class="nm">${escapeHtml(itemLabel(it, game.appearances, game.identified, game.sniffed))} ${worn}
+      ${statsHtml(itemStats(it, p, game.identified))}</span></li>`;
   }).join('');
   panel.innerHTML = `
     <h2>${INV_TITLE[which]} <span class="muted">${p.inventory.length}/16</span></h2>

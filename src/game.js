@@ -16,7 +16,7 @@ import { RNG } from './rng.js';
 import { generateLevel, Level, STAIRS_DOWN, STAIRS_UP, WALL } from './map.js';
 import { computeFOV } from './fov.js';
 import { distanceField, neighbors, chebyshev } from './path.js';
-import { randomItem, makeAmulet, makeAppearances, itemLabel, SCENTS, POTION_SCENT, scentGroup } from './items.js';
+import { randomItem, makeAmulet, makeAppearances, itemLabel, potionPower, SCENTS, POTION_SCENT, scentGroup } from './items.js';
 import { spawnMonster, spawnBoss } from './monsters.js';
 import { bytesToBase64, base64ToBytes } from './bytes.js';
 
@@ -887,16 +887,16 @@ export class Game {
       case 'heal':
       case 'greaterHeal': {
         const before = this.player.hp;
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + it_power(it));
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + potionPower(it.type));
         this.message(`Pijesz ${it.name}. Odzyskujesz ${this.player.hp - before} życia.`);
         break;
       }
       case 'strength':
-        this.player.str += 1;
+        this.player.str += potionPower('strength');
         this.message('Czujesz przypływ siły.');
         break;
       case 'poison': {
-        const d = 8;
+        const d = potionPower('poison');
         this.player.hp -= d;
         this.deathCause = 'zatrucie';
         this.message(`Mikstura parzy gardło! Tracisz ${d} życia.`);
@@ -1222,5 +1222,4 @@ function przepiszFormat1(d) {
   };
 }
 
-function it_power(it) { return it.type === 'greaterHeal' ? 30 : 12; }
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }

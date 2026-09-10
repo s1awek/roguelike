@@ -8,7 +8,8 @@
 // się jednocześnie, więc nikt nie może zobaczyć skutku swojego ruchu, zanim
 // drugi zadeklaruje własny.
 
-import { itemLabel } from '../src/items.js';
+import { itemLabel, itemStats } from '../src/items.js';
+import { statsHtml } from './opis.js';
 import { buildRules } from '../src/rules.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
@@ -243,7 +244,8 @@ function otworzPlecak(which) {
       || (p.weapon && it.id === p.weapon.id) || (p.armor && it.id === p.armor.id);
     return `<li class="item" data-i="${i}"><span class="key">${String.fromCharCode(97 + i)}</span>`
       + `<canvas class="ico" width="44" height="44"></canvas>`
-      + `<span class="nm">${escapeHtml(nazwa)}${noszone ? ' <em class="muted">(noszone)</em>' : ''}</span></li>`;
+      + `<span class="nm">${escapeHtml(nazwa)}${noszone ? ' <em class="muted">(noszone)</em>' : ''}`
+      + `${statsHtml(itemStats(it, p, cien.identified))}</span></li>`;
   }).join('');
   panel.innerHTML = `
     <h2>${INV_TITLE[which]} <span class="muted">${p.inventory.length}/16</span></h2>
