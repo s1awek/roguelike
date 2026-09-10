@@ -32,13 +32,42 @@ npm test                          # testy jednostkowe
 | schody | `>` w dół, `<` w górę |
 | ekwipunek | `i`, potem litera przedmiotu |
 | wyrzuć | `d` |
+| powąchaj miksturę | `w`, potem litera |
 | zapis / wczytaj | `S` / `L` |
-| pomoc / wyjście | `?` / `Q` |
+| księga zasad / wyjście | `?` / `Q` |
 | minimapa (tylko przeglądarka) | `m` |
 | nowa gra (tylko przeglądarka) | `Shift`+`N` |
 
 Znaki: `@` ty, `!` mikstura, `?` zwój, `)` broń, `[` pancerz, `%` jedzenie,
 `"` Amulet. Litery to potwory - małe słabsze, wielkie groźniejsze.
+
+## Zasady
+
+Pełne reguły - walka, rozwój, głód, przedmioty, rozpoznawanie mikstur, pole
+widzenia - są w **[księdze zasad](docs/zasady.md)**. Ta sama treść jest dostępna
+w trakcie gry pod klawiszem `?`, w obu wersjach, i nie może się z plikiem
+rozjechać: jedno źródło w [`src/rules.js`](src/rules.js), z którego plik jest
+generowany przez `npm run zasady`. Liczby w tabelach nie są przepisane ręcznie -
+liczą się z tych samych tablic, których gra używa w rozgrywce.
+
+### Skąd wiedzieć, co robi mikstura
+
+Rodzaje mikstur są stałe, ale ich **wygląd** jest losowany na każdą rozgrywkę:
+„czarna mikstura" znaczy co innego w każdej partii, a to samo przez całą jedną
+partię. Wiedzę zdobywa się czterema drogami, od najtańszej:
+
+1. **Powąchaj** (`w`) - kosztuje jedną turę, nie kosztuje życia. Zapach dzieli
+   mikstury na dwie pary i nigdy nie wskazuje jednej: mówi „to mnie nie zaboli"
+   albo „to jest siła albo trucizna". Zapach zostaje przy nazwie w plecaku.
+2. **Policz** - mikstura leczenia jest najczęstsza, więc barwa widywana raz na
+   partię raczej nią nie jest.
+3. **Wyklucz** - rodzaje są cztery, więc gdy znasz trzy, czwarta barwa jest
+   przesądzona. Gdy przesądzona jest para zapachowa, wykluczenie robi sama gra.
+4. **Zwój rozpoznania** - rozpoznaje na pewno wszystkie nieznane mikstury
+   i zwoje, które masz w plecaku w tej chwili.
+
+Rozpoznanie działa na **rodzaj, nie na sztukę**: gdy raz się dowiesz, czym jest
+perlista mikstura, wszystkie perliste mikstury noszą już prawdziwą nazwę.
 
 Mikstury i zwoje mają w każdej rozgrywce **inny wygląd**. Czerwona mikstura raz
 leczy, raz truje - dowiesz się, dopiero gdy wypijesz.
@@ -62,6 +91,7 @@ leczy, raz truje - dowiesz się, dopiero gdy wypijesz.
 | [`web/draw.js`](web/draw.js) | rysowanie na płótnie: kafle, światło, sylwetki |
 | [`web/view.js`](web/view.js) | stan wizualny - płynny ruch, błyski, liczby obrażeń |
 | [`web/main.js`](web/main.js) | wejście, HUD, zapis w przeglądarce |
+| [`src/rules.js`](src/rules.js) | księga zasad - jedno źródło dla gry i dla `docs/zasady.md` |
 | [`tools/browser.js`](tools/browser.js) | sterownik przeglądarki po CDP - przyrząd, którym mierzone są twierdzenia o wersji graficznej |
 | [`bin/serve.js`](bin/serve.js) | serwer plików statycznych, bez zależności |
 

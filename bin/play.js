@@ -8,7 +8,7 @@
 
 import { Game } from '../src/game.js';
 import { saveToFile, loadFromFile } from '../src/save.js';
-import { renderFrame, renderGameOver, clearScreen, hideCursor, showCursor, C } from '../src/render.js';
+import { renderFrame, renderGameOver, clearScreen, hideCursor, showCursor, RULE_COUNT, C } from '../src/render.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -31,7 +31,7 @@ if (args.includes('--help') || args.includes('-h')) {
   --continue        wznów z zapisu (${SAVE_PATH})
   --help            ta pomoc
 
-W grze: ? = pomoc, S = zapis, Q = wyjście.`);
+W grze: ? = księga zasad, w = powąchaj miksturę, S = zapis, Q = wyjście.`);
   process.exit(0);
 }
 
@@ -45,6 +45,7 @@ if (args.includes('--continue')) {
 }
 
 let mode = 'map';
+let section = 0;        // otwarty rozdział księgi zasad
 let extra = '';
 
 const DIR_KEYS = {
@@ -60,7 +61,7 @@ function draw() {
     process.stdout.write(clearScreen() + renderGameOver(game) + `\n  ${C.grey}Dowolny klawisz kończy.${C.reset}\n`);
     return;
   }
-  process.stdout.write(renderFrame(game, mode, extra));
+  process.stdout.write(renderFrame(game, mode, extra, section));
   extra = '';
 }
 
@@ -79,14 +80,23 @@ function quit(msg) {
 function handleKey(key) {
   if (game.status !== 'playing') quit(`Ziarno: ${game.seed}   Wynik: ${game.score()}`);
 
-  if (mode === 'help') { mode = 'map'; return; }
+  // Księga zasad: rozdziały przeglądane bez wychodzenia z gry. Świat stoi -
+  // czytanie nie kosztuje tury i nie da się nim przeczekać potwora.
+  if (mode === 'help') {
+    if (key === 'ESC' || key === '?' || key === 'q' || key === 'Q') { mode = 'map'; return; }
+    if (key === 'n' || key === ' ' || key === 'RIGHT' || key === 'DOWN') { section = (section + 1) % RULE_COUNT; return; }
+    if (key === 'p' || key === 'LEFT' || key === 'UP') { section = (section - 1 + RULE_COUNT) % RULE_COUNT; return; }
+    const n = Number(key);
+    if (Number.isInteger(n) && n >= 1 && n <= RULE_COUNT) section = n - 1;
+    return;
+  }
 
-  if (mode === 'inventory' || mode === 'drop') {
+  if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') {
     if (key === 'ESC' || key === 'i' || key === 'q') { mode = 'map'; return; }
     const idx = key.length === 1 ? key.charCodeAt(0) - 97 : -1;
     if (idx >= 0 && idx < game.player.inventory.length) {
-      if (mode === 'drop') game.act({ type: 'drop', index: idx });
-      else game.act({ type: 'use', index: idx });
+      const action = mode === 'drop' ? 'drop' : mode === 'sniff' ? 'sniff' : 'use';
+      game.act({ type: action, index: idx });
       mode = 'map';
     }
     return;
@@ -101,6 +111,7 @@ function handleKey(key) {
     case '<': game.act({ type: 'ascend' }); break;
     case 'i': mode = 'inventory'; break;
     case 'd': mode = 'drop'; break;
+    case 'w': mode = 'sniff'; break;
     case '?': mode = 'help'; break;
     case 'S': {
       try { saveToFile(game, SAVE_PATH); extra = `${C.brightGreen}Zapisano: ${SAVE_PATH}${C.reset}`; }

@@ -1,0 +1,172 @@
+# Księga zasad
+
+Ten plik jest **generowany** z `src/rules.js` poleceniem `npm run zasady`.
+Nie edytuj go ręcznie - poprawki nanoś w `src/rules.js`, żeby zmiana trafiła
+jednocześnie tutaj, do gry w terminalu (`?`) i do gry w przeglądarce (`?`).
+
+Liczby w tabelach nie są przepisane - liczą się z tych samych tablic, których
+gra używa w czasie rozgrywki.
+
+## Cel gry
+
+Zejdź na poziom 8, pokonaj przeciwnika ostatecznego - Smok Otchłani - zabierz Amulet Otchłani i wróć z nim schodami w górę aż na powierzchnię.
+
+Schody w górę na poziomie 1 są wyjściem z lochu. Bez Amuletu nie da się nimi wyjść: gra nie pozwoli wrócić z pustymi rękami.
+
+Loch jest generowany z ziarna. Ta sama gra z tego samego ziarna przebiega dokładnie tak samo - to samo rozmieszczenie, te same losowania, ten sam wygląd mikstur.
+
+## Sterowanie
+
+| klawisz | co robi |
+|---|---|
+| strzałki, hjkl, yubn, klawiatura numeryczna | ruch i atak - wejście na potwora to cios |
+| . albo 5 | czekaj jedną turę |
+| , albo g | podnieś to, co leży pod nogami |
+| > / < | schody w dół / w górę |
+| i | ekwipunek: litera używa albo zakłada |
+| d | wyrzuć przedmiot |
+| w | powąchaj miksturę - kosztuje turę, nie kosztuje życia |
+| ? | ta księga |
+| S / L | zapisz / wczytaj |
+| Q | wyjście z gry (tylko terminal) |
+| kliknięcie w poznane pole | marsz - zatrzymuje się na widok potwora, przy stracie życia i nad przedmiotem (tylko wersja graficzna) |
+| m | minimapa - włącz i wyłącz (tylko wersja graficzna) |
+| Shift+N | nowa gra (tylko wersja graficzna) |
+
+Działanie odrzucone - ruch w ścianę, podnoszenie z pustego pola, powąchanie czegoś, co nie jest miksturą - NIE kosztuje tury. Świat rusza się tylko wtedy, gdy Ty coś zrobisz.
+
+## Co widać, a czego nie
+
+Widzisz w promieniu 8 pól i tylko to, co nie jest zasłonięte. Pole widzenia jest symetryczne: jeśli Ty widzisz potwora, potwór widzi Ciebie.
+
+Pola raz zobaczone zostają w pamięci i są rysowane przygaszone. Pamięć dotyczy WYŁĄCZNIE kształtu lochu - potworów i przedmiotów poza polem widzenia nie zobaczysz, choćbyś stał tam przed chwilą.
+
+Potwory śpią, dopóki ich nie obudzisz. Obudzony potwór idzie za Tobą, a nietoperz porusza się nieprzewidywalnie.
+
+## Walka
+
+Wejście na pole potwora to atak. Nie ma osobnego klawisza ciosu.
+
+Obrażenia liczą się tak: losujesz od 1 do swojego ataku, a obrońca losuje od 0 do swojej obrony i odejmuje. Wynik zero albo mniej to chybienie. Silny pancerz nie zmniejsza więc obrażeń o stałą wartość - on ZWIĘKSZA SZANSĘ, że cios w ogóle nie przejdzie.
+
+| wielkość | z czego się składa |
+|---|---|
+| Twój atak | siła + premia broni + ostrzenie |
+| Twoja obrona | zręczność + premia pancerza + wzmocnienie |
+| atak potwora | jego siła |
+| obrona potwora | jego obrona |
+
+Ta sama zasada obowiązuje w obie strony, więc każdy cios może chybić - także cios Smoka.
+
+## Rozwój postaci
+
+Za pokonane potwory dostajesz doświadczenie. Awans daje +10 do maksimum życia (i tyle samo od ręki), +1 do siły, a co drugi poziom +1 do zręczności.
+
+| poziom | potrzebne doświadczenie |
+|---|---|
+| 2 | 10 |
+| 3 | 36 |
+| 4 | 76 |
+| 5 | 129 |
+| 6 | 196 |
+| 7 | 275 |
+| 8 | 365 |
+
+Życie odnawia się samo: 1 punkt co max(8, 24 - poziom postaci) tur. Na pierwszym poziomie to jeden punkt na 23 tur, na ósmym na 16. Głodujący NIE regeneruje się wcale.
+
+## Głód
+
+Zaczynasz z sytością 1200 i tracisz 1 punkt na turę. Jedzenie podnosi ją do najwyżej 2000.
+
+| sytość | co się dzieje |
+|---|---|
+| 200 | ostrzeżenie: robisz się głodny |
+| 50 | ostrzeżenie: jesteś bardzo głodny |
+| 0 | głodujesz: tracisz 1 życie co trzecią turę i nie regenerujesz się |
+
+| jedzenie | sytość | jak często |
+|---|---|---|
+| racja żywnościowa | 800 | 63% |
+| jabłko | 250 | 37% |
+
+Głód jest zegarem całej wyprawy: to on karze zwlekanie i nadmierne krążenie po odkrytych już poziomach.
+
+## Mikstury: skąd wiedzieć, co pijesz
+
+Rodzaje mikstur są zawsze te same i zawsze działają tak samo. Zmienia się WYGLĄD: na początku każdej rozgrywki barwy są losowo przypisywane do rodzajów. „Czarna mikstura" znaczy co innego w każdej partii, ale w obrębie jednej partii znaczy zawsze to samo.
+
+| mikstura | co robi | jak często | zapach |
+|---|---|---|---|
+| mikstura leczenia | leczy 12 punktów życia | 44% | łagodny |
+| mikstura pełni sił | leczy 30 punktów życia | 22% | łagodny |
+| mikstura siły | +1 do siły, na stałe | 17% | ostry |
+| mikstura trucizny | odbiera 8 punktów życia | 17% | ostry |
+
+Powąchanie (klawisz w) kosztuje jedną turę i nie kosztuje życia. Zapach dzieli mikstury na dwie pary i NIGDY nie wskazuje jednej: „łagodny" to mikstura leczenia albo mikstura pełni sił, „ostry" to mikstura siły albo mikstura trucizny. Odpowiada więc na pytanie „czy to mnie zaboli", a nie „co to dokładnie jest".
+
+Zapach zostaje przy nazwie mikstury w plecaku, więc nie trzeba go pamiętać. Jeśli drugi rodzaj z pary jest już rozpoznany, powąchanie rozstrzyga na pewno - to wykluczenie gra robi za Ciebie.
+
+> Cztery sposoby, żeby wiedzieć więcej, uszeregowane od najtańszego: (1) powąchaj - koszt jednej tury; (2) policz, jak często widujesz daną barwę - mikstura leczenia jest najczęstsza; (3) wyklucz - rodzaje są cztery, więc gdy znasz trzy, czwarta barwa jest już przesądzona; (4) wypij przy pełnym życiu i bez potwora w zasięgu wzroku - trucizna zabiera stałą liczbę punktów, więc taka próba nie może zabić, ale marnuje miksturę leczenia.
+
+Rozpoznanie działa na RODZAJ, nie na sztukę: gdy raz dowiesz się, czym jest perlista mikstura, wszystkie perliste mikstury - w plecaku, na podłodze, znalezione później - noszą już prawdziwą nazwę.
+
+## Zwoje
+
+Zwoje działają tak samo jak mikstury: rodzaj jest stały, napis na zwoju jest losowany na całą rozgrywkę. Zwojów nie da się powąchać - jedyna tania droga do wiedzy o nich to zwój rozpoznania.
+
+| zwój | co robi | jak często |
+|---|---|---|
+| zwój rozpoznania | rozpoznaje wszystkie nieznane mikstury i zwoje, które masz przy sobie | 21% |
+| zwój odkrycia | odsłania plan całego poziomu (bez potworów i przedmiotów) | 21% |
+| zwój przeniesienia | przenosi w losowe wolne miejsce na tym samym poziomie | 25% |
+| zwój ostrzenia | +1 do trzymanej broni, na stałe | 17% |
+| zwój wzmocnienia | +1 do noszonego pancerza, na stałe | 16% |
+
+Zwój rozpoznania rozpoznaje wszystko nieznane, co masz przy sobie W TEJ CHWILI - więc opłaca się zbierać zagadki i przeczytać go, gdy plecak jest ich pełny.
+
+## Broń i pancerz
+
+Broń i pancerz są widoczne od razu - tu nie ma zagadki. Głębsze poziomy dają lepszy sprzęt; płytkie nie dają go wcale.
+
+| broń | premia do ataku | od poziomu |
+|---|---|---|
+| sztylet | +1 | 1 |
+| krótki miecz | +2 | 1 |
+| buzdygan | +3 | 2 |
+| długi miecz | +4 | 4 |
+| topór bojowy | +6 | 5 |
+
+| pancerz | premia do obrony | od poziomu |
+|---|---|---|
+| kurta skórzana | +1 | 1 |
+| kurta ćwiekowana | +2 | 1 |
+| kolczuga | +3 | 3 |
+| zbroja płytowa | +5 | 5 |
+
+W plecaku mieści się 16 przedmiotów. Przedmioty wolno układać w stos na jednym polu, więc pełny plecak nigdy nie blokuje gry.
+
+## Potwory
+
+| potwór | znak | życie | siła | obrona | doświadczenie | poziomy |
+|---|---|---|---|---|---|---|
+| szczur | r | 5 | 3 | 0 | 2 | 1-3 |
+| nietoperz | b | 6 | 3 | 1 | 3 | 1-4 |
+| kobold | k | 9 | 4 | 1 | 5 | 1-5 |
+| goblin | g | 13 | 5 | 2 | 8 | 2-6 |
+| szkielet | s | 18 | 6 | 3 | 13 | 3-7 |
+| ork | o | 24 | 8 | 4 | 20 | 4-8 |
+| ogr | O | 36 | 13 | 6 | 32 | 5-8 |
+| troll | T | 48 | 15 | 7 | 55 | 6-8 |
+| zjawa | W | 40 | 17 | 8 | 70 | 7-8 |
+
+| przeciwnik ostateczny | znak | życie | siła | obrona | doświadczenie | poziom |
+|---|---|---|---|---|---|---|
+| Smok Otchłani | D | 130 | 19 | 10 | 400 | 8 |
+
+Troll regeneruje się w trakcie walki, nietoperz porusza się chaotycznie i trudno go trafić przewidywaniem, a zjawa bije mocniej niż wskazuje jej wygląd.
+
+## Zapis stanu
+
+Zapis obejmuje wszystko, łącznie ze stanem generatora losowego - wznowiona gra jest nieodróżnialna od tej sprzed zapisu, a nie tylko podobna.
+
+W terminalu S zapisuje do pliku, a L wczytuje. W przeglądarce gra zapisuje się dodatkowo sama po każdej turze, a S robi osobny punkt kontrolny. Zapisy są wymienne między wersjami - to ten sam format.

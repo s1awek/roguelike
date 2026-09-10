@@ -11,7 +11,8 @@
     "web": "node bin/serve.js",
     "test": "node --test test/*.test.js",
     "bot": "node bin/bot.js",
-    "verify": "node bin/verify.js"
+    "verify": "node bin/verify.js",
+    "zasady": "node tools/rules-to-md.js"
   },
   "engines": {
     "node": ">=20"

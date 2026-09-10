@@ -8,6 +8,7 @@
 import { Game } from '../src/game.js';
 import { serialize, loadFromString } from '../src/serialize.js';
 import { itemLabel } from '../src/items.js';
+import { buildRules } from '../src/rules.js';
 import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
 import { Renderer } from './draw.js';
@@ -28,7 +29,9 @@ const renderer = new Renderer(canvas);
 const view = new View();
 
 const params = new URLSearchParams(location.search);
-let mode = 'map';                // 'map' | 'inventory' | 'drop' | 'help' | 'over'
+let mode = 'map';                // 'map' | 'inventory' | 'drop' | 'sniff' | 'help' | 'over'
+const RULES = buildRules('web');
+let ruleSection = 0;
 let walk = null;
 let notice = '';
 let noticeUntil = 0;
@@ -141,14 +144,23 @@ window.addEventListener('keydown', (e) => {
   keyLog.push({ key: e.key, code: e.code, shift: e.shiftKey, uzyto: k });
   if (keyLog.length > 24) keyLog.shift();
 
-  if (DIR[k] || ['.', ',', '5', 'g', '>', '<', 'i', 'd', '?', 'S', 'L', 'N', 'm', 'Escape', ' '].includes(k)) e.preventDefault();
+  if (DIR[k] || ['.', ',', '5', 'g', '>', '<', 'i', 'd', 'w', '?', 'S', 'L', 'N', 'm', 'Escape', ' '].includes(k)) e.preventDefault();
 
   if (walk) { walk = null; return; }   // dowolny klawisz przerywa marsz
 
   if (mode === 'over') { if (k === 'Enter' || k === ' ') newGame(); return; }
-  if (mode === 'help') { closeOverlay(); return; }
+  // Księga zasad: rozdziały przeglądane bez wychodzenia z gry. Świat stoi,
+  // więc czytanie nie kosztuje tury i nie przeczeka potwora.
+  if (mode === 'help') {
+    if (k === 'Escape' || k === '?' || k === 'q') { closeOverlay(); return; }
+    if (k === 'n' || k === ' ' || k === 'ArrowRight' || k === 'ArrowDown') { showRules(ruleSection + 1); return; }
+    if (k === 'p' || k === 'ArrowLeft' || k === 'ArrowUp') { showRules(ruleSection - 1); return; }
+    const n = Number(k);
+    if (Number.isInteger(n) && n >= 1 && n <= RULES.length) showRules(n - 1);
+    return;
+  }
 
-  if (mode === 'inventory' || mode === 'drop') {
+  if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') {
     if (k === 'Escape' || k === 'i' || k === 'q') { closeOverlay(); return; }
     const idx = k.length === 1 ? k.charCodeAt(0) - 97 : -1;
     if (idx >= 0 && idx < game.player.inventory.length) useSlot(idx);
@@ -164,7 +176,8 @@ window.addEventListener('keydown', (e) => {
     case '<': act({ type: 'ascend' }); break;
     case 'i': openInventory('inventory'); break;
     case 'd': openInventory('drop'); break;
-    case '?': openHelp(); break;
+    case 'w': openInventory('sniff'); break;
+    case '?': showRules(ruleSection); break;
     case 'S': doSave(); break;
     case 'L': doLoad(); break;
     case 'm': renderer.minimap = !renderer.minimap; say(renderer.minimap ? 'Minimapa włączona.' : 'Minimapa wyłączona.'); break;
@@ -196,10 +209,15 @@ canvas.addEventListener('click', (e) => {
 function closeOverlay() { mode = 'map'; overlay.hidden = true; }
 
 function useSlot(idx) {
-  const action = mode === 'drop' ? 'drop' : 'use';
+  const action = mode === 'drop' ? 'drop' : mode === 'sniff' ? 'sniff' : 'use';
   closeOverlay();
   act({ type: action, index: idx });
 }
+
+const INV_TITLE = { drop: 'Co wyrzucić?', sniff: 'Co powąchać?', inventory: 'Ekwipunek' };
+const INV_HINT = {
+  drop: 'wyrzuca', sniff: 'wącha - tylko mikstury, koszt jednej tury', inventory: 'używa lub zakłada',
+};
 
 function openInventory(which) {
   mode = which;
@@ -211,12 +229,12 @@ function openInventory(which) {
     const worn = marks.length ? `<span class="worn">(${marks.join(', ')})</span>` : '';
     return `<li class="item" data-i="${i}"><span class="key">${String.fromCharCode(97 + i)})</span>
       <canvas class="ico" width="44" height="44"></canvas>
-      <span>${escapeHtml(itemLabel(it, game.appearances, game.identified))}</span> ${worn}</li>`;
+      <span>${escapeHtml(itemLabel(it, game.appearances, game.identified, game.sniffed))}</span> ${worn}</li>`;
   }).join('');
   panel.innerHTML = `
-    <h2>${which === 'drop' ? 'Co wyrzucić?' : 'Ekwipunek'} <span class="muted">${p.inventory.length}/16</span></h2>
+    <h2>${INV_TITLE[which]} <span class="muted">${p.inventory.length}/16</span></h2>
     <ul>${rows || '<li class="muted">(pusto)</li>'}</ul>
-    <p class="foot">Litera albo kliknięcie ${which === 'drop' ? 'wyrzuca' : 'używa lub zakłada'}. <kbd>Esc</kbd> wraca.</p>`;
+    <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. <kbd>Esc</kbd> wraca.</p>`;
   // Ikona rysowana tą samą funkcją co przedmiot leżący na podłodze. Dzięki temu
   // "czarna mikstura" w plecaku to dokładnie ta czarna flaszka, którą gracz
   // widział na kaflu - a nie osobna, rozjeżdżająca się z czasem grafika.
@@ -229,34 +247,37 @@ function openInventory(which) {
   overlay.hidden = false;
 }
 
-function openHelp() {
+/**
+ * Księga zasad. Ta sama treść, co w terminalu i w `docs/zasady.md` - jedno
+ * źródło w `src/rules.js`. Nakładka NIE zatrzymuje ani nie przesuwa gry:
+ * świat stoi, dopóki gracz czegoś nie zrobi, więc czytania nie da się użyć
+ * do przeczekania potwora.
+ */
+function showRules(index) {
   mode = 'help';
+  ruleSection = ((index % RULES.length) + RULES.length) % RULES.length;
+  const sec = RULES[ruleSection];
+  const nav = RULES.map((r, i) =>
+    `<button class="tab${i === ruleSection ? ' on' : ''}" data-i="${i}">${escapeHtml(r.title)}</button>`).join('');
+
+  const body = sec.blocks.map(b => {
+    if (b.t === 'p') return `<p class="muted">${escapeHtml(b.text)}</p>`;
+    if (b.t === 'note') return `<p class="note">${escapeHtml(b.text)}</p>`;
+    const head = b.head.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+    const rows = b.rows.map(r => `<tr>${r.map(c => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`).join('');
+    return `<div class="tw"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join('');
+
   panel.innerHTML = `
-    <h2>Sterowanie</h2>
-    <div class="keys">
-      <b>ruch</b><span>strzałki, <kbd>hjkl</kbd> bok, <kbd>yubn</kbd> skos, klawiatura numeryczna</span>
-      <b>marsz</b><span>kliknięcie w poznane pole - idzie, dopóki nie zobaczy potwora</span>
-      <b>czekaj</b><span><kbd>.</kbd> albo <kbd>5</kbd>, albo kliknięcie w siebie</span>
-      <b>podnieś</b><span><kbd>,</kbd> albo <kbd>g</kbd></span>
-      <b>schody</b><span><kbd>&gt;</kbd> w dół, <kbd>&lt;</kbd> w górę</span>
-      <b>ekwipunek</b><span><kbd>i</kbd>, wyrzucanie <kbd>d</kbd></span>
-      <b>minimapa</b><span><kbd>m</kbd> włącza i wyłącza plan poziomu; kliknięcie w plan też prowadzi</span>
-      <b>zapis</b><span><kbd>S</kbd> zapisuje ręcznie, <kbd>L</kbd> wczytuje ten zapis</span>
-      <b>nowa gra</b><span><kbd>Shift</kbd>+<kbd>N</kbd></span>
-    </div>
-    <h2>Autozapis</h2>
-    <p class="muted">Gra zapisuje się sama po każdej turze, więc odświeżenie strony
-      ani zamknięcie karty nie kosztuje rozgrywki - wracasz tam, gdzie byłeś.
-      Ręczny zapis (<kbd>S</kbd>) to osobny punkt kontrolny: autozapis go nie nadpisuje.</p>
-    <h2>Cel</h2>
-    <p class="muted">Zejdź na poziom 8, pokonaj Smoka Otchłani, zabierz Amulet
-      i wróć schodami w górę na powierzchnię.</p>
-    <h2>Co widać</h2>
-    <p class="muted">Jasne pola widzisz teraz. Zimne i przygaszone - pamiętasz z wcześniej,
-      więc nie zobaczysz tam ruchu potworów. Czarne są nieznane.<br>
-      Barwa mikstury to jej <em>wygląd</em>, nie działanie: ta sama barwa znaczy to samo
-      przez całą rozgrywkę, ale co znaczy - trzeba sprawdzić.</p>
-    <p class="foot">Ziarno tej rozgrywki: <b>${escapeHtml(String(game.seed))}</b>. Dowolny klawisz wraca do gry.</p>`;
+    <h2>Księga zasad <span class="muted">rozdział ${ruleSection + 1} z ${RULES.length}</span></h2>
+    <nav class="tabs">${nav}</nav>
+    <h3>${escapeHtml(sec.title)}</h3>
+    ${body}
+    <p class="foot"><kbd>n</kbd> dalej &nbsp; <kbd>p</kbd> wstecz &nbsp; <kbd>1</kbd>-<kbd>${RULES.length}</kbd> rozdział
+      &nbsp; <kbd>Esc</kbd> wraca do gry. Ziarno tej rozgrywki: <b>${escapeHtml(String(game.seed))}</b>.</p>`;
+  panel.querySelectorAll('button.tab').forEach(btn =>
+    btn.addEventListener('click', () => showRules(Number(btn.dataset.i))));
+  panel.scrollTop = 0;
   overlay.hidden = false;
 }
 

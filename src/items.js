@@ -10,6 +10,7 @@ export const POTIONS = [
 ];
 
 export const SCROLLS = [
+  { type: 'identify', name: 'zwój rozpoznania', weight: 10 },
   { type: 'magicMap', name: 'zwój odkrycia', weight: 10 },
   { type: 'teleport', name: 'zwój przeniesienia', weight: 12 },
   { type: 'enchantWeapon', name: 'zwój ostrzenia', weight: 8 },
@@ -35,6 +36,31 @@ export const FOODS = [
   { type: 'ration', name: 'racja żywnościowa', nutrition: 800, weight: 20 },
   { type: 'apple', name: 'jabłko', nutrition: 250, weight: 12 },
 ];
+
+/**
+ * Zapach mikstury. Dzieli cztery rodzaje na DWIE PARY i nigdy nie wskazuje
+ * jednego rodzaju samodzielnie - to jest cała istota tej podpowiedzi.
+ *
+ * Podział idzie po skutku, nie po nazwie: „łagodny" to wyłącznie mikstury
+ * korzystne, „ostry" to siła ALBO trucizna. Powąchanie odpowiada więc na
+ * pytanie „czy to mnie zaboli", ale nie na pytanie „co to dokładnie jest".
+ * Gdyby każdy rodzaj miał własny zapach, wąchanie byłoby darmowym rozpoznaniem
+ * i mikstury przestałyby być decyzją.
+ */
+export const SCENTS = {
+  mild:  { key: 'mild',  short: 'łagodny', full: 'łagodny i słodkawy, jak nagrzane zioła' },
+  sharp: { key: 'sharp', short: 'ostry',   full: 'ostry, drapie w gardle' },
+};
+
+export const POTION_SCENT = {
+  heal: 'mild', greaterHeal: 'mild',
+  strength: 'sharp', poison: 'sharp',
+};
+
+/** Rodzaje mikstur o tym samym zapachu - to jest ta „para", której gracz nie rozróżni. */
+export function scentGroup(scentKey) {
+  return POTIONS.filter(p => POTION_SCENT[p.type] === scentKey);
+}
 
 const POTION_LOOKS = ['czerwona', 'błękitna', 'zielona', 'perlista', 'mętna', 'bursztynowa', 'srebrzysta', 'czarna'];
 const SCROLL_LOOKS = ['ZELGO MER', 'VE FORBRYDERNE', 'HACKEM MUCHE', 'PRIRUTSENIE', 'ELBIB YLOH', 'ANDOVA BEGARIN'];
@@ -88,10 +114,17 @@ export function makeAmulet() {
 }
 
 /** Nazwa widziana przez gracza - nierozpoznane mikstury i zwoje mają tylko wygląd. */
-export function itemLabel(item, appearances, identified) {
+export function itemLabel(item, appearances, identified, sniffed = null) {
   const known = identified.has(`${item.kind}:${item.type}`);
   if (item.kind === 'potion') {
-    return known ? item.name : `${appearances.potion[item.type]} mikstura`;
+    if (known) return item.name;
+    const look = `${appearances.potion[item.type]} mikstura`;
+    // Ślad po powąchaniu wisi przy nazwie, a nie tylko w dzienniku. Wiedza, którą
+    // gracz musi pamiętać albo notować na kartce, jest wiedzą tylko z nazwy.
+    if (sniffed && sniffed.has(`potion:${item.type}`)) {
+      return `${look} (zapach ${SCENTS[POTION_SCENT[item.type]].short})`;
+    }
+    return look;
   }
   if (item.kind === 'scroll') {
     return known ? item.name : `zwój z napisem "${appearances.scroll[item.type]}"`;

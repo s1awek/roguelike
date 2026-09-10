@@ -352,3 +352,74 @@ i obie były niewidoczne dla testów, bo testy nie patrzą na dziennik ani na ad
 - `[niezweryfikowane]` Zachowanie przy zapełnionej pamięci przeglądarki. Kod ma
   gałąź na odmowę zapisu (znacznik zmienia się na „bez autozapisu"), ale nie
   została wywołana na prawdziwym przepełnieniu - tylko przeczytana.
+
+## Wątek 5: rozpoznawanie mikstur i księga zasad (2026-09-10)
+
+Zgłoszenie właściciela: dotąd jedyną drogą do wiedzy, co robi mikstura, było jej
+wypicie, a trucizna zabiera stałą liczbę punktów życia. Każda nieznana flaszka
+była zakładem o pełnej stawce. Do tego brakowało miejsca, w którym gracz mógłby
+doczytać reguły bez wychodzenia z gry.
+
+Spec zamrożona **przed pierwszą linią kodu**, świadomie bez nazw plików, funkcji
+i klawiszy: `.workspace/mikstury-acceptance-spec.md`, 24 kryteria w czterech
+grupach. Zbudowane: zapach dzielący mikstury na dwie pary (D-019), zwój
+rozpoznania jako piąty rodzaj zwoju (D-020) oraz księga zasad z jednego źródła,
+`src/rules.js` (D-021).
+
+### Pomiar równowagi: podejrzenie o piąty zwój okazało się fałszywe
+
+Dołożenie piątego rodzaju zwoju rozcieńcza pulę pozostałych: `identify` ma wagę
+10 przy sumie wag 48, więc zwój przeniesienia i oba zwoje ulepszające wypadają
+rzadziej niż wcześniej. Pierwsza seria po zmianie dała **26,8% zwycięstw**
+(268/1000, ziarna `mikst-v4-`, zero wywrotek, zero zakleszczeń) wobec 31,8%
+w serii v3 z wątku 1. Pięć punktów procentowych w dół wygląda jak skutek zmiany.
+
+Nie jest. `[ustalone - seria kontrolna na TYCH SAMYCH ziarnach]` Kopia silnika
+z jedyną różnicą w postaci usuniętego zwoju rozpoznania dała **28,0%**
+(280/1000, `.workspace/seria-kontrola.json`). Różnica między wersją z nowym
+zwojem a bez niego to **1,2 punktu procentowego na tych samych ziarnach**, przy
+błędzie standardowym odsetka rzędu 1,4 punktu. Nieodróżnialne od szumu.
+
+Cała reszta rozjazdu wobec 31,8% siedzi więc w **doborze ziaren**, nie w zmianie.
+Seria v3 i seria v4 to dwa różne zestawy tysiąca partii, a odsetek zwycięstw
+waha się między zestawami o kilka punktów. Porównywanie serii na różnych ziarnach
+jako pomiaru skutku zmiany jest błędem pomiaru, nie wynikiem.
+
+Warunek, który to umożliwił: losowanie ważone zużywa **jedną** liczbę z generatora
+niezależnie od długości listy, a `makeAppearances` tasuje pełne listy wyglądów
+bez względu na liczbę rodzajów. Usunięcie jednego zwoju z tablicy nie przesuwa
+więc strumienia losowego - loch, potwory i rozkład przedmiotów zostają te same,
+a różni się wyłącznie to, który zwój wypadł. To jest para, nie dwa niezależne
+pomiary, i dlatego 1,2 punktu wolno tu w ogóle porównywać.
+
+`[ustalone - .workspace/verify-v4.log]` Pełny odbiór na zestawie ziaren
+niezależnym od strojenia: **9/9 kryteriów**, 28,3% zwycięstw na 1000 partii,
+zero wywrotek, zero partii bez rozstrzygnięcia, 9 kontroli przyrządu przeszło.
+
+### Co wyszło z pomiaru, a nie z lektury kodu
+
+1. **Kolumna udziałów w księdze sumowała się do 101%.** Każdy wiersz zaokrąglany
+   osobno przez `Math.round` daje sumę, która nie musi być całością. Naprawione
+   metodą największych reszt; test pilnuje sumy dla wszystkich trzech tabel.
+2. **Pierwszy test wąchania mierzył nie to, co trzeba.** Asercja „punkty życia
+   się nie zmieniły" padła na 29 wobec 30 - bo w mijającej turze ugryzł szczur.
+   Wąchanie nie miało z tym nic wspólnego. Zastąpione kontrolą: dwie gry z tego
+   samego ziarna, w jednej gracz wącha, w drugiej czeka, i porównywany jest stan
+   generatora, głód, życie oraz położenia wszystkich potworów. Pomiar bez kontroli
+   mierzył szum i nazywał go wynikiem.
+3. **Asercja na ostatnim komunikacie dziennika jest krucha z tego samego powodu**:
+   po działaniu gracza odzywa się świat, więc na końcu dziennika stoi „Szczur
+   trafia Ciebie", a nie odpowiedź na działanie. Testy sprawdzają kilka ostatnich
+   wpisów sklejonych razem.
+
+### Czego NIE sprawdzono
+
+- `[niezweryfikowane]` Faza 3, czyli niezależny odbiór spec-a przez
+  `acceptance-verifier`. Wymaga zgody właściciela, zgody nie było. Spec leży
+  gotowa i jest napisana tak, żeby dała się oddać komuś, kto nie widział kodu.
+- `[niezweryfikowane]` Gra z udziałem **człowieka** - nadal, w obu wersjach.
+  Klawisze wciskał sterownik CDP.
+- `[hipoteza]` Jedna partia bez rozstrzygnięcia w serii kontrolnej
+  (`mikst-v4-727`, brak w serii z nowym zwojem) to najpewniej ta sama odmiana
+  pułapki decyzyjnej bota co przy W-6. Nie diagnozowana. Rozstrzygnęłaby ją ta
+  sama instrumentacja.

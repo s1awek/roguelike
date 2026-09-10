@@ -16,7 +16,7 @@ import { RNG } from './rng.js';
 import { generateLevel, Level, STAIRS_DOWN, STAIRS_UP, WALL } from './map.js';
 import { computeFOV } from './fov.js';
 import { distanceField, neighbors, chebyshev } from './path.js';
-import { randomItem, makeAmulet, makeAppearances, itemLabel } from './items.js';
+import { randomItem, makeAmulet, makeAppearances, itemLabel, SCENTS, POTION_SCENT, scentGroup } from './items.js';
 import { spawnMonster, spawnBoss } from './monsters.js';
 import { bytesToBase64, base64ToBytes } from './bytes.js';
 
@@ -42,6 +42,9 @@ export class Game {
 
     this.appearances = makeAppearances(this.rng);
     this.identified = new Set();
+    // Rodzaje mikstur, które gracz powąchał. Wiedza słabsza niż rozpoznanie:
+    // mówi, do której pary zapachowej należy mikstura, nie którą z pary jest.
+    this.sniffed = new Set();
     this.levels = new Map(); // depth -> {level, monsters, items, memory}
     this.messages = [];
     this.turn = 0;
@@ -204,6 +207,7 @@ export class Game {
       case 'ascend': spent = this.ascend(); break;
       case 'use': spent = this.useItem(action.index); break;
       case 'drop': spent = this.dropItem(action.index); break;
+      case 'sniff': spent = this.sniff(action.index); break;
       default: spent = false;
     }
 
@@ -229,7 +233,7 @@ export class Game {
     if (dx !== 0 && dy !== 0 && (!L.isWalkable(this.player.x + dx, this.player.y) || !L.isWalkable(this.player.x, this.player.y + dy))) return false;
     this.player.x = nx; this.player.y = ny;
     const it = this.itemAt(nx, ny);
-    if (it) this.message(`Leży tu ${itemLabel(it, this.appearances, this.identified)}.`);
+    if (it) this.message(`Leży tu ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.`);
     const t = L.at(nx, ny);
     if (t === STAIRS_DOWN) this.message('Są tu schody w dół (>).');
     if (t === STAIRS_UP) this.message('Są tu schody w górę (<).');
@@ -301,7 +305,7 @@ export class Game {
       this.player.hasAmulet = true;
       this.message('Bierzesz Amulet Otchłani. Wracaj na powierzchnię!');
     } else {
-      this.message(`Podnosisz: ${itemLabel(it, this.appearances, this.identified)}.`);
+      this.message(`Podnosisz: ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.`);
     }
     return true;
   }
@@ -318,11 +322,52 @@ export class Game {
     if (it.kind === 'amulet') this.player.hasAmulet = false;
     it.x = this.player.x; it.y = this.player.y;
     this.items.push(it);
-    this.message(`Odkładasz: ${itemLabel(it, this.appearances, this.identified)}.`);
+    this.message(`Odkładasz: ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.`);
     return true;
   }
 
   identify(item) { this.identified.add(`${item.kind}:${item.type}`); }
+
+  /**
+   * Powąchanie mikstury. Kosztuje turę, nie kosztuje życia, i NIGDY nie wskazuje
+   * jednego rodzaju samodzielnie - podaje parę, do której mikstura należy.
+   *
+   * Jedyny wyjątek to wykluczenie: jeśli drugi rodzaj z pary jest już rozpoznany,
+   * zapach rozstrzyga na pewno. Ten rachunek robi gra, bo gracz i tak umiałby go
+   * zrobić na kartce, a kartka nie jest mechaniką.
+   */
+  sniff(index) {
+    const it = this.player.inventory[index];
+    if (!it) return false;
+    if (it.kind !== 'potion') {
+      this.message(`${itemLabel(it, this.appearances, this.identified, this.sniffed)} niczym nie pachnie.`);
+      return false;
+    }
+    const key = `potion:${it.type}`;
+    if (this.identified.has(key)) {
+      this.message(`Wiesz już, co to: ${it.name}.`);
+      return false;
+    }
+    const scent = SCENTS[POTION_SCENT[it.type]];
+    const look = `${this.appearances.potion[it.type]} mikstura`;
+    if (this.sniffed.has(key)) {
+      this.message(`${look} - już wiesz: zapach ${scent.short}.`);
+      return false;
+    }
+
+    this.sniffed.add(key);
+    const para = scentGroup(scent.key);
+    const nieznane = para.filter(p => !this.identified.has(`potion:${p.type}`));
+    if (nieznane.length === 1) {
+      // Drugi rodzaj z pary jest już rozpoznany, więc zostaje tylko jeden.
+      this.identify(it);
+      this.message(`Zapach ${scent.full}. Znasz już drugą taką - to ${it.name}.`);
+    } else {
+      const nazwy = para.map(p => p.name).join(' albo ');
+      this.message(`Zapach ${scent.full}. Tak pachnie ${nazwy}.`);
+    }
+    return true;
+  }
 
   useItem(index) {
     const it = this.player.inventory[index];
@@ -338,12 +383,12 @@ export class Game {
       }
       case 'weapon': {
         this.player.weapon = this.player.weapon === it ? null : it;
-        this.message(this.player.weapon ? `Dobywasz: ${itemLabel(it, this.appearances, this.identified)}.` : 'Chowasz broń.');
+        this.message(this.player.weapon ? `Dobywasz: ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.` : 'Chowasz broń.');
         return true;
       }
       case 'armor': {
         this.player.armor = this.player.armor === it ? null : it;
-        this.message(this.player.armor ? `Zakładasz: ${itemLabel(it, this.appearances, this.identified)}.` : 'Zdejmujesz pancerz.');
+        this.message(this.player.armor ? `Zakładasz: ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.` : 'Zdejmujesz pancerz.');
         return true;
       }
       case 'amulet':
@@ -385,6 +430,20 @@ export class Game {
     this.identify(it);
     const L = this.level;
     switch (it.type) {
+      case 'identify': {
+        // Rozpoznaje RODZAJ, nie sztukę - więc obejmuje też te same mikstury
+        // leżące na podłodze i znalezione później.
+        const nieznane = this.player.inventory.filter(
+          x => (x.kind === 'potion' || x.kind === 'scroll') && !this.identified.has(`${x.kind}:${x.type}`));
+        if (!nieznane.length) {
+          this.message('Zwój rozpoznania - ale w plecaku nie ma już żadnej zagadki.');
+          break;
+        }
+        for (const x of nieznane) this.identify(x);
+        const lista = nieznane.map(x => x.name).join(', ');
+        this.message(`Wiedza spływa na Ciebie. Rozpoznajesz: ${lista}.`);
+        break;
+      }
       case 'magicMap': {
         this.here.memory.fill(1);
         this.message('Mapa lochu rozjaśnia się w Twojej głowie.');
@@ -547,6 +606,7 @@ export class Game {
       width: this.width, height: this.height,
       appearances: this.appearances,
       identified: [...this.identified],
+      sniffed: [...this.sniffed],
       depth: this.depth,
       turn: this.turn,
       status: this.status,
@@ -570,6 +630,8 @@ export class Game {
     g._idCounter = data.idCounter;
     g.appearances = data.appearances;
     g.identified = new Set(data.identified);
+    // Zapisy sprzed wprowadzenia wąchania nie mają tego pola - i mają się wczytywać.
+    g.sniffed = new Set(data.sniffed || []);
     g.depth = data.depth;
     g.turn = data.turn;
     g.status = data.status;
