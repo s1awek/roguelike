@@ -96,7 +96,20 @@ const api = {
     return path;
   },
   errors: () => consoleMsgs.slice(),
-  close: () => { ws.close(); chrome.kill(); },
+  /**
+   * Zamknięcie sprząta KARTĘ, nie tylko gniazdko.
+   *
+   * Wcześniej zostawało jedno i drugie: `chrome.kill()` nie dosięga
+   * przeglądarki, która już chodziła przed uruchomieniem sterownika, więc
+   * karta żyła dalej - a razem z nią otwarty strumień zdarzeń. Piętnaście
+   * takich kart z kolejnych prób trzymało miejsca przy stole i zjadało pułap
+   * miejsc na adres prawdziwemu graczowi.
+   */
+  close: async () => {
+    try { await send('Target.closeTarget', { targetId }); } catch { /* już zamknięta */ }
+    ws.close();
+    try { chrome.kill(); } catch { /* cudza przeglądarka */ }
+  },
 };
 
 export default api;
