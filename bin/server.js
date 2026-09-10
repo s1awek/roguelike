@@ -281,7 +281,25 @@ const server = createServer(async (req, res) => {
   }
 });
 
-function log(t) { console.log(`[${new Date().toISOString().slice(11, 19)}] ${t}`); }
+/**
+ * Znacznik czasu wpisu: czas LOKALNY maszyny, zawsze z offsetem przy liczbie.
+ *
+ * Stało tu `toISOString().slice(11,19)`, czyli godzina UTC podana nago. Log
+ * twierdził wtedy, że stół wstał o 09:28, gdy zegar stanowiska wskazywał 11:28.
+ * To gorszy rodzaj usterki niż brak znacznika, bo wygląda na poprawny pomiar:
+ * kosztowało śledztwo „dlaczego proces ma sześć minut, a jego własny log dwie
+ * godziny". Przy korelowaniu zgłoszenia gracza („wywaliło mnie koło południa")
+ * z tym logiem kosztowałoby więcej, a różnica zmienia się dwa razy w roku,
+ * więc nie da się jej nadrobić stałą poprawką w głowie.
+ */
+function log(t) {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const minuty = -d.getTimezoneOffset();
+  const znak = minuty < 0 ? '-' : '+';
+  const offset = `${znak}${p(Math.floor(Math.abs(minuty) / 60))}:${p(Math.abs(minuty) % 60)}`;
+  console.log(`[${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}${offset}] ${t}`);
+}
 
 server.listen(PORT, () => {
   log(`stol otwarty na http://localhost:${PORT}/web/wielu.html`);

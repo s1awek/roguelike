@@ -300,6 +300,28 @@ z hipotezy o układzie klawiatury i zacząłem pod nią budować naprawę, zamia
 zapytać, czy Shift w ogóle był wciśnięty.** Tańsze pytanie stało przed droższą
 naprawą i zostało pominięte.
 
+### W-11: log serwera stemplował wpisy czasem UTC podanym nago
+
+Objaw nie zgłosił się jako błąd. Przy zwykłym sprawdzeniu, czy stół jeszcze
+żyje, wyszło, że proces ma sześć minut, a ostatni wpis w jego własnym logu jest
+sprzed dwóch godzin. Pierwsze wyjaśnienie, które przychodzi do głowy, jest
+alarmujące i błędne: serwer wisi i przestał pisać. Prawdziwą przyczyną było
+`toISOString().slice(11,19)` w `bin/server.js` - godzina UTC bez offsetu, przy
+stanowisku chodzącym w +02:00.
+
+To jest gorszy rodzaj usterki niż awaria, bo **wygląda na poprawny pomiar**.
+Log niósł prawdziwą godzinę w formacie, który każdy czytelnik zestawia z zegarem
+na ścianie. Kosztowałoby to przy pierwszym zgłoszeniu od gracza: „wywaliło mnie
+koło południa" trafia w logu na wpisy z okolic 10:00, których nikt tam nie szuka.
+Różnicy nie da się nadrobić stałą poprawką w głowie, bo zmienia się dwa razy
+w roku razem z czasem letnim.
+
+Naprawa: czas lokalny z offsetem **przy liczbie** - `[11:37:44+02:00]`.
+Sprawdzone porównaniem z `date` w tej samej sekundzie, nie samą lekturą kodu:
+zegar systemowy `11:37:46+02:00`, wpis serwera `[11:37:44+02:00]`, różnica
+to opóźnienie startu procesu. Poza `bin/server.js` wzorzec nie występował nigdzie
+w projekcie.
+
 ## Wątek 4: czytelność, minimapa, autozapis (2026-09-10)
 
 Trzy zgłoszenia właściciela po pierwszej dłuższej rozgrywce w przeglądarce:
