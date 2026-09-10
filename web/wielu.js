@@ -77,18 +77,31 @@ async function dosiadz(name) {
   przycisk.textContent = 'Dosiadam...';
   try {
     const { code, body } = await post('/api/dosiadz', { name });
-    if (code !== 200) {
-      say(`Nie udało się dosiąść: ${body.blad || code}`);
-      przycisk.disabled = false;
-      przycisk.textContent = napis;
-      return;
-    }
+    if (code !== 200) { say(`Nie udało się dosiąść: ${body.blad || code}`); return; }
     ja = body;
     sessionStorage.setItem('roguelike:miejsce', JSON.stringify(ja));
+    // Ekran wejścia znika, gdy miejsce JEST PRZYZNANE, a nie gdy przyjdzie
+    // pierwsza migawka. Wiązanie tych dwóch rzeczy dawało ślepy zaułek: gdyby
+    // cokolwiek stanęło na drodze migawce, gracz zostawał z przyciskiem
+    // „Dosiadam..." bez końca i bez żadnej wskazówki, a miejsce przy stole
+    // miał już zajęte. Czekanie na stół jest osobnym stanem i ma własny napis.
+    doMapy();
     otworzStrumien();
   } finally {
+    // Przycisk wraca do stanu użytecznego ZAWSZE, także po udanym wejściu.
+    // Napis „Dosiadam..." zostawiony na stałe był jedyną rzeczą, jaką gracz
+    // widział, gdy coś poszło nie tak - a wyglądał jak zawieszenie.
     dosiadanie = false;
+    przycisk.disabled = false;
+    przycisk.textContent = napis;
   }
+}
+
+/** Przejście z ekranu wejścia do lochu. */
+function doMapy() {
+  mode = 'map';
+  $('lobby').hidden = true;
+  say('Miejsce zajęte, czekam na pierwszy widok lochu...', 4000);
 }
 
 function otworzStrumien() {
@@ -108,7 +121,8 @@ function otworzStrumien() {
       wymiar = `${cien.poziom.w}x${cien.poziom.h}`;
       renderer.resize(cien);
     }
-    if (mode === 'lobby') { mode = 'map'; $('lobby').hidden = true; renderer.resize(cien); }
+    // Zapasowo, gdyby migawka wyprzedziła przejście do mapy.
+    if (mode === 'lobby') { doMapy(); renderer.resize(cien); }
     // Tura zeszła, więc zgłoszenie zostało rozstrzygnięte.
     if (cien.turn !== turaZgloszenia) zgloszone = null;
     if (cien.ja.status !== 'playing' && mode !== 'over') koniec();
@@ -372,5 +386,39 @@ window.roguelike = {
   get zgloszone() { return zgloszone; },
   zglos,
 };
+
+
+/**
+ * Strona zgłasza własne awarie do stołu.
+ *
+ * Reguła z tego stanowiska: człowiek nie ma być przekaźnikiem między konsolą
+ * przeglądarki a tym, kto naprawia. Bez tego kanału o wyjątku dowiadujemy się
+ * wyłącznie wtedy, gdy gracz akurat patrzy w konsolę i chce przepisać treść -
+ * a przy grze wystawionej publicznie to znaczy: nigdy.
+ *
+ * Zgłoszenia są DŁAWIONE. Jedna powtarzalna usterka w pętli rysowania potrafi
+ * wyprodukować kilkadziesiąt wyjątków na sekundę i zalać log tak, że nie widać
+ * w nim nic innego - czyli zabić dozór własnym sukcesem.
+ */
+const skargi = new Set();
+let skargiWyslane = 0;
+function poskarz(tekst) {
+  const podpis = String(tekst).slice(0, 120);
+  if (skargi.has(podpis) || skargiWyslane >= 20) return;
+  skargi.add(podpis);
+  skargiWyslane++;
+  const gdzie = ja ? `miejsce ${ja.hid}` : 'przed wejściem';
+  fetch('/api/skarga', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tekst: `${gdzie} | ${tekst}` }),
+  }).catch(() => { /* skarga na brak sieci nie ma jak dojść */ });
+}
+window.addEventListener('error', (e) => {
+  poskarz(`${e.message} @ ${e.filename ? e.filename.split('/').pop() : '?'}:${e.lineno}`);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  poskarz(`odrzucona obietnica: ${e.reason && e.reason.message ? e.reason.message : e.reason}`);
+});
 
 podpisz(document.getElementById('podpis'));

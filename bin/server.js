@@ -275,6 +275,28 @@ const server = createServer(async (req, res) => {
    * dobijał się strumieniem do nieistniejącego miejsca i dostawał 403 w pętli,
    * nie mając jak wrócić do lobby.
    */
+  /**
+   * Skargi przeglądarki: nieobsłużone wyjątki ze strony gracza.
+   *
+   * Bez tego jedynym kanałem diagnostycznym jest człowiek przepisujący ręcznie
+   * treść błędu z konsoli - a to znaczy, że o awarii dowiadujemy się tylko wtedy,
+   * gdy akurat ktoś patrzy, umie otworzyć konsolę i chce się tym zająć. Gra ma
+   * stać publicznie, więc żaden z tych warunków nie jest spełniony.
+   *
+   * Treść jest OBCA i niepewna, więc traktujemy ją jak dane: przycinamy długość,
+   * wycinamy znaki sterujące (żeby wpis nie mógł podrobić kolejnych linii logu)
+   * i nie interpretujemy niczego. Przydział żądań na adres obowiązuje tak samo
+   * jak wszędzie w `/api/`.
+   */
+  if (path === '/api/skarga' && req.method === 'POST') {
+    try {
+      const b = await cialo(req);
+      const czysty = String(b.tekst || '').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 300);
+      if (czysty) log(`SKARGA PRZEGLADARKI [${adres}] ${czysty}`);
+      return json(res, 204, {});
+    } catch { return json(res, 400, { blad: 'zła skarga' }); }
+  }
+
   if (path === '/api/moje') {
     const w = uwierzytelnij(Number(u.searchParams.get('hid')), u.searchParams.get('token'));
     return json(res, w ? 200 : 403, w ? { ok: true } : { blad: 'miejsce już nie istnieje' });
