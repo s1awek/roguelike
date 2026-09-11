@@ -84,4 +84,8 @@ połączenie SSH na operację, odstępy 5-15 s, po 429/403 koniec ruchu.
   po sondzie strumienia. Rozstrzygnie test zwykłą przeglądarką po odblokowaniu: jeśli zwykła
   przeglądarka gra bez 429, winne (a) albo (c); jeśli też dostaje 429, winne (b) i trzeba
   spakować moduły w jeden plik dla stołu.
+  Uzupełnienie 15:36: zwykła przeglądarka właściciela z tej samej sieci otwierała `/api/stol`
+  w trakcie blokady, więc blokada jest per klient (UA, ciasteczka, tempo), nie per IP `[ustalone]`.
+  Wniosek trwały: na SEOhost żadnej bezgłowej przeglądarki; testy strony robi człowiek w zwykłej
+  przeglądarce, automat co najwyżej Cloak Browser z odstępami 5-15 s, `curl` pojedynczo.
 - **Czy SSE przechodzi przez Passenger/LiteSpeed bez buforowania - nadal niezweryfikowane.**
