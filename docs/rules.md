@@ -25,7 +25,7 @@ The dungeon is generated from a seed. The same game from the same seed plays out
 | . or 5 | wait one turn |
 | , or g | pick up what lies at your feet |
 | x | inspect what lies at your feet - its effect, the difference against what you wear, the space it takes; costs no turn |
-| > / < | stairs down / up |
+| > / <  (that is Shift+. / Shift+,) | stairs down / up - the same glyphs as on the map |
 | i | inventory: a letter uses or puts on |
 | d | drop an item |
 | w | sniff a potion - costs a turn, costs no health |

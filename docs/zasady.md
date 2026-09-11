@@ -25,7 +25,7 @@ Loch jest generowany z ziarna. Ta sama gra z tego samego ziarna przebiega dokła
 | . albo 5 | czekaj jedną turę |
 | , albo g | podnieś to, co leży pod nogami |
 | x | obejrzyj to, co leży pod nogami - skutek, różnica wobec noszonego, miejsce w plecaku; nie kosztuje tury |
-| > / < | schody w dół / w górę |
+| > / <  (czyli Shift+. / Shift+,) | schody w dół / w górę - na planszy to te same znaki |
 | i | ekwipunek: litera używa albo zakłada |
 | d | wyrzuć przedmiot |
 | w | powąchaj miksturę - kosztuje turę, nie kosztuje życia |

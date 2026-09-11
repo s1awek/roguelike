@@ -283,6 +283,13 @@ window.addEventListener('keydown', (e) => {
 
 function zamknij() { mode = 'map'; overlay.hidden = true; }
 
+// Kliknięcie w tło poza oknem zamyka je jak Esc. Ekran wejścia i ekran końca
+// nie są oknami nad planszą - tych kliknięcie nie rusza.
+overlay.addEventListener('click', (e) => {
+  if (e.target !== overlay || mode === 'over' || mode === 'lobby') return;
+  zamknij();
+});
+
 /**
  * Użycie rzeczy przy stole. Panel zostaje otwarty - patrz ta sama reguła
  * w wersji jednoosobowej. `zglos` deklaruje tylko z mapy, więc zamykamy panel

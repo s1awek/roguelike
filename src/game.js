@@ -16,7 +16,7 @@ import { RNG } from './rng.js';
 import { generateLevel, Level, STAIRS_DOWN, STAIRS_UP, WALL } from './map.js';
 import { computeFOV } from './fov.js';
 import { distanceField, neighbors, chebyshev } from './path.js';
-import { randomItem, makeAmulet, makeAppearances, itemLabel, itemName, stackLabel, potionLook, scentText, potionPower, SCENTS, POTION_SCENT, scentGroup } from './items.js';
+import { randomItem, makeAmulet, makeAppearances, itemLabel, itemName, stackLabel, potionLook, scentText, potionPower, SCENTS, POTION_SCENT, scentGroup, uzupelnijWyglady } from './items.js';
 import { PLECAK_START, dolozDoPlecaka, przepakuj, zmiesciSie, poloz, mozna, ile as sztuk, poleRzeczy, wolnePola, pojemnosc } from './plecak.js';
 import { obejrzyj as obejrzyjRzecz } from './ocena.js';
 import { HUNGER_START, HUNGER_MAX, stopienGlodu, komunikatGlodu } from './stany.js';
@@ -1290,7 +1290,7 @@ export class Game {
     const g = new Game(data.seed, { deferStart: true, maxDepth: data.maxDepth, w: data.width, h: data.height });
     g.rng.setState(data.rng);
     g._idCounter = data.idCounter;
-    g.appearances = data.appearances;
+    g.appearances = uzupelnijWyglady(data.appearances);
     g.turn = data.turn;
 
     g.levels = new Map();

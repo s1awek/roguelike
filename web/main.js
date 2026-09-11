@@ -225,6 +225,13 @@ canvas.addEventListener('click', (e) => {
 
 function closeOverlay() { mode = 'map'; overlay.hidden = true; }
 
+// Kliknięcie w ciemne tło poza oknem zamyka je tak samo jak Esc - to też jest
+// decyzja gracza (D-044). Ekran końca partii nie ma czego zamykać.
+overlay.addEventListener('click', (e) => {
+  if (e.target !== overlay || mode === 'over') return;
+  closeOverlay();
+});
+
 /**
  * Użycie rzeczy z ekwipunku. Panel ZOSTAJE otwarty.
  *

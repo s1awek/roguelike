@@ -1310,3 +1310,24 @@ Kontrola: zapis ze zmienionym jednym bitem losowania daje inny koniec.
 zostają po polsku; README po angielsku - później. Link „wielu graczy" w pasku
 podpowiedzi nie ma własnego stylu i świeci domyślnym niebieskim - tak było także
 przed zmianą.
+
+### W-28: zwój z napisem „undefined" - zapis starszy niż rodzaj rzeczy
+
+Zgłoszenie właściciela (11.09.2026, zrzut ekranu): po podniesieniu zwoju
+„PRIRUTSENIE" pod nogami leżał „scroll labeled "undefined"".
+
+**Przyczyna** `[ustalone]`: wyglądy mikstur i zwojów losuje się raz na partię
+i trzyma w zapisie. Zwój rozpoznania doszedł 10.09 (wątek 5), więc autozapis
+partii rozpoczętej wcześniej nie ma dla niego napisu. Odtworzone na kopii drzewa
+sprzed tamtej zmiany: zapis z niej wczytany do bieżącego kodu daje dokładnie
+`zwój z napisem "undefined"`. To nie jest błąd tłumaczenia - po polsku wychodziło
+to samo.
+
+**Naprawa**: przy wczytaniu zapisu brakujące rodzaje dostają pierwszy nierozdany
+wygląd z listy, w stałej kolejności, bez losowania (stan generatora nietknięty).
+Pełny zapis wraca bajt w bajt (test w `save.test.js` z kontrolą).
+
+**Przy okazji, z tego samego zgłoszenia**: okna nad planszą zamykają się
+kliknięciem w tło poza oknem (jak Esc; ekran końca i ekran wejścia - nie),
+a podpowiedź do schodów mówi wprost „Shift+. Shift+,", bo same znaki `>` `<`
+nie mówią, gdzie ich szukać na klawiaturze.

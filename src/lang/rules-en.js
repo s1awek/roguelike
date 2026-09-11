@@ -10,7 +10,7 @@ const KEYS_EN = [
   ['. or 5', 'wait one turn', 'oba'],
   [', or g', 'pick up what lies at your feet', 'oba'],
   ['x', 'inspect what lies at your feet - its effect, the difference against what you wear, the space it takes; costs no turn', 'oba'],
-  ['> / <', 'stairs down / up', 'oba'],
+  ['> / <  (that is Shift+. / Shift+,)', 'stairs down / up - the same glyphs as on the map', 'oba'],
   ['i', 'inventory: a letter uses or puts on', 'oba'],
   ['d', 'drop an item', 'oba'],
   ['w', 'sniff a potion - costs a turn, costs no health', 'oba'],

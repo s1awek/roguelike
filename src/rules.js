@@ -67,7 +67,7 @@ const KEYS = [
   ['. albo 5', 'czekaj jedną turę', 'oba'],
   [', albo g', 'podnieś to, co leży pod nogami', 'oba'],
   ['x', 'obejrzyj to, co leży pod nogami - skutek, różnica wobec noszonego, miejsce w plecaku; nie kosztuje tury', 'oba'],
-  ['> / <', 'schody w dół / w górę', 'oba'],
+  ['> / <  (czyli Shift+. / Shift+,)', 'schody w dół / w górę - na planszy to te same znaki', 'oba'],
   ['i', 'ekwipunek: litera używa albo zakłada', 'oba'],
   ['d', 'wyrzuć przedmiot', 'oba'],
   ['w', 'powąchaj miksturę - kosztuje turę, nie kosztuje życia', 'oba'],

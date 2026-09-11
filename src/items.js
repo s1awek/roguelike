@@ -95,6 +95,30 @@ export function makeAppearances(rng) {
   return { potion, scroll };
 }
 
+/**
+ * Uzupełnia wyglądy z zapisu o rodzaje, których w chwili zapisu jeszcze nie
+ * było. Zapis sprzed dodania zwoju rozpoznania nie zna jego napisu, a gra
+ * pokazywała wtedy zwój z napisem „undefined" (zgłoszone przez właściciela
+ * 11.09.2026). Nowy rodzaj dostaje pierwszy NIEUŻYTY wygląd z listy, w stałej
+ * kolejności - bez losowania, żeby nie ruszać stanu generatora. Zapis pełny
+ * wraca bez zmian.
+ */
+export function uzupelnijWyglady(appearances) {
+  const out = { potion: { ...(appearances?.potion || {}) }, scroll: { ...(appearances?.scroll || {}) } };
+  const dopelnij = (mapa, rodzaje, wyglady) => {
+    const wolne = wyglady.filter(w => !Object.values(mapa).includes(w));
+    let i = 0;
+    for (const r of rodzaje) {
+      if (mapa[r.type]) continue;
+      mapa[r.type] = wolne.length ? wolne[i % wolne.length] : wyglady[i % wyglady.length];
+      i++;
+    }
+  };
+  dopelnij(out.potion, POTIONS, POTION_LOOKS);
+  dopelnij(out.scroll, SCROLLS, SCROLL_LOOKS);
+  return out;
+}
+
 export const GLYPHS = { potion: '!', scroll: '?', weapon: ')', armor: '[', food: '%', amulet: '"', pack: '(' };
 
 let nextId = 1;

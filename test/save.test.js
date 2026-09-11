@@ -90,3 +90,30 @@ test('KONTROLA PRZYRZĄDU: odcisk wykrywa różnicę ukrytą w stanie generatora
   assert.equal(kopia.turn, g.turn);
   assert.notEqual(fingerprint(kopia), fingerprint(g), 'odcisk nie widzi zmiany stanu generatora');
 });
+
+// ---------- zapis sprzed dodania nowego rodzaju rzeczy ----------
+
+test('zapis bez wyglądu nowego rodzaju zwoju dostaje wygląd, a nie „undefined"', () => {
+  // Zgłoszone przez właściciela 11.09.2026: autozapis z partii sprzed zwoju
+  // rozpoznania pokazywał „zwój z napisem "undefined"". Wyglądy losuje się raz
+  // na partię i zapisuje, więc rodzaj dodany później nie ma w starym zapisie
+  // żadnego wpisu.
+  const g = new Game('stary-zapis-zwoj');
+  const dane = JSON.parse(serialize(g));
+  const pelne = structuredClone(dane.appearances);
+  delete dane.appearances.scroll.identify;
+  const r = loadFromString(JSON.stringify(dane));
+  assert.ok(r.ok, r.error);
+  const napis = r.game.appearances.scroll.identify;
+  assert.equal(typeof napis, 'string');
+  assert.notEqual(napis, 'undefined');
+  const etykieta = r.game.etykieta({ id: 999, kind: 'scroll', type: 'identify', name: 'zwój rozpoznania' });
+  assert.ok(!etykieta.includes('undefined'), etykieta);
+  // Napis ma być spoza tych już rozdanych - inaczej dwa zwoje byłyby nierozróżnialne.
+  const inne = Object.entries(r.game.appearances.scroll).filter(([k]) => k !== 'identify').map(([, v]) => v);
+  assert.ok(!inne.includes(napis), `napis ${napis} powtarza już rozdany`);
+
+  // KONTROLA PRZYRZĄDU: pełny zapis wraca z wyglądami bajt w bajt takimi samymi.
+  const r2 = loadFromString(serialize(g));
+  assert.deepEqual(r2.game.appearances, pelne);
+});
