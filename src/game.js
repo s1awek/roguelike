@@ -157,6 +157,7 @@ export class Game {
       hasAmulet: false,
       kills: 0,
       zmeczenie: 0,       // ile razy pod rząd cofał się przed innym uczestnikiem
+      niesmiertelny: false, // tryb testowy (parametr przeglądarki), nigdy z gry
       depth: 0,
       memory: new Map(),   // głębokość -> Uint8Array; pamięć terenu jest OSOBISTA
       visible: new Set(),
@@ -629,6 +630,13 @@ export class Game {
       this.tickRegen(hero);
       this.tickHunger(hero);
       this.updateFOV(hero);
+      // Tryb nieśmiertelności (do oglądania gry, nie do grania): ciosy i głód
+      // działają normalnie w trakcie tury, ale na jej koniec życie wraca do
+      // pełna, a sytość nie spada poniżej startowej - bohater nigdy nie ginie.
+      if (hero.niesmiertelny) {
+        hero.hp = hero.maxHp;
+        hero.hunger = Math.max(hero.hunger, HUNGER_START);
+      }
       if (hero.hp <= 0 && hero.status === 'playing') {
         // Przegrane starcie z innym uczestnikiem NIE kończy partii (kryterium 21).
         if (hero.lastHitBy && this.isHero(hero.lastHitBy)) this.loseFight(hero, hero.lastHitBy);
@@ -1417,6 +1425,7 @@ function heroToJSON(h) {
     hasAmulet: h.hasAmulet,
     kills: h.kills,
     zmeczenie: h.zmeczenie || 0,
+    niesmiertelny: !!h.niesmiertelny,
     depth: h.depth,
     memory,
     identified: [...h.identified],
@@ -1434,6 +1443,7 @@ function heroFromJSON(h, index) {
     // Zapis sprzed wprowadzenia zmęczenia go nie niesie - zero jest wtedy
     // stanem prawdziwym, bo tamta gra nie znała cofania się z kosztem.
     zmeczenie: h.zmeczenie || 0,
+    niesmiertelny: !!h.niesmiertelny,
     memory: new Map(),
     visible: new Set(),
     messages: h.messages ?? [],

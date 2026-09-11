@@ -232,6 +232,8 @@ export const PL = {
   'web.autozapisTytul': 'Gra zapisuje się sama - odświeżenie strony nie resetuje rozgrywki',
   'web.bezAutozapisu': 'bez autozapisu',
   'web.amulet': 'AMULET',
+  'web.bog': 'nieśmiertelny',
+  'web.bogTytul': 'Tryb testowy: życie i sytość wracają co turę. Wyłącza adres z ?bog=0.',
   'web.podpowiedz': '? zasady &nbsp;·&nbsp; i ekwipunek &nbsp;·&nbsp; x obejrzyj &nbsp;·&nbsp; w powąchaj &nbsp;·&nbsp; , podnieś &nbsp;·&nbsp; &gt; &lt; schody (Shift+. Shift+,) &nbsp;·&nbsp; m minimapa &nbsp;·&nbsp; S zapis &nbsp;·&nbsp; Shift+N nowa gra &nbsp;·&nbsp; klik = idź &nbsp;·&nbsp; <a href="./wielu.html">wielu graczy</a>',
   'web.podpowiedzStol': '? zasady &nbsp;·&nbsp; i ekwipunek &nbsp;·&nbsp; x obejrzyj &nbsp;·&nbsp; w powąchaj &nbsp;·&nbsp; , podnieś &nbsp;·&nbsp; &gt; &lt; schody (Shift+. Shift+,) &nbsp;·&nbsp; m plan &nbsp;·&nbsp; . czekaj',
   'wejscie': 'Wchodzisz do lochu. Naciśnij ? po pomoc.',

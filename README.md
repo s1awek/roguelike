@@ -56,7 +56,9 @@ korzysta gra.
 
 Do oglądania konkretnego miejsca gry bez przechodzenia całego lochu (przeglądarka):
 `?pietro=N` przenosi bohatera bieżącej partii na piętro N, `?amulet=1` daje mu
-Amulet - np. `?pietro=8&amulet=1` pokazuje od razu drogę powrotną.
+Amulet - np. `?pietro=8&amulet=1` pokazuje od razu drogę powrotną. `?bog=1`
+włącza nieśmiertelność (życie i sytość wracają co turę, znacznik w panelu),
+`?bog=0` ją wyłącza; stan trzyma się w zapisie do odwołania.
 
 Znaki: `@` ty, `!` mikstura, `?` zwój, `)` broń, `[` pancerz, `%` jedzenie,
 `"` Amulet. Litery to potwory - małe słabsze, wielkie groźniejsze.

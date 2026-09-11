@@ -281,6 +281,8 @@ export const EN = {
   'web.autozapisTytul': 'The game saves itself - reloading the page does not reset your run',
   'web.bezAutozapisu': 'no autosave',
   'web.amulet': 'AMULET',
+  'web.bog': 'immortal',
+  'web.bogTytul': 'Test mode: health and food restore every turn. Turn off with ?bog=0 in the address.',
   'web.podpowiedz': '? rules &nbsp;·&nbsp; i inventory &nbsp;·&nbsp; x inspect &nbsp;·&nbsp; w sniff &nbsp;·&nbsp; , pick up &nbsp;·&nbsp; &gt; &lt; stairs (Shift+. Shift+,) &nbsp;·&nbsp; m minimap &nbsp;·&nbsp; S save &nbsp;·&nbsp; Shift+N new game &nbsp;·&nbsp; click = walk &nbsp;·&nbsp; <a href="./wielu.html">multiplayer</a>',
   'web.podpowiedzStol': '? rules &nbsp;·&nbsp; i inventory &nbsp;·&nbsp; x inspect &nbsp;·&nbsp; w sniff &nbsp;·&nbsp; , pick up &nbsp;·&nbsp; &gt; &lt; stairs (Shift+. Shift+,) &nbsp;·&nbsp; m map &nbsp;·&nbsp; . wait',
   'wejscie': 'You enter the dungeon. Press ? for help.',

@@ -90,6 +90,10 @@ if (game.status === 'playing' && Number.isInteger(pietroParam)
   game.enterLevel(pietroParam, pietroParam > game.depth ? 'down' : 'up');
 }
 if (params.get('amulet') === '1' && game.status === 'playing') game.player.hasAmulet = true;
+// `?bog=1` włącza nieśmiertelność (`?bog=0` wyłącza); stan jedzie w zapisie
+// razem z bohaterem, więc trzyma się do odwołania, a znacznik w panelu mówi,
+// że partia nie jest uczciwa.
+if (params.has('bog')) game.player.niesmiertelny = params.get('bog') === '1';
 view.sync(game);
 renderer.resize(game);
 
@@ -611,6 +615,7 @@ function updateHud() {
   $('pturn').textContent = game.turn;
   $('stany').innerHTML = stanyHtml(p);
   $('amulet').hidden = !p.hasAmulet;
+  $('bog').hidden = !p.niesmiertelny;
   const stopien = $('trudnosc');
   stopien.hidden = false;
   stopien.textContent = t(`trudnosc.${game.trudnosc}`);
