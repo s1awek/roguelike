@@ -1,5 +1,9 @@
 # Przebieg prac i pomiary
 
+Ścieżki `roboczy/…` wskazują pliki robocze spoza repozytorium (skrypty
+pomiarowe, logi serii, zrzuty ekranu) - dowody lokalne, których liczby są
+przepisane do tego dokumentu.
+
 Dokument opisuje, co zostało zmierzone i czym. Liczby pochodzą z przebiegów
 opisanych przy nich; twierdzenia bez pomiaru są oznaczone jako hipotezy.
 
@@ -548,16 +552,16 @@ nieodtwarzalności, więc trafił do warstwy nad silnikiem:
   i dwa pytania o widoczność - więc **ten sam rysownik** obsługuje obie wersje
   gry. Gdyby czytał więcej, trzeba by drugiego.
 
-`[ustalone - dwóch klientów przez sieć, bez przeglądarki, `.workspace/klient-proba.mjs`]`
+`[ustalone - dwóch klientów przez sieć, bez przeglądarki, `roboczy/klient-proba.mjs`]`
 Dwoje ludzi dosiadło, zobaczyło się, wymieniło ciosy, każdy dostał własny
 dziennik; boty grały same (jeden zginął w trakcie próby); zgłoszenie z obcym
 znakiem miejsca odbite kodem 403.
 
-`[ustalone - sterownik przeglądarki, `.workspace/proba-przegladarka.log`]`
+`[ustalone - sterownik przeglądarki, `roboczy/proba-przegladarka.log`]`
 Wejście do lochu przez pole imienia, sześć kroków w prawo (tura 167 -> 180,
 położenie przesunięte), spotkanie z botem wraz ze znacznikiem „widzisz:
 Automat 2", plecak, jedenaście rozdziałów księgi zasad, sześć pozycji przy
-stole, **zero błędów konsoli**. Zrzuty: `.workspace/roguelike-wielu-obrazy.md`.
+stole, **zero błędów konsoli**. Zrzuty: `roboczy/roguelike-wielu-obrazy.md`.
 
 **Wada znaleziona tym przebiegiem, nie lekturą kodu:** klient nigdy nie wołał
 `renderer.resize()`, bo w grze jednoosobowej robi to kod startowy mający już
@@ -619,7 +623,7 @@ była zakładem o pełnej stawce. Do tego brakowało miejsca, w którym gracz m�
 doczytać reguły bez wychodzenia z gry.
 
 Spec zamrożona **przed pierwszą linią kodu**, świadomie bez nazw plików, funkcji
-i klawiszy: `.workspace/mikstury-acceptance-spec.md`, 24 kryteria w czterech
+i klawiszy: `roboczy/mikstury-acceptance-spec.md`, 24 kryteria w czterech
 grupach. Zbudowane: zapach dzielący mikstury na dwie pary (D-019), zwój
 rozpoznania jako piąty rodzaj zwoju (D-020) oraz księga zasad z jednego źródła,
 `src/rules.js` (D-021).
@@ -634,7 +638,7 @@ w serii v3 z wątku 1. Pięć punktów procentowych w dół wygląda jak skutek 
 
 Nie jest. `[ustalone - seria kontrolna na TYCH SAMYCH ziarnach]` Kopia silnika
 z jedyną różnicą w postaci usuniętego zwoju rozpoznania dała **28,0%**
-(280/1000, `.workspace/seria-kontrola.json`). Różnica między wersją z nowym
+(280/1000, `roboczy/seria-kontrola.json`). Różnica między wersją z nowym
 zwojem a bez niego to **1,2 punktu procentowego na tych samych ziarnach**, przy
 błędzie standardowym odsetka rzędu 1,4 punktu. Nieodróżnialne od szumu.
 
@@ -650,7 +654,7 @@ więc strumienia losowego - loch, potwory i rozkład przedmiotów zostają te sa
 a różni się wyłącznie to, który zwój wypadł. To jest para, nie dwa niezależne
 pomiary, i dlatego 1,2 punktu wolno tu w ogóle porównywać.
 
-`[ustalone - .workspace/verify-v4.log]` Pełny odbiór na zestawie ziaren
+`[ustalone - roboczy/verify-v4.log]` Pełny odbiór na zestawie ziaren
 niezależnym od strojenia: **9/9 kryteriów**, 28,3% zwycięstw na 1000 partii,
 zero wywrotek, zero partii bez rozstrzygnięcia, 9 kontroli przyrządu przeszło.
 
@@ -714,7 +718,7 @@ regresji, bo nowy kod jest powtarzalny wewnętrznie i po prostu powtarza coś
 innego.
 
 Stąd osobny przyrząd, zrobiony **przed** pierwszą zmianą w silniku:
-`.workspace/odcisk-zachowania.mjs` rozgrywa 60 pełnych partii botem i liczy
+`roboczy/odcisk-zachowania.mjs` rozgrywa 60 pełnych partii botem i liczy
 skrót z przebiegu - wynik, tura, głębokość, położenie, życie, poziom, głód,
 stan losowania, zawartość plecaka, rozpoznane rodzaje, potwory, liczba
 komunikatów. `[ustalone]` Odcisk `dcd469162d5390df` przed przebudową i po całej
@@ -839,13 +843,13 @@ warstwę korzystającą z tej samej funkcji do czegoś innego.
 ### Serwer pod obciążeniem
 
 Warstwa serwera nie miała żadnego pomiaru, więc dostała własny:
-`.workspace/proba-obciazenie.mjs` sadza ośmiu klientów naraz przy stole z
+`roboczy/proba-obciazenie.mjs` sadza ośmiu klientów naraz przy stole z
 czterema botami, każdy z własnym strumieniem, i zgłasza ruchy przez 45 sekund.
 W połowie próby jeden klient **zrywa połączenie bez pożegnania**, w trakcie
 tury wspólnej - bo to jest ten przypadek, który realnie psuje serwer chodzący
 bez opieki.
 
-`[ustalone - `.workspace/proba-obciazenie.mjs`, 12 uczestników, mapa 120x32]`
+`[ustalone - `roboczy/proba-obciazenie.mjs`, 12 uczestników, mapa 120x32]`
 
 | miara | wartość |
 |---|---|
@@ -1179,7 +1183,7 @@ nieruchomo, „jakby się tam zablokowały".
 
 **Pierwsze podejście było chybione i warto wiedzieć dlaczego.** Hipoteza brzmiała: tłok.
 Ośmiu uczestników w jednym pokoju to jedna wielka grupa w kontakcie, więc może rozstrzyganie
-tury wspólnej dławi się samo. Pomiar na podstawionym zegarze (`.workspace/proba-tlok.mjs`,
+tury wspólnej dławi się samo. Pomiar na podstawionym zegarze (`roboczy/proba-tlok.mjs`,
 60 s czasu stołu) tego NIE potwierdził: boty rozrzucone 727 tur na minutę, boty stłoczone
 422 tury - ale **działań na uczestnika identycznie 150 na minutę w obu przypadkach**. Tłok
 zmienia licznik tur stołu, bo tura wspólna liczy się raz dla całej grupy, i nie zmienia
@@ -1217,7 +1221,7 @@ sam to wychwycił: „to na pewno nie przez to, że ja blokowałem turę, no bo 
 boty wzięły w jednym pokoju przez to, że blokowałem turę". Miał rację. W-26 wyjaśnia,
 dlaczego stały nieruchomo, i nie wyjaśnia ani trochę, dlaczego było ich tam tyle.
 
-**Pomiar bez człowieka** (`.workspace/proba-skupisko.mjs`, 8 botów, 6 minut czasu stołu,
+**Pomiar bez człowieka** (`roboczy/proba-skupisko.mjs`, 8 botów, 6 minut czasu stołu,
 podstawiony zegar, ślad położeń co 30 s):
 
 ```
@@ -1261,7 +1265,7 @@ porównawczy należy uruchamiać na OSOBNEJ kopii drzewa, nie przestawiając bie
 ## Wątek 7: dwa języki i widoczne obejrzenie (2026-09-11)
 
 Zlecenie właściciela przed publikacją: angielski jako język gry, polski do wyboru;
-do tego „obejrzyj przed podniesieniem". Spec zamrożony w `.workspace/jezyki-acceptance-spec.md`
+do tego „obejrzyj przed podniesieniem". Spec zamrożony w `roboczy/jezyki-acceptance-spec.md`
 (poza repo). Decyzje: D-051 (tłumaczenie na krawędzi), D-052 (język uczestnika przy
 stole, kody odmów), D-053 (obejrzenie było, brakowało podpowiedzi).
 
@@ -1348,7 +1352,7 @@ też nie prowadził niżej. Test `pietra.test.js` z kontrolą na piętrze przedo
 ## Wątek 8: powrót z Amuletem, stopnie trudności, panel stanu (2026-09-11)
 
 Trzy zgłoszenia właściciela z jednej sesji gry w przeglądarce, spec
-`.workspace/powrot-trudnosc-hud-acceptance-spec.md` (części A-C). Odkładane na
+`roboczy/powrot-trudnosc-hud-acceptance-spec.md` (części A-C). Odkładane na
 później, za zgodą właściciela: większe mapy i loch bardziej labiryntowy.
 
 ### A. Loch się budzi (D-054)
@@ -1365,8 +1369,8 @@ dostaje `ilePotworow(depth)` nowych z puli `glebokoscWzorcowa(depth) + 2`
 `obudzony` w zapisie (zapis bez pola = nieobudzone). Komunikat `loch.budzi`
 w obu językach, akapit w księdze (oba języki, `npm run zasady`).
 
-**Pomiar**: `.workspace/zmierz-budzenie.mjs`, 4 warianty po 300 partii - liczby
-w D-054. Kontrola A-7: `.workspace/odcisk-powrot.mjs` - 47 partii bez Amuletu
+**Pomiar**: `roboczy/zmierz-budzenie.mjs`, 4 warianty po 300 partii - liczby
+w D-054. Kontrola A-7: `roboczy/odcisk-powrot.mjs` - 47 partii bez Amuletu
 identyczne, 13 z Amuletem inne (wszystkie nadal wygrane). Testy
 `test/powrot.test.js` (5): budzenie po podniesieniu (pula, widoczność, schody,
 mapa/rzeczy/pamięć nietknięte, komunikat), raz na piętro przy wchodzeniu
@@ -1383,7 +1387,7 @@ z `{trudnosc, pietra}`, przeglądarka: Shift+N otwiera wybór (klawisze 1-3),
 parametr adresu, znacznik w panelu, ekran końca, poczekalnia stołu. Księga:
 sekcja „Stopnie trudności" (oba języki). Pomiary i liczby w D-055.
 Testy `test/trudnosc.test.js` (8). Odbiór w przeglądarce
-`.workspace/sprawdz-trudnosc-web.mjs` 21/21 (jedna wada znaleziona i
+`roboczy/sprawdz-trudnosc-web.mjs` 21/21 (jedna wada znaleziona i
 naprawiona: po wczytaniu zapisu nowa partia szła na zapamiętanym stopniu
 zamiast na stopniu zapisu).
 
@@ -1394,5 +1398,21 @@ zamiast na stopniu zapisu).
 przez `data-t-title`), `web/opis.js` (`stanyHtml` z ikoną i podpisem,
 `postepDosw`), `web/style.css` (nowy blok panelu, tryb ciasny poniżej 1100 px),
 klucze `web.hud.*` w obu słownikach. Testy `test/hud.test.js` (3). Zrzuty
-przed/po: `.workspace/zrzuty-hud.mjs` → `.workspace/hud-zrzuty/`.
+przed/po: `roboczy/zrzuty-hud.mjs` → `roboczy/hud-zrzuty/`.
 `npm test` 181/181.
+
+### D. Przygotowanie do publikacji (D-057)
+
+Wersja jednoosobowa idzie na hosting statyczny (GitHub Pages), stół osobno
+jako aplikacja Node. Zmiany: `LICENSE` (MIT), `index.html` w korzeniu
+(przekierowanie do `web/`), `README.md` po angielsku (polski przeniesiony
+do `README.pl.md`, liczby serii uaktualnione do 1000/168/16,8 %/667 s),
+odsyłacz do stołu na stronie jednoosobowej znika, gdy strony nie serwuje
+stół: `bin/server.js` znaczy `web/index.html` atrybutem `data-stol="1"`,
+`web/main.js` czyta go synchronicznie (`ukryjLinkStolu`). Pierwsze podejście
+sondowało `/api/stol` z przeglądarki - na hostingu statycznym zostawiało 404
+w konsoli, więc odrzucone. Kontrola treści wewnętrznej w `docs/`: ścieżki
+`.workspace/` zastąpione umownym `roboczy/` (katalog ignorowany, nie istnieje
+po klonie). Sprawdzenie `roboczy/sprawdz-link-stolu.mjs`: serwer statyczny
+ukrywa, stół pokazuje, korzeń stołu przekierowuje na `/web/`, konsola czysta.
+`npm test` 184/184.

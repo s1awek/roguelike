@@ -416,7 +416,12 @@ const server = createServer(async (req, res) => {
   try {
     const s = await stat(full);
     if (s.isDirectory()) { res.writeHead(302, { Location: `${p}/` }); return res.end(); }
-    const body = await readFile(full);
+    let body = await readFile(full);
+    // Strona jednoosobowa serwowana PRZEZ stół dostaje znak, że stół tu jest -
+    // wtedy pokazuje odsyłacz do gry wieloosobowej. Serwer statyczny (albo
+    // obcy hosting plików) tego znaku nie daje i odsyłacz znika, bez sondowania
+    // `/api/stol` z przeglądarki (sonda na hostingu statycznym to 404 w konsoli).
+    if (p === '/web/index.html') body = body.toString().replace('<body>', '<body data-stol="1">');
     res.writeHead(200, { 'Content-Type': TYPES[extname(full)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(body);
   } catch {

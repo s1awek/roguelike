@@ -1,244 +1,168 @@
 # Roguelike
 
-Gra roguelike w czystym Node. Osiem poziomów lochu, na dnie Smok Otchłani,
-wygrywa ten, kto wyniesie Amulet na powierzchnię. Z Amuletem w ręku loch się
-budzi: każde piętro w drodze na górę dostaje nowych, groźniejszych mieszkańców.
+A roguelike in plain Node. Eight floors of dungeon, the Dragon of the Abyss at
+the bottom; you win by carrying the Amulet back to the surface. With the Amulet
+in hand the dungeon stirs: every floor on the way up gets new, nastier tenants.
 
-Dwie skóry na jednym silniku: **terminalowa** (znaki ANSI) i **graficzna**
-(płótno w przeglądarce). Zasady, losowanie i zapisy są wspólne - to ten sam
-`Game`, a nie dwie gry.
+Two skins on one engine: **terminal** (ANSI characters) and **graphical**
+(canvas in the browser). Rules, randomness and saves are shared - it is the same
+`Game`, not two games.
 
-Zero zależności zewnętrznych. Nic do zainstalowania poza samym Node (>= 20).
+Zero external dependencies. Nothing to install beyond Node itself (>= 20).
+
+Polish documentation: [README.pl.md](README.pl.md). The rulebook is in both
+languages: [rules.md](docs/rules.md) / [zasady.md](docs/zasady.md).
 
 ```bash
-npm run web                       # wersja graficzna: http://localhost:8080/web/
+npm run web                          # graphical edition: http://localhost:8080/web/
 
-node bin/play.js                  # nowa gra
-node bin/play.js --seed jaskinia  # ten sam loch za każdym razem
-node bin/play.js --continue       # wznów zapis
-node bin/play.js --lang pl        # po polsku (domyślnie po angielsku)
-node bin/play.js --difficulty easy   # stopień trudności: easy | normal | hard
+node bin/play.js                     # new game in the terminal
+node bin/play.js --seed cavern       # the same dungeon every time
+node bin/play.js --continue          # resume the save
+node bin/play.js --lang pl           # in Polish (English is the default)
+node bin/play.js --difficulty easy   # difficulty: easy | normal | hard
 
-node bin/bot.js --watch demo      # popatrz, jak gra komputer
-node bin/bot.js --games 1000      # tysiąc partii, zbiorczy wynik
-node bin/verify.js                # odbiór wg specyfikacji
-npm test                          # testy jednostkowe
+node bin/bot.js --watch demo         # watch the computer play
+node bin/bot.js --games 1000         # a thousand games, aggregate result
+node bin/verify.js                   # acceptance run against the specification
+npm test                             # unit tests
 ```
 
-## Sterowanie
+## Controls
 
 | | |
 |---|---|
-| ruch | strzałki, `hjkl` (bok), `yubn` (skos), klawiatura numeryczna |
-| czekaj | `.` albo `5` |
-| podnieś | `,` albo `g` |
-| schody | `>` w dół, `<` w górę |
-| ekwipunek | `i`, potem litera przedmiotu |
-| obejrzyj rzecz pod nogami (bez podnoszenia) | `x` |
-| wyrzuć | `d` |
-| powąchaj miksturę | `w`, potem litera |
-| zapis / wczytaj | `S` / `L` |
-| księga zasad / wyjście | `?` / `Q` |
-| minimapa (tylko przeglądarka) | `m` |
-| nowa gra (tylko przeglądarka) | `Shift`+`N` |
+| move | arrows, `hjkl` (orthogonal), `yubn` (diagonal), numeric keypad |
+| wait | `.` or `5` |
+| pick up | `,` or `g` |
+| stairs | `>` down, `<` up (`Shift+.` / `Shift+,`) |
+| inventory | `i`, then the item's letter |
+| inspect the item underfoot (without picking up) | `x` |
+| drop | `d` |
+| sniff a potion | `w`, then the letter |
+| save / load | `S` / `L` |
+| rulebook / quit | `?` / `Q` |
+| minimap (browser only) | `m` |
+| new game (browser only) | `Shift`+`N` |
 
-Język: angielski domyślnie, polski do wyboru - w przeglądarce przełącznik EN | PL
-na pasku stanu albo adres z `?lang=pl`, w terminalu `--lang pl`. Wybór zmienia
-wyłącznie opis gry, nie jej przebieg; zapisy są wspólne dla obu języków.
+**Language**: English by default, Polish on request - the EN | PL switch in the
+status bar, `?lang=pl` in the address, `--lang pl` in the terminal. The choice
+changes only how the game is described, never how it plays; saves are shared
+between languages.
 
-Stopnie trudności: łatwy (6 pięter, słabsze potwory, sytsze jedzenie), normalny
-(gra wzorcowa, 8 pięter) i trudny (10 pięter, mocniejsze potwory, szybszy głód).
-W przeglądarce wybór przy nowej grze (`Shift`+`N`) albo adres z
-`?difficulty=easy|normal|hard`, w terminalu `--difficulty`, przy stole flaga
-serwera `--difficulty` (jeden stopień dla całego stołu). Stopień jest zapisany
-razem z partią; liczby są w księdze zasad, liczone z tej samej tablicy, z której
-korzysta gra.
+**Difficulty**: easy (6 floors, weaker monsters, more filling food), normal
+(the reference game, 8 floors) and hard (10 floors, stronger monsters, faster
+hunger). In the browser choose at new game (`Shift`+`N`) or pass
+`?difficulty=easy|normal|hard`; in the terminal `--difficulty`; at a
+multiplayer table the server flag `--difficulty` sets one level for everyone.
+The level is stored with the game; the numbers are in the rulebook, computed
+from the same table the game uses.
 
-Do oglądania konkretnego miejsca gry bez przechodzenia całego lochu (przeglądarka):
-`?pietro=N` przenosi bohatera bieżącej partii na piętro N, `?amulet=1` daje mu
-Amulet - np. `?pietro=8&amulet=1` pokazuje od razu drogę powrotną. `?bog=1`
-włącza nieśmiertelność (życie i sytość wracają co turę, znacznik w panelu),
-`?bog=0` ją wyłącza; stan trzyma się w zapisie do odwołania.
+**Test parameters** (browser) for looking at a particular place of the game
+without walking the whole dungeon: `?pietro=N` moves the hero of the current
+game to floor N, `?amulet=1` puts the Amulet in the backpack (e.g.
+`?pietro=8&amulet=1` shows the way back at once), `?bog=1` turns on
+immortality (health and food restore every turn, a tag in the status bar),
+`?bog=0` turns it off; the flag stays in the save until revoked.
 
-Znaki: `@` ty, `!` mikstura, `?` zwój, `)` broń, `[` pancerz, `%` jedzenie,
-`"` Amulet. Litery to potwory - małe słabsze, wielkie groźniejsze.
+Glyphs (terminal): `@` you, `!` potion, `?` scroll, `)` weapon, `[` armor,
+`%` food, `"` the Amulet. Letters are monsters - lowercase weaker, uppercase
+nastier.
 
-## Zasady
+## Rules
 
-Pełne reguły - walka, rozwój, głód, przedmioty, rozpoznawanie mikstur, pole
-widzenia - są w **[księdze zasad](docs/zasady.md)** (po angielsku: [rules.md](docs/rules.md)). Ta sama treść jest dostępna
-w trakcie gry pod klawiszem `?`, w obu wersjach, i nie może się z plikiem
-rozjechać: jedno źródło w [`src/rules.js`](src/rules.js), z którego plik jest
-generowany przez `npm run zasady`. Liczby w tabelach nie są przepisane ręcznie -
-liczą się z tych samych tablic, których gra używa w rozgrywce.
+The full rules - combat, advancement, hunger, items, potion identification,
+field of view - are in the **[rulebook](docs/rules.md)**. The same text is
+available in-game under `?`, in both editions, and cannot drift from the
+file: one source in [`src/rules.js`](src/rules.js), from which the file is
+generated by `npm run zasady`. Numbers in the tables are not typed by hand -
+they are computed from the same tables the game plays with.
 
-### Skąd wiedzieć, co robi mikstura
+Potion kinds are fixed, but their **looks** are shuffled per game: a "black
+potion" means something different in every game and the same thing throughout
+one. Sniffing (`w`) costs a turn, not health, and splits potions into two
+pairs; a scroll of identification names every unknown potion and scroll in the
+backpack at once. Identification works on the kind, not the copy.
 
-Rodzaje mikstur są stałe, ale ich **wygląd** jest losowany na każdą rozgrywkę:
-„czarna mikstura" znaczy co innego w każdej partii, a to samo przez całą jedną
-partię. Wiedzę zdobywa się czterema drogami, od najtańszej:
+## What is inside
 
-1. **Powąchaj** (`w`) - kosztuje jedną turę, nie kosztuje życia. Zapach dzieli
-   mikstury na dwie pary i nigdy nie wskazuje jednej: mówi „to mnie nie zaboli"
-   albo „to jest siła albo trucizna". Zapach zostaje przy nazwie w plecaku.
-2. **Policz** - mikstura leczenia jest najczęstsza, więc barwa widywana raz na
-   partię raczej nią nie jest.
-3. **Wyklucz** - rodzaje są cztery, więc gdy znasz trzy, czwarta barwa jest
-   przesądzona. Gdy przesądzona jest para zapachowa, wykluczenie robi sama gra.
-4. **Zwój rozpoznania** - rozpoznaje na pewno wszystkie nieznane mikstury
-   i zwoje, które masz w plecaku w tej chwili.
-
-Rozpoznanie działa na **rodzaj, nie na sztukę**: gdy raz się dowiesz, czym jest
-perlista mikstura, wszystkie perliste mikstury noszą już prawdziwą nazwę.
-
-Mikstury i zwoje mają w każdej rozgrywce **inny wygląd**. Czerwona mikstura raz
-leczy, raz truje - dowiesz się, dopiero gdy wypijesz.
-
-## Co jest w środku
-
-| Plik | Rzecz |
+| File | Thing |
 |---|---|
-| [`src/rng.js`](src/rng.js) | generator losowy xorshift128, zasiewany i **serializowalny** |
-| [`src/map.js`](src/map.js) | generator lochu przez podział binarny, spójny z konstrukcji |
-| [`src/fov.js`](src/fov.js) | pole widzenia - symetryczny shadowcasting na ułamkach całkowitych |
-| [`src/path.js`](src/path.js) | A\* z heurystyką Czebyszewa, bez ścinania rogów, plus mapa odległości |
-| [`src/items.js`](src/items.js) | przedmioty i losowanie wyglądów per rozgrywka |
-| [`src/monsters.js`](src/monsters.js) | bestiariusz i przeciwnik ostateczny |
-| [`src/game.js`](src/game.js) | silnik: tury, walka, głód, awanse, poziomy |
-| [`src/serialize.js`](src/serialize.js) | serializacja stanu, **bez zależności od środowiska** |
-| [`src/save.js`](src/save.js) | zapis do pliku, **odcisk stanu** (tylko Node) |
-| [`src/bytes.js`](src/bytes.js) | base64 bez `Buffer` - wspólne dla terminala i przeglądarki |
-| [`src/render.js`](src/render.js) | rysowanie w terminalu |
-| [`src/bot.js`](src/bot.js) | gracz automatyczny (całkowicie deterministyczny) |
-| [`web/draw.js`](web/draw.js) | rysowanie na płótnie: kafle, światło, sylwetki |
-| [`web/view.js`](web/view.js) | stan wizualny - płynny ruch, błyski, liczby obrażeń |
-| [`web/main.js`](web/main.js) | wejście, HUD, zapis w przeglądarce |
-| [`src/rules.js`](src/rules.js) | księga zasad - jedno źródło dla gry i dla `docs/zasady.md` |
-| [`src/i18n.js`](src/i18n.js), [`src/lang/`](src/lang/) | słowniki `pl` i `en`; tłumaczenie dzieje się przy pokazaniu, stan gry zna tylko polskie identyfikatory |
-| [`tools/browser.js`](tools/browser.js) | sterownik przeglądarki po CDP - przyrząd, którym mierzone są twierdzenia o wersji graficznej |
-| [`bin/serve.js`](bin/serve.js) | serwer plików statycznych, bez zależności |
+| [`src/rng.js`](src/rng.js) | xorshift128 generator, seeded and **serializable** |
+| [`src/map.js`](src/map.js) | dungeon generator by binary partition, connected by construction |
+| [`src/fov.js`](src/fov.js) | field of view - symmetric shadowcasting on integer fractions |
+| [`src/path.js`](src/path.js) | A\* with the Chebyshev heuristic, no corner cutting, plus a distance map |
+| [`src/items.js`](src/items.js) | items and per-game looks |
+| [`src/monsters.js`](src/monsters.js) | bestiary and the final foe |
+| [`src/game.js`](src/game.js) | engine: turns, combat, hunger, levelling, floors |
+| [`src/trudnosc.js`](src/trudnosc.js) | difficulty profiles |
+| [`src/serialize.js`](src/serialize.js) | state serialization, **environment-independent** |
+| [`src/save.js`](src/save.js) | file saves and the **state fingerprint** (Node only) |
+| [`src/bot.js`](src/bot.js) | automatic player (fully deterministic) |
+| [`src/rules.js`](src/rules.js), [`src/lang/`](src/lang/) | the rulebook and the `pl` / `en` dictionaries |
+| [`web/`](web/) | canvas rendering, view state, HUD, browser saves, multiplayer client |
+| [`bin/serve.js`](bin/serve.js), [`bin/server.js`](bin/server.js) | static file server; multiplayer table server |
+| [`tools/browser.js`](tools/browser.js) | a CDP browser driver - the instrument that measures claims about the graphical edition |
 
-## Trzy rzeczy zrobione inaczej, niż wyszłoby domyślnie
+Three things done differently than the default would give: the field of view is
+**symmetric** (if you see a monster, it sees you); the save **includes the
+random generator state**, so a resumed game plays on identically, not just
+looks the same; and the **automatic player replaces the tester** - a thousand
+games without a crash is a different kind of evidence than a thousand
+assertions. Six game-blocking defects were found that way, not by tests.
 
-**Pole widzenia jest symetryczne.** Zwykły rekurencyjny shadowcasting potrafi
-pokazać pole A z pola B, ale nie odwrotnie, bo rozstrzyga remisy nachyleń w jedną
-stronę. Tu nachylenia liczone są na **ułamkach całkowitych**, więc jeśli widzisz
-potwora, potwór widzi ciebie. Silnik z tego korzysta: budzenie potworów nie
-wymaga liczenia pola widzenia każdemu z osobna.
+Latest series (normal difficulty): **1000 games, 168 wins (16.8%), zero
+crashes, one undecided within the turn limit**, 667 s.
 
-**Zapis obejmuje stan generatora losowego.** Bez tego wznowiona gra wyglądałaby
-identycznie, a toczyła się inaczej. Różnicy tego rodzaju nie widać okiem, więc
-jedynym sposobem na jej złapanie jest odcisk całego stanu -
-[`fingerprint()`](src/save.js).
-
-**Gracz automatyczny zastępuje testera.** Tysiąc partii bez wywrotki to co innego
-niż tysiąc asercji: bot chodzi po ścieżkach, których nikt nie wymyślił.
-**Sześć wad blokujących ukończenie gry** wyszło właśnie tak, nie z testów - w tym
-dwie ostatnie dopiero przy odbiorze, a jedna z nich była wadą samego przyrządu
-pomiarowego (patrz [`docs/przebieg.md`](docs/przebieg.md), W-5 i W-6).
-
-Wynik ostatniej serii: **1000 partii, 318 zwycięstw (31,8%), 682 śmierci,
-zero zakleszczeń, zero wywrotek**, średnio 4321 tur na partię, 552 s.
-
-## Wersja graficzna
+## Graphical edition
 
 ```bash
-npm run web        # potem http://localhost:8080/web/
+npm run web        # then http://localhost:8080/web/
 ```
 
-Serwer jest potrzebny wyłącznie dlatego, że moduły ES nie ładują się z `file://`.
-Serwuje katalog projektu, bo `web/` importuje silnik wprost z `src/` - bez
-budowania, bez pakowania, bez kopii kodu gry.
+The server exists only because ES modules do not load from `file://`. It
+serves the project directory, since `web/` imports the engine straight from
+`src/` - no build, no bundling, no copy of the game code. Any static host
+works.
 
-Sterowanie jest to samo co w terminalu, z dodatkami, które mają sens tylko przy
-myszy i karcie przeglądarki: **kliknięcie w poznane pole** rusza marsz (zatrzymuje
-się sam, gdy w polu widzenia pojawi się potwór, gdy spadną punkty życia albo gdy
-pod nogami znajdzie się przedmiot), `m` włącza i wyłącza **minimapę**, a `Shift`+`N`
-zaczyna nową grę.
+Clicking a known tile starts a walk (it stops on its own when a monster comes
+into view, health drops, or an item is underfoot); `m` toggles the **minimap**.
+The game **autosaves after every turn**, so a refresh or a closed tab costs
+nothing; the manual save (`S`) is a separate checkpoint that `L` returns to.
+Bright and warm = seen now, cold and dim = remembered, black = unknown - the
+same split as in the terminal; the graphics give no advantage. Saves are
+**interchangeable between editions**: the same JSON, byte for byte.
 
-**Minimapa** rysuje plan poziomu w prawym górnym rogu. Obowiązuje ją ten sam
-warunek co planszę: pokazuje wyłącznie pola widoczne albo zapamiętane, a potwory
-i przedmioty tylko wtedy, gdy są widoczne **teraz** - pamięć dotyczy kształtu
-lochu, nie tego, kto po nim chodzi. Ramka na planie to wycinek widoczny na
-ekranie; kliknięcie w plan zleca marsz tak samo jak kliknięcie w planszę.
-
-**Autozapis.** Gra zapisuje się sama po każdej turze, więc odświeżenie strony,
-zamknięcie karty ani przypadkowe `Ctrl+W` nie kosztują rozgrywki - po powrocie
-stan jest ten sam co do tury i ziarna losowania. Autozapis siedzi pod osobnym
-kluczem niż zapis ręczny (`S`), więc go nie nadpisuje: `S` zostaje świadomym
-punktem kontrolnym, do którego wraca `L`. Po śmierci albo zwycięstwie autozapis
-znika, żeby odświeżenie dawało nową grę, a nie wieczny ekran końcowy. Adres
-z jawnym ziarnem (`?seed=...`) ma pierwszeństwo: wraca do autozapisu tylko wtedy,
-gdy dotyczy tego samego ziarna.
-
-Co rysunek mówi, a czego nie mówi:
-
-- **Jasne i ciepłe** - widzisz teraz. **Zimne i przygaszone** - pamiętasz
-  z wcześniej, więc ruchu potworów tam nie zobaczysz. **Czarne** - nieznane.
-  To dokładnie ten sam podział co w terminalu; grafika nie daje przewagi.
-- Barwa flaszki to jej **wygląd**, nie działanie. Ta sama barwa znaczy to samo
-  przez całą rozgrywkę - ale co znaczy, trzeba sprawdzić. Ikona w plecaku jest
-  rysowana tą samą funkcją co przedmiot na podłodze, więc nie da się ich rozjechać.
-- Kamera idzie za graczem, gdy poziom nie mieści się na ekranie w czytelnej skali;
-  na szerokim ekranie pokazuje cały poziom naraz.
-
-Zapisy są **wymienne między wersjami**: ten sam JSON, bajt w bajt. Wersja
-terminalowa trzyma go w pliku (`~/.roguelike-save.json`), graficzna w pamięci
-przeglądarki (`localStorage`).
-
-## Wielu graczy w jednym lochu
+## Several players in one dungeon
 
 ```
-npm run stol            # serwer partii, domyślnie port 8080
+npm run stol                              # table server, port 8080 by default
 npm run stol -- --port 8099 --boty 5 --map 120x32
-npm run stol -- --difficulty hard     # jeden stopień trudności dla całego stołu
+npm run stol -- --difficulty hard         # one difficulty for the whole table
 ```
 
-Potem `http://localhost:8080/web/wielu.html`. Loch jest zamieszkany od pierwszej
-chwili: brakujące miejsca zajmują gracze automatyczni, ci sami, którymi mierzona
-jest równowaga gry - więc przeciwnik jest porównywalny z człowiekiem, a nie
-atrapą.
+Then `http://localhost:8080/web/wielu.html`. Empty seats are taken by the
+automatic players - the same ones that measure the game's balance. While you
+see nobody, you walk at your own pace; when you stand in another player's
+view, your turn resolves **simultaneously**. A lost fight does not end the
+game: you drop everything on the spot, the Amulet included, and wake up one
+floor higher. The dungeon is shared (a picked-up item is gone for everyone),
+but the discovered map, the log and potion knowledge are your own. The server
+sends each player a **separate snapshot** of only what they can see.
 
-**Reguła tury.** Dopóki nikogo nie widzisz, chodzisz własnym tempem i nikt na
-ciebie nie czeka. Gdy stajesz w polu widzenia innego gracza, wasza tura
-rozstrzyga się **jednocześnie**: oboje zgłaszacie działanie w ślepo i oboje
-działacie w tej samej turze. Nikt nie dostaje darmowej serii ciosów, więc
-odskok jest zawsze wykonalny - ale i nikt nie ucieka darmowo, bo goniący też
-się rusza.
+## Verification
 
-**Stawka.** Przegrane starcie nie kończy partii. Gubisz cały dobytek na miejscu,
-łącznie z Amuletem, i budzisz się piętro wyżej z resztką sił. Zwycięzca ma po
-co bić, przegrany ma po co wracać.
+Specification: [`docs/acceptance-spec.md`](docs/acceptance-spec.md) (Polish) -
+frozen before the first line of code, describing behaviour, not solution.
+`node bin/verify.js` checks each of the nine criteria and **prints the number
+it stands on**; a criterion without a measured number is reported as
+unchecked, not as met. Every check has a known-bad case, so a check that never
+fails cannot be mistaken for a working one.
 
-**Co wspólne, a co własne.** Loch jest jeden: przedmiot podniesiony przez kogoś
-innego już tam nie leży, a zabity potwór jest martwy dla wszystkich. Ale
-odkryta mapa, dziennik zdarzeń i wiedza o miksturach są twoje własne - wejście
-na cudzy poziom nie odsłania cudzych korytarzy. Wygląd mikstur jest wspólny na
-całą partię, bo loch jest jeden.
+Engineering log (Polish): [`docs/przebieg.md`](docs/przebieg.md) - the work
+and its measurements; [`docs/decyzje.md`](docs/decyzje.md) - the decisions and
+why.
 
-Serwer trzyma stan i wysyła każdemu **osobną migawkę**: tylko jego pamięć
-terenu, tylko potwory z pól, które właśnie widzi, tylko tych graczy, których
-widać. Przeglądarka nie dostaje obiektu gry, więc czego nie ma w migawce, tego
-nie ma na ekranie.
+## License
 
-## Odbiór
-
-Specyfikacja: [`docs/acceptance-spec.md`](docs/acceptance-spec.md) - zamrożona
-przed pierwszą linią kodu, opisuje zachowanie, nie rozwiązanie.
-
-`node bin/verify.js` sprawdza po kolei każde z dziewięciu kryteriów i **wypisuje
-liczbę, na której stoi**. Kryterium bez zmierzonej liczby raportowane jest jako
-niesprawdzone, nie jako spełnione.
-
-Osobno warta uwagi jest reguła, której gra pilnuje sama u siebie: **każda kontrola
-ma przypadek znany-zły**. Test spójności lochu dostaje poziom z zamurowaną
-kieszenią, kontrola wzajemności widzenia dostaje celowo niesymetryczne pole
-widzenia, porównanie tras dostaje trasę o krok za długą. Kontrola, która nigdy
-niczego nie zgłasza, jest nieodróżnialna od zepsutej.
-
-Ostatni pełny odbiór: **9/9 kryteriów**, na zestawie ziaren niezależnym od tego,
-na którym strojono grę (1000 partii: 0 wywrotek, 1 partia bez rozstrzygnięcia,
-29,3% zwycięstw).
-
-Dziennik decyzji podjętych w trakcie: [`docs/decyzje.md`](docs/decyzje.md).
-Przebieg prac i pomiary: [`docs/przebieg.md`](docs/przebieg.md).
+MIT - see [LICENSE](LICENSE).

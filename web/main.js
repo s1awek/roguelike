@@ -51,6 +51,19 @@ let noticeUntil = 0;
 
 ustalJezyk();
 wstawIkony(document.getElementById('hud'));
+// Odsyłacz do stołu ma sens tylko tam, gdzie chodzi serwer stołu. Ten serwer
+// znaczy stronę atrybutem `data-stol` (bin/server.js); hosting statyczny
+// (same pliki) go nie daje - wtedy odsyłacz znika, zamiast prowadzić na
+// stronę, która nie zadziała.
+const stolDostepny = document.body.dataset.stol === '1';
+function ukryjLinkStolu() {
+  if (stolDostepny) return;
+  const a = document.querySelector('#hint a[href$="wielu.html"]');
+  if (!a) return;
+  const span = a.parentElement;
+  span.innerHTML = span.innerHTML.replace(/(?:&nbsp;|\s)*·(?:&nbsp;|\s)*<a [^>]*wielu\.html[^>]*>[^<]*<\/a>\s*$/, '');
+}
+ukryjLinkStolu();
 
 // Odświeżenie karty nie może kosztować rozgrywki. Stan wraca z autozapisu, chyba
 // że w adresie stoi jawne ziarno - wtedy gracz prosi o KONKRETNĄ grę i to on ma
@@ -723,6 +736,7 @@ podpisz(document.getElementById('podpis'));
 przelacznik(document.getElementById('jezyk'), () => {
   updateHud();
   podpisz(document.getElementById('podpis'));
+  ukryjLinkStolu();
   if (mode === 'help') showRules(ruleSection);
   else if (mode === 'over') showGameOver();
   else if (mode === 'nowa') pokazWyborTrudnosci();
