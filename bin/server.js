@@ -23,7 +23,15 @@ import { t, znanyJezyk } from '../src/i18n.js';
 import { ustalTrudnosc } from '../src/trudnosc.js';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
-const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d; };
+// Argument z wiersza poleceń, a gdy go nie ma - zmienna środowiskowa `STOL_<NAZWA>`
+// (`--boty` → `STOL_BOTY`, `--limit-zadan` → `STOL_LIMIT_ZADAN`). Hosting z Passengerem
+// (panel „Node.js App") nie przekazuje argumentów, tylko zmienne środowiskowe.
+const arg = (n, d) => {
+  const i = process.argv.indexOf(n);
+  if (i > 0) return process.argv[i + 1];
+  const e = process.env['STOL_' + n.replace(/^--/, '').replace(/-/g, '_').toUpperCase()];
+  return e !== undefined && e !== '' ? e : d;
+};
 const PORT = Number(arg('--port', process.env.PORT || 8080));
 const ILE_BOTOW = Number(arg('--boty', 3));
 const MAPA = arg('--map', '120x32');

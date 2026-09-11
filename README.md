@@ -10,6 +10,9 @@ Two skins on one engine: **terminal** (ANSI characters) and **graphical**
 
 Zero external dependencies. Nothing to install beyond Node itself (>= 20).
 
+**Play now:** [s1awek.github.io/roguelike](https://s1awek.github.io/roguelike/) -
+the single-player edition, straight from this repository.
+
 Polish documentation: [README.pl.md](README.pl.md). The rulebook is in both
 languages: [rules.md](docs/rules.md) / [zasady.md](docs/zasady.md).
 
@@ -140,6 +143,11 @@ npm run stol                              # table server, port 8080 by default
 npm run stol -- --port 8099 --boty 5 --map 120x32
 npm run stol -- --difficulty hard         # one difficulty for the whole table
 ```
+
+Every flag has an environment-variable twin for hosts that start the app
+themselves (Passenger, a "Node.js App" panel): `STOL_BOTY`, `STOL_MAP`,
+`STOL_DIFFICULTY`, `STOL_SEED`; the port comes from `PORT`. Deployment notes
+(Polish): [`docs/wdrozenie.md`](docs/wdrozenie.md).
 
 Then `http://localhost:8080/web/wielu.html`. Empty seats are taken by the
 automatic players - the same ones that measure the game's balance. While you

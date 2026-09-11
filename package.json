@@ -1,7 +1,7 @@
 {
   "name": "roguelike",
   "version": "1.0.0",
-  "description": "Roguelike - deterministyczny, w terminalu i w przeglądarce, z graczem automatycznym",
+  "description": "Roguelike in plain Node: terminal and browser editions on one deterministic engine, with an automatic player",
   "type": "module",
   "bin": {
     "roguelike": "./bin/play.js"

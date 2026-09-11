@@ -10,6 +10,9 @@ Dwie skóry na jednym silniku: **terminalowa** (znaki ANSI) i **graficzna**
 
 Zero zależności zewnętrznych. Nic do zainstalowania poza samym Node (>= 20).
 
+**Zagraj od razu:** [s1awek.github.io/roguelike](https://s1awek.github.io/roguelike/) -
+wersja jednoosobowa, prosto z tego repozytorium.
+
 ```bash
 npm run web                       # wersja graficzna: http://localhost:8080/web/
 
@@ -193,6 +196,11 @@ npm run stol            # serwer partii, domyślnie port 8080
 npm run stol -- --port 8099 --boty 5 --map 120x32
 npm run stol -- --difficulty hard     # jeden stopień trudności dla całego stołu
 ```
+
+Każda flaga ma bliźniaczą zmienną środowiskową dla hostingów, które same
+uruchamiają aplikację (Passenger, panel „Node.js App"): `STOL_BOTY`,
+`STOL_MAP`, `STOL_DIFFICULTY`, `STOL_SEED`; port bierze się z `PORT`.
+Notatka wdrożeniowa: [`docs/wdrozenie.md`](docs/wdrozenie.md).
 
 Potem `http://localhost:8080/web/wielu.html`. Loch jest zamieszkany od pierwszej
 chwili: brakujące miejsca zajmują gracze automatyczni, ci sami, którymi mierzona
