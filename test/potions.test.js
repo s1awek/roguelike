@@ -10,6 +10,11 @@ import { Game } from '../src/game.js';
 import { POTIONS, SCROLLS, POTION_SCENT, SCENTS, scentGroup, itemLabel } from '../src/items.js';
 import { buildRules } from '../src/rules.js';
 import { serialize, loadFromString } from '../src/serialize.js';
+import { setLang } from '../src/i18n.js';
+
+// Te testy sprawdzają brzmienie POLSKIE. Od D-050 domyślny jest angielski,
+// więc język jest ustawiony jawnie - asercje zostały bez zmian.
+setLang('pl');
 
 let id = 5000;
 const potion = (type) => ({ id: id++, kind: 'potion', type, name: POTIONS.find(p => p.type === type).name });

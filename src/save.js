@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { serialize, loadFromString } from './serialize.js';
+import { t } from './i18n.js';
 
 export { stable, serialize, loadFromString } from './serialize.js';
 
@@ -26,9 +27,9 @@ export function saveToFile(game, path) {
 }
 
 export function loadFromFile(path) {
-  if (!existsSync(path)) return { ok: false, error: 'Nie ma takiego zapisu.' };
+  if (!existsSync(path)) return { ok: false, error: t('zapis.brak') };
   let raw;
   try { raw = readFileSync(path, 'utf8'); }
-  catch (e) { return { ok: false, error: `Nie da się odczytać pliku: ${e.message}` }; }
+  catch (e) { return { ok: false, error: t('zapis.nieOdczyt', { powod: e.message }) }; }
   return loadFromString(raw);
 }

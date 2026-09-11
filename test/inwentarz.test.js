@@ -12,6 +12,11 @@ import { Game } from '../src/game.js';
 import { POTIONS, WEAPONS, ARMORS, FOODS, itemStats, potionPower, bonusRazem } from '../src/items.js';
 import { renderInventory } from '../src/render.js';
 import { widokDla } from '../src/widok.js';
+import { setLang } from '../src/i18n.js';
+
+// Te testy sprawdzają brzmienie POLSKIE. Od D-050 domyślny jest angielski,
+// więc język jest ustawiony jawnie - asercje zostały bez zmian.
+setLang('pl');
 
 let id = 9000;
 const bron = (type, enchant = 0) => {

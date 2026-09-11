@@ -16,11 +16,13 @@ import { RNG } from './rng.js';
 import { generateLevel, Level, STAIRS_DOWN, STAIRS_UP, WALL } from './map.js';
 import { computeFOV } from './fov.js';
 import { distanceField, neighbors, chebyshev } from './path.js';
-import { randomItem, makeAmulet, makeAppearances, itemLabel, potionPower, SCENTS, POTION_SCENT, scentGroup } from './items.js';
+import { randomItem, makeAmulet, makeAppearances, itemLabel, itemName, stackLabel, potionLook, scentText, potionPower, SCENTS, POTION_SCENT, scentGroup } from './items.js';
 import { PLECAK_START, dolozDoPlecaka, przepakuj, zmiesciSie, poloz, mozna, ile as sztuk, poleRzeczy, wolnePola, pojemnosc } from './plecak.js';
 import { obejrzyj as obejrzyjRzecz } from './ocena.js';
-import { HUNGER_START, HUNGER_MAX, stopienGlodu } from './stany.js';
-import { spawnMonster, spawnBoss } from './monsters.js';
+import { HUNGER_START, HUNGER_MAX, stopienGlodu, komunikatGlodu } from './stany.js';
+import { spawnMonster, spawnBoss, monsterName } from './monsters.js';
+import { t, getLang } from './i18n.js';
+import { zabityPrzez, opisPrzyczyny } from './przyczyny.js';
 import { bytesToBase64, base64ToBytes } from './bytes.js';
 
 export const MAX_DEPTH = 8;
@@ -90,6 +92,10 @@ export class Game {
     // włącza je, bo tam ten sam loch żyje godzinami i kilku uczestników ogołaca
     // go szybciej, niż nowy zdąży wejść.
     this.odnawianie = !!opts.odnawianie;
+    // Język dziennika, gdy uczestnik nie ma własnego (`hero.lang`, ustawia go
+    // stół). Bez obu - język bieżący modułu `i18n`. Języka nie ma w zapisie:
+    // to jest cecha czytającego, nie stanu gry (D-050).
+    this.lang = opts.lang ?? null;
     this.ostatniaOdnowa = 0;
     this._idCounter = 1;
 
@@ -187,16 +193,40 @@ export class Game {
   get monsters() { return this.here.monsters; }
   get items() { return this.here.items; }
 
-  message(text) { this.tell(this.player, text); }
+  message(klucz, p) { this.tell(this.player, klucz, p); }
 
-  /** Komunikat do dziennika KONKRETNEGO uczestnika - dziennik jest osobisty. */
-  tell(hero, text) {
+  /** Język, w którym dany uczestnik czyta grę. */
+  jezyk(hero = this.player) { return hero?.lang ?? this.lang ?? getLang(); }
+
+  /**
+   * Komunikat do dziennika KONKRETNEGO uczestnika - dziennik jest osobisty.
+   *
+   * Tekst powstaje w chwili doręczenia, w języku ODBIORCY. Przy stole ten sam
+   * cios trafia do dwóch dzienników w dwóch językach naraz. Klucz spoza słownika
+   * przechodzi bez zmian - tak wchodzą napisy składane przez interfejsy.
+   */
+  tell(hero, klucz, p = {}) {
     if (!hero) return;
+    const text = t(klucz, p, this.jezyk(hero));
     hero.messages.push({ turn: this.turn, text });
     if (hero.messages.length > 200) hero.messages.shift();
   }
 
   isHero(x) { return this.heroes.includes(x); }
+
+  /**
+   * Imię bytu do zdania - zależne od języka czytającego, więc przekazywane jako
+   * funkcja. Uczestnik zawsze po imieniu, potwór po angielsku z przedimkiem.
+   */
+  kto(byt) {
+    if (this.isHero(byt)) return () => byt.name;
+    return (lang) => (lang === 'pl' ? byt.name : `the ${monsterName(byt, lang)}`);
+  }
+
+  /** Nazwa rzeczy widziana przez uczestnika, w jego języku. */
+  nazwa(it, hero = this.player) {
+    return (lang) => itemLabel(it, this.appearances, hero.identified, hero.sniffed, lang);
+  }
 
   /** Żywi uczestnicy na danym poziomie, w STAŁEJ kolejności - od kolejności
    *  zależy zużycie generatora losowego, więc nie wolno jej uzależnić od niczego. */
@@ -455,7 +485,7 @@ export class Game {
       if (kontakty.get(hero.hid).length && this.czyOdwrot(hero, kontakty.get(hero.hid), a)) {
         if ((hero.zmeczenie || 0) >= PROG_ZMECZENIA) {
           hero.zmeczenie = 0;
-          this.tell(hero, 'Brakuje Ci tchu - stajesz, żeby zaczerpnąć powietrza.');
+          this.tell(hero, 'bezTchu');
           a = { type: 'wait' };
         } else {
           cofnal.add(hero.hid);
@@ -662,14 +692,14 @@ export class Game {
     hero.hp = Math.max(1, Math.floor(hero.maxHp * 0.25));
     hero.lastHitBy = null;
     hero.deathCause = null;
-    this.tell(hero, `${cap(winner.name)} kładzie Cię na deski. Gubisz dobytek (${ile}) i uciekasz w górę.`);
+    this.tell(hero, 'przegrana.ty', { kto: winner.name, ile });
     // Ślad, po którym interfejs pozna, że to się właśnie stało. Trzy znikające
     // linijki dziennika to za mało na utratę CAŁEGO dobytku i skok o piętro:
     // właściciel zgłosił to jako „glitch, przeniosło mnie i wyczyściło plecak",
     // bo z ekranu nie dało się odczytać, co zaszło (W-26).
     hero.przegranaTura = this.turn;
     hero.przegrana = { kto: winner.name, ile, zPietra: hero.depth, naPietro: Math.max(1, hero.depth - 1) };
-    this.tell(winner, `${cap(hero.name)} pada bez czucia. Dobytek zostaje na ziemi.`);
+    this.tell(winner, 'przegrana.on', { kto: hero.name });
     this.placeHero(hero, Math.max(1, hero.depth - 1), 'up');
   }
 
@@ -687,10 +717,10 @@ export class Game {
     if (dx !== 0 && dy !== 0 && (!L.isWalkable(this.player.x + dx, this.player.y) || !L.isWalkable(this.player.x, this.player.y + dy))) return false;
     this.player.x = nx; this.player.y = ny;
     const it = this.itemAt(nx, ny);
-    if (it) this.message(`Leży tu ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.`);
+    if (it) this.message('lezyTu', { rzecz: this.nazwa(it) });
     const t = L.at(nx, ny);
-    if (t === STAIRS_DOWN) this.message('Są tu schody w dół (>).');
-    if (t === STAIRS_UP) this.message('Są tu schody w górę (<).');
+    if (t === STAIRS_DOWN) this.message('schody.tuDol');
+    if (t === STAIRS_UP) this.message('schody.tuGora');
     return true;
   }
 
@@ -714,31 +744,31 @@ export class Game {
 
     if (dmg <= 0) {
       if (okazja) {
-        if (aHero) this.tell(attacker, `${cap(defender.name)} odskakuje - nie dosięgasz.`);
-        if (dHero) this.tell(defender, `Odskakujesz i ${attacker.name} nie dosięga.`);
+        if (aHero) this.tell(attacker, 'odwrot.nieDosiegasz', { cel: this.kto(defender) });
+        if (dHero) this.tell(defender, 'odwrot.nieDosiega', { kto: this.kto(attacker) });
         return;
       }
-      if (aHero) this.tell(attacker, `Chybiasz - ${defender.name} unika ciosu.`);
-      if (dHero) this.tell(defender, `${cap(attacker.name)} chybia.`);
+      if (aHero) this.tell(attacker, 'chybiasz', { cel: this.kto(defender) });
+      if (dHero) this.tell(defender, 'chybia', { kto: this.kto(attacker) });
       return;
     }
 
     defender.hp -= dmg;
     if (aHero && dHero) this.stats.pvpHits++;
     if (okazja) {
-      if (aHero) this.tell(attacker, `${cap(defender.name)} odskakuje - trafiasz w odwrocie (${dmg}).`);
+      if (aHero) this.tell(attacker, 'odwrot.trafiasz', { cel: this.kto(defender), dmg });
       if (dHero) {
-        defender.deathCause = `zabity przez: ${attacker.name}`;
+        defender.deathCause = zabityPrzez(attacker.name);
         defender.lastHitBy = attacker;
-        this.tell(defender, `Odskakujesz, ale ${attacker.name} trafia Cię w odwrocie (${dmg}).`);
+        this.tell(defender, 'odwrot.trafia', { kto: this.kto(attacker), dmg });
       }
       return;
     }
-    if (aHero) this.tell(attacker, `Trafiasz ${defender.name} (${dmg}).`);
+    if (aHero) this.tell(attacker, 'trafiasz', { cel: this.kto(defender), dmg });
     if (dHero) {
-      defender.deathCause = `zabity przez: ${attacker.name}`;
+      defender.deathCause = zabityPrzez(attacker.name);
       defender.lastHitBy = attacker;
-      this.tell(defender, `${cap(attacker.name)} trafia Ciebie (${dmg}).`);
+      this.tell(defender, 'trafia', { kto: this.kto(attacker), dmg });
     } else if (defender.hp <= 0) {
       this.killMonster(defender, aHero ? attacker : null);
     }
@@ -747,7 +777,7 @@ export class Game {
   killMonster(m, killer = this.player) {
     const depth = killer ? killer.depth : this.depth;
     const entry = this.levels.get(depth);
-    this.tell(killer, `${cap(m.name)} pada.`);
+    this.tell(killer, 'pada', { kto: this.kto(m) });
     if (killer) {
       killer.kills++;
       this.gainXp(killer, m.xp);
@@ -760,7 +790,7 @@ export class Game {
       amulet.id = this.newId();
       amulet.x = m.x; amulet.y = m.y;
       entry.items.push(amulet);
-      this.tell(killer, 'Z ciała wypada Amulet Otchłani! Zabierz go na powierzchnię.');
+      this.tell(killer, 'amuletWypada');
     }
   }
 
@@ -778,7 +808,7 @@ export class Game {
     if (hero.hp >= hero.maxHp) return 0;
     const ile = Math.min(zwrotZaZabicie(m.maxHp), hero.maxHp - hero.hp);
     hero.hp += ile;
-    this.tell(hero, `Bierzesz oddech po walce (+${ile}).`);
+    this.tell(hero, 'oddech', { ile });
     return ile;
   }
 
@@ -790,12 +820,16 @@ export class Game {
       hero.hp += 10;
       hero.str += 1;
       if (hero.level % 2 === 0) hero.def += 1;
-      this.tell(hero, `Awansujesz na poziom ${hero.level}!`);
+      this.tell(hero, 'awans', { poziom: hero.level });
     }
   }
 
-  /** Etykieta widziana przez CZYNNEGO uczestnika - to ona rozstrzyga o stosach. */
-  etykieta(it) { return itemLabel(it, this.appearances, this.identified, this.sniffed); }
+  /**
+   * Etykieta STOSU dla czynnego uczestnika - rozstrzyga, co się łączy. Zawsze
+   * po polsku, bo stos jest stanem gry (patrz `stackLabel`). Do pokazania
+   * graczowi służy `nazwa()`.
+   */
+  etykieta(it) { return stackLabel(it, this.appearances, this.identified, this.sniffed); }
 
   /**
    * Przełożenie rzeczy w plecaku. NIE jest działaniem w grze: nie kosztuje tury,
@@ -822,7 +856,7 @@ export class Game {
    */
   obejrzyj(it, hero = this.player) {
     if (!it) return null;
-    return obejrzyjRzecz(it, hero, this.identified, (x) => this.etykieta(x));
+    return obejrzyjRzecz(it, hero, this.identified, (x) => this.etykieta(x), this.jezyk(hero));
   }
 
   /** Rzecz leżąca pod nogami uczestnika. */
@@ -847,11 +881,11 @@ export class Game {
    */
   pickUp(wybor = null) {
     const stos = this.stosPodNogami();
-    if (!stos.length) { this.message('Nie ma tu nic do podniesienia.'); return false; }
+    if (!stos.length) { this.message('podnies.nic'); return false; }
     // Lista przychodzi z sieci przy stole, więc nie ufamy jej kształtowi.
     const lista = Array.isArray(wybor) ? wybor : null;
     const chciane = lista === null ? [stos[0]] : stos.filter(i => lista.includes(i.id));
-    if (!chciane.length) { this.message('Nic nie wybrano.'); return false; }
+    if (!chciane.length) { this.message('podnies.nicWybrane'); return false; }
 
     const wziete = [], zostalo = [];
     for (const it of chciane) {
@@ -867,21 +901,22 @@ export class Game {
     if (!wziete.length) {
       // Odmowa, nie utrata: rzeczy zostają na podłodze, tura nie mija.
       const it = zostalo[0];
-      this.message(`Nie ma miejsca w plecaku (${wolnePola(this.player)} z ${pojemnosc(this.player)} pól wolnych, `
-        + `a to zajmuje ${poleRzeczy(it)}).`);
+      this.message('podnies.brakMiejsca', { wolne: wolnePola(this.player), poj: pojemnosc(this.player), pola: poleRzeczy(it) });
       return false;
     }
 
     if (wziete.some(w => w.it.kind === 'amulet')) {
-      this.message('Bierzesz Amulet Otchłani. Wracaj na powierzchnię!');
+      this.message('podnies.amulet');
     }
-    const opis = wziete.filter(w => w.it.kind !== 'amulet').map(w =>
-      `${this.etykieta(w.it)}${w.ile > 1 ? ` x${w.ile}` : ''}${w.reszta > 0 ? ` (${w.reszta} zostaje - brak miejsca)` : ''}`);
-    if (opis.length) this.message(`Podnosisz: ${opis.join(', ')}.`);
+    const opis = wziete.filter(w => w.it.kind !== 'amulet');
+    if (opis.length) {
+      this.message('podnies.lista', { lista: (lang) => opis.map(w =>
+        t('podnies.pozycja', { nazwa: this.nazwa(w.it), ile: w.ile, reszta: w.reszta }, lang)).join(', ') });
+    }
     // Rzeczy, które się nie zmieściły, mają zostać nazwane. Cisza po wybraniu
     // pięciu rzeczy i wzięciu dwóch wygląda jak zgubienie trzech.
     if (zostalo.length) {
-      this.message(`Nie zmieściło się: ${zostalo.map(i => this.etykieta(i)).join(', ')}.`);
+      this.message('podnies.nieZmiescilo', { lista: (lang) => zostalo.map(i => this.nazwa(i)(lang)).join(', ') });
     }
     return true;
   }
@@ -899,8 +934,7 @@ export class Game {
     it.x = this.player.x; it.y = this.player.y;
     delete it.px; delete it.py;              // położenie w plecaku traci sens na podłodze
     this.items.push(it);
-    const krotnosc = sztuk(it) > 1 ? ` x${sztuk(it)}` : '';
-    this.message(`Odkładasz: ${this.etykieta(it)}${krotnosc}.`);
+    this.message('odkladasz', { nazwa: this.nazwa(it), ile: sztuk(it) });
     return true;
   }
 
@@ -928,18 +962,18 @@ export class Game {
     const it = this.player.inventory[index];
     if (!it) return false;
     if (it.kind !== 'potion') {
-      this.message(`${itemLabel(it, this.appearances, this.identified, this.sniffed)} niczym nie pachnie.`);
+      this.message('wach.niePachnie', { nazwa: this.nazwa(it) });
       return false;
     }
     const key = `potion:${it.type}`;
     if (this.identified.has(key)) {
-      this.message(`Wiesz już, co to: ${it.name}.`);
+      this.message('wach.wieszJuz', { nazwa: (lang) => itemName(it, lang) });
       return false;
     }
     const scent = SCENTS[POTION_SCENT[it.type]];
-    const look = `${this.appearances.potion[it.type]} mikstura`;
+    const look = (lang) => potionLook(this.appearances.potion[it.type], lang);
     if (this.sniffed.has(key)) {
-      this.message(`${look} - już wiesz: zapach ${scent.short}.`);
+      this.message('wach.juzWachane', { wyglad: look, zapach: (lang) => scentText(scent.key, 'short', lang) });
       return false;
     }
 
@@ -949,10 +983,12 @@ export class Game {
     if (nieznane.length === 1) {
       // Drugi rodzaj z pary jest już rozpoznany, więc zostaje tylko jeden.
       this.identify(it);
-      this.message(`Zapach ${scent.full}. Znasz już drugą taką - to ${it.name}.`);
+      this.message('wach.rozstrzyga', { pelny: (lang) => scentText(scent.key, 'full', lang), nazwa: (lang) => itemName(it, lang) });
     } else {
-      const nazwy = para.map(p => p.name).join(' albo ');
-      this.message(`Zapach ${scent.full}. Tak pachnie ${nazwy}.`);
+      this.message('wach.para', {
+        pelny: (lang) => scentText(scent.key, 'full', lang),
+        nazwy: (lang) => para.map(p => itemName({ kind: 'potion', ...p }, lang)),
+      });
     }
     return true;
   }
@@ -966,7 +1002,7 @@ export class Game {
       case 'food': {
         this.player.hunger = Math.min(HUNGER_MAX, this.player.hunger + it.nutrition);
         this.zuzyj(it, index);
-        this.message(`Zjadasz: ${it.name}.`);
+        this.message('jesz', { nazwa: (lang) => itemName(it, lang) });
         return true;
       }
       case 'pack': {
@@ -975,7 +1011,7 @@ export class Game {
         // niepowodzenie jest niemożliwe - ale sprawdzamy je mimo to.
         const stary = { ...this.player.plecak };
         if (it.w * it.h <= stary.w * stary.h) {
-          this.message('Ten plecak nie jest większy od Twojego.');
+          this.message('plecak.nieWiekszy');
           return false;
         }
         this.zuzyj(it, index);
@@ -984,24 +1020,26 @@ export class Game {
           this.player.plecak = stary;
           this.player.inventory.splice(index, 0, it);
           przepakuj(this.player);
-          this.message('Nie udało się przełożyć rzeczy.');
+          this.message('plecak.nieUdalo');
           return false;
         }
-        this.message(`Przekładasz rzeczy do większego plecaka: ${it.w}x${it.h} pól.`);
+        this.message('plecak.nowy', { w: it.w, h: it.h });
         return true;
       }
       case 'weapon': {
         this.player.weapon = this.player.weapon === it ? null : it;
-        this.message(this.player.weapon ? `Dobywasz: ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.` : 'Chowasz broń.');
+        if (this.player.weapon) this.message('bron.dobywasz', { nazwa: this.nazwa(it) });
+        else this.message('bron.chowasz');
         return true;
       }
       case 'armor': {
         this.player.armor = this.player.armor === it ? null : it;
-        this.message(this.player.armor ? `Zakładasz: ${itemLabel(it, this.appearances, this.identified, this.sniffed)}.` : 'Zdejmujesz pancerz.');
+        if (this.player.armor) this.message('pancerz.zakladasz', { nazwa: this.nazwa(it) });
+        else this.message('pancerz.zdejmujesz');
         return true;
       }
       case 'amulet':
-        this.message('Amulet ciąży w dłoni. Musisz wynieść go na powierzchnię.');
+        this.message('amulet.ciazy');
         return false;
       default: return false;
     }
@@ -1015,21 +1053,21 @@ export class Game {
       case 'greaterHeal': {
         const before = this.player.hp;
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + potionPower(it.type));
-        this.message(`Pijesz ${it.name}. Odzyskujesz ${this.player.hp - before} życia.`);
+        this.message('pijesz.leczenie', { nazwa: (lang) => itemName(it, lang), ile: this.player.hp - before });
         break;
       }
       case 'strength':
         this.player.str += potionPower('strength');
-        this.message('Czujesz przypływ siły.');
+        this.message('pijesz.sila');
         break;
       case 'poison': {
         const d = potionPower('poison');
         this.player.hp -= d;
         this.deathCause = 'zatrucie';
-        this.message(`Mikstura parzy gardło! Tracisz ${d} życia.`);
+        this.message('pijesz.trucizna', { ile: d });
         break;
       }
-      default: this.message('Nic się nie dzieje.');
+      default: this.message('nicSieNieDzieje');
     }
     return true;
   }
@@ -1045,60 +1083,59 @@ export class Game {
         const nieznane = this.player.inventory.filter(
           x => (x.kind === 'potion' || x.kind === 'scroll') && !this.identified.has(`${x.kind}:${x.type}`));
         if (!nieznane.length) {
-          this.message('Zwój rozpoznania - ale w plecaku nie ma już żadnej zagadki.');
+          this.message('zwoj.rozpoznanieNic');
           break;
         }
         for (const x of nieznane) this.identify(x);
-        const lista = nieznane.map(x => x.name).join(', ');
-        this.message(`Wiedza spływa na Ciebie. Rozpoznajesz: ${lista}.`);
+        this.message('zwoj.rozpoznanie', { lista: (lang) => nieznane.map(x => itemName(x, lang)).join(', ') });
         break;
       }
       case 'magicMap': {
         this.memoryOf(this.player).fill(1);
-        this.message('Mapa lochu rozjaśnia się w Twojej głowie.');
+        this.message('zwoj.mapa');
         break;
       }
       case 'teleport': {
         const p = this.freeTile(L, this.monsters, this.items);
-        if (p) { this.player.x = p.x; this.player.y = p.y; this.message('Świat wiruje - jesteś gdzie indziej.'); }
-        else this.message('Nic się nie dzieje.');
+        if (p) { this.player.x = p.x; this.player.y = p.y; this.message('zwoj.teleport'); }
+        else this.message('nicSieNieDzieje');
         break;
       }
       case 'enchantWeapon':
-        if (this.player.weapon) { this.player.weapon.enchant = (this.player.weapon.enchant || 0) + 1; this.message('Twoja broń lśni ostrzej.'); }
-        else this.message('Nie masz dobytej broni.');
+        if (this.player.weapon) { this.player.weapon.enchant = (this.player.weapon.enchant || 0) + 1; this.message('zwoj.ostrzenie'); }
+        else this.message('zwoj.brakBroni');
         break;
       case 'enchantArmor':
-        if (this.player.armor) { this.player.armor.enchant = (this.player.armor.enchant || 0) + 1; this.message('Twój pancerz twardnieje.'); }
-        else this.message('Nie masz założonego pancerza.');
+        if (this.player.armor) { this.player.armor.enchant = (this.player.armor.enchant || 0) + 1; this.message('zwoj.wzmocnienie'); }
+        else this.message('zwoj.brakPancerza');
         break;
-      default: this.message('Litery rozmywają się w nic.');
+      default: this.message('zwoj.nic');
     }
     return true;
   }
 
   descend() {
     if (this.level.at(this.player.x, this.player.y) !== STAIRS_DOWN) {
-      this.message('Nie ma tu schodów w dół.');
+      this.message('schody.brakDol');
       return false;
     }
     this.enterLevel(this.depth + 1, 'down');
-    this.message(`Schodzisz na poziom ${this.depth}.`);
+    this.message('schody.schodzisz', { n: this.depth });
     return true;
   }
 
   ascend() {
     if (this.level.at(this.player.x, this.player.y) !== STAIRS_UP) {
-      this.message('Nie ma tu schodów w górę.');
+      this.message('schody.brakGora');
       return false;
     }
     if (this.depth === 1) {
       if (this.player.hasAmulet) { this.win(this.player); return true; }
-      this.message('Nie wrócisz z pustymi rękami. Amulet czeka w głębi.');
+      this.message('schody.pusteRece');
       return false;
     }
     this.enterLevel(this.depth - 1, 'up');
-    this.message(`Wracasz na poziom ${this.depth}.`);
+    this.message('schody.wracasz', { n: this.depth });
     return true;
   }
 
@@ -1189,14 +1226,14 @@ export class Game {
     const przed = stopienGlodu(hero.hunger);
     hero.hunger--;
     const po = stopienGlodu(hero.hunger);
-    if (po !== przed && po.komunikat) this.tell(hero, po.komunikat);
+    if (po !== przed && po.komunikat) this.tell(hero, `stan.glod.${po.klucz}.komunikat`);
     if (hero.hunger <= 0) {
       hero.hunger = 0;
       if (this.turn % 3 === 0) {
         hero.hp -= 1;
         hero.deathCause = 'głód';
         hero.lastHitBy = null;   // głód nie jest przegranym starciem
-        if (this.turn % 15 === 0) this.tell(hero, 'Umierasz z głodu...');
+        if (this.turn % 15 === 0) this.tell(hero, 'glod.umierasz');
       }
     }
   }
@@ -1204,13 +1241,13 @@ export class Game {
   die(hero = this.player, cause = 'rany') {
     hero.status = 'dead';
     hero.cause = cause;
-    this.tell(hero, `Ginisz. Przyczyna: ${cause}.`);
+    this.tell(hero, 'koniec.ginisz', { przyczyna: (lang) => opisPrzyczyny(cause, lang) });
   }
 
   win(hero = this.player) {
     hero.status = 'won';
     hero.cause = 'wyniesiono Amulet Otchłani';
-    this.tell(hero, 'Wychodzisz na światło dnia z Amuletem Otchłani. ZWYCIĘSTWO!');
+    this.tell(hero, 'koniec.wygrana');
   }
 
   score() {
@@ -1244,11 +1281,11 @@ export class Game {
   }
 
   static fromJSON(data) {
-    if (!data) throw new Error('Nieznany format zapisu');
+    if (!data) throw bladZapisu();
     // Format 1 to zapisy sprzed wprowadzenia wielu uczestników. Mają się
     // wczytywać - w przeglądarce leżą w autozapisie prawdziwych rozgrywek.
     if (data.format === 1) data = przepiszFormat1(data);
-    if (data.format !== 2) throw new Error('Nieznany format zapisu');
+    if (data.format !== 2) throw bladZapisu();
 
     const g = new Game(data.seed, { deferStart: true, maxDepth: data.maxDepth, w: data.width, h: data.height });
     g.rng.setState(data.rng);
@@ -1271,6 +1308,13 @@ export class Game {
     for (const h of g.heroes) g.updateFOV(h);
     return g;
   }
+}
+
+/** Błąd z kodem słownika - interfejs pokaże go w języku gracza. */
+function bladZapisu() {
+  const e = new Error('Nieznany format zapisu');
+  e.kod = 'zapis.nieznanyFormat';
+  return e;
 }
 
 /** Uczestnik do zapisu. Zbiory i mapy nie przechodzą przez JSON same z siebie. */
@@ -1371,4 +1415,3 @@ function przepiszFormat1(d) {
   };
 }
 
-function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }

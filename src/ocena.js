@@ -11,17 +11,19 @@
 // inaczej „obejrzyj" byłoby darmowym zwojem rozpoznania i wywracałoby całą
 // decyzję o wypiciu nieznanej flaszki.
 
-import { itemStats, polaSlowo } from './items.js';
+import { itemStats } from './items.js';
+import { t, getLang } from './i18n.js';
 import { poleRzeczy, wolnePola, pojemnosc, zmiesciSie, ile as sztuk } from './plecak.js';
 
 /**
  * @param it rzecz oglądana (z podłogi albo z plecaka)
  * @param hero patrzący - jego zbroja, broń i plecak są punktem odniesienia
  * @param identified zbiór rozpoznanych rodzajów
- * @param etykietaDla funkcja dająca etykietę widzianą przez gracza (dla stosów)
+ * @param etykietaDla funkcja dająca etykietę stosu (`stackLabel`) - rozstrzyga o łączeniu
+ * @param lang język werdyktu
  */
-export function obejrzyj(it, hero, identified, etykietaDla) {
-  const st = itemStats(it, hero, identified);
+export function obejrzyj(it, hero, identified, etykietaDla, lang = getLang()) {
+  const st = itemStats(it, hero, identified, lang);
   const pola = poleRzeczy(it);
   const wPlecaku = hero.inventory.includes(it);
   const zmiesci = wPlecaku ? true : zmiesciSie(hero, it, etykietaDla);
@@ -43,38 +45,35 @@ export function obejrzyj(it, hero, identified, etykietaDla) {
   };
 
   if (!zmiesci) {
-    o.werdykt = `Nie ma na to miejsca: zajmuje ${pola} ${polaSlowo(pola)}, `
-      + `a w plecaku wolnych zostało ${o.wolne}.`;
+    o.werdykt = t('ocena.brakMiejsca', { pola, wolne: o.wolne }, lang);
     o.ton = 'minus';
     return o;
   }
-  if (st.noszone) { o.werdykt = 'Właśnie tego używasz.'; return o; }
+  if (st.noszone) { o.werdykt = t('ocena.uzywasz', {}, lang); return o; }
 
   if (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'pack') {
     o.ton = st.znak || 'rowno';
-    o.werdykt = st.znak === 'plus' ? 'Lepsze od tego, co masz - warto.'
-      : st.znak === 'minus' ? 'Gorsze od tego, co masz - podnosisz tylko na zapas.'
-      : 'Bez różnicy wobec tego, co masz.';
+    o.werdykt = t(st.znak === 'plus' ? 'ocena.lepsze'
+      : st.znak === 'minus' ? 'ocena.gorsze' : 'ocena.rowne', {}, lang);
     return o;
   }
   if (it.kind === 'potion' || it.kind === 'scroll') {
     const znane = identified && identified.has(`${it.kind}:${it.type}`);
-    o.werdykt = znane ? 'Wiadomo, co robi - bierzesz świadomie.'
-      : 'Nie wiadomo, co robi. Rozstrzygnie zwój rozpoznania albo próba na własnej skórze.';
+    o.werdykt = t(znane ? 'ocena.znane' : 'ocena.nieznane', {}, lang);
     return o;
   }
-  if (it.kind === 'food') { o.werdykt = 'Zapas na później - głód nie odpuszcza.'; o.ton = 'plus'; return o; }
-  if (it.kind === 'amulet') { o.werdykt = 'Po to tu zszedłeś.'; o.ton = 'plus'; return o; }
+  if (it.kind === 'food') { o.werdykt = t('ocena.jedzenie', {}, lang); o.ton = 'plus'; return o; }
+  if (it.kind === 'amulet') { o.werdykt = t('ocena.amulet', {}, lang); o.ton = 'plus'; return o; }
   return o;
 }
 
 /** Ocena złożona w linijki tekstu - do terminala i do podpowiedzi. */
-export function opisWLinijkach(nazwa, o) {
-  const l = [nazwa + (o.sztuk > 1 ? ` (${o.sztuk} szt.)` : '')];
+export function opisWLinijkach(nazwa, o, lang = getLang()) {
+  const l = [nazwa + (o.sztuk > 1 ? t('ocena.sztuk', { n: o.sztuk }, lang) : '')];
   if (o.opis) l.push(o.opis);
   if (o.porownanie) l.push(o.porownanie);
-  l.push(`zajmuje ${o.miejsce} = ${o.pola} ${polaSlowo(o.pola)}`
-    + (o.wPlecaku ? '' : `, wolnych ${o.wolne} z ${o.pojemnosc}`));
+  l.push(t('ocena.zajmuje', { miejsce: o.miejsce, pola: o.pola }, lang)
+    + (o.wPlecaku ? '' : t('ocena.wolnych', { wolne: o.wolne, poj: o.pojemnosc }, lang)));
   if (o.werdykt) l.push(o.werdykt);
   return l;
 }

@@ -14,6 +14,8 @@
 // terminalowy i obie wersje przeglądarkowe pokażą go bez ani jednej linii zmian,
 // bo wszystkie trzy przechodzą po tej samej liście.
 
+import { t, getLang } from './i18n.js';
+
 export const HUNGER_START = 1200;
 export const HUNGER_MAX = 2000;
 
@@ -24,12 +26,21 @@ export const HUNGER_MAX = 2000;
  * się już rozminąć.
  */
 export const STOPNIE_GLODU = [
-  { do: 0, etykieta: 'GŁODUJESZ', ton: 'krytycznie', komunikat: 'Głód wyżera Cię od środka.' },
-  { do: 100, etykieta: 'słabniesz z głodu', ton: 'zle', komunikat: 'Jesteś bardzo głodny!' },
-  { do: 300, etykieta: 'głodny', ton: 'uwaga', komunikat: 'Robisz się głodny.' },
-  { do: 700, etykieta: 'podjadłbyś', ton: 'dobrze' },
-  { do: Infinity, etykieta: 'syty', ton: 'dobrze' },
+  { do: 0, klucz: 'glodujesz', etykieta: 'GŁODUJESZ', ton: 'krytycznie', komunikat: 'Głód wyżera Cię od środka.' },
+  { do: 100, klucz: 'slabniesz', etykieta: 'słabniesz z głodu', ton: 'zle', komunikat: 'Jesteś bardzo głodny!' },
+  { do: 300, klucz: 'glodny', etykieta: 'głodny', ton: 'uwaga', komunikat: 'Robisz się głodny.' },
+  { do: 700, klucz: 'podjadlbys', etykieta: 'podjadłbyś', ton: 'dobrze' },
+  { do: Infinity, klucz: 'syty', etykieta: 'syty', ton: 'dobrze' },
 ];
+
+/**
+ * Nazwa stopnia i jego ostrzeżenie w języku gracza. Pola `etykieta` i `komunikat`
+ * w tablicy są polskim brzmieniem i zostają - z nich brzmienie wziął słownik.
+ */
+export function etykietaGlodu(st, lang = getLang()) { return t(`stan.glod.${st.klucz}`, {}, lang); }
+export function komunikatGlodu(st, lang = getLang()) {
+  return st.komunikat ? t(`stan.glod.${st.klucz}.komunikat`, {}, lang) : null;
+}
 
 /** Stopień sytości dla danej wartości. Zwraca wpis z `STOPNIE_GLODU`. */
 export function stopienGlodu(hunger) {
@@ -45,15 +56,15 @@ const REJESTR = [
   {
     id: 'glod',
     nazwa: 'sytość',
-    oblicz(hero) {
+    oblicz(hero, lang) {
       // Starszy serwer nie przysyła tego pola w migawce. Uboższy widok, nie
       // wywrotka - patrz W-24 w `docs/przebieg.md`.
       if (typeof hero.hunger !== 'number') return null;
       const s = stopienGlodu(hero.hunger);
       return {
         id: 'glod',
-        nazwa: 'sytość',
-        etykieta: s.etykieta,
+        nazwa: t('stan.glod.nazwa', {}, lang),
+        etykieta: etykietaGlodu(s, lang),
         ton: s.ton,
         wartosc: hero.hunger,
         max: HUNGER_MAX,
@@ -68,6 +79,6 @@ const REJESTR = [
 ];
 
 /** Wszystkie stany warte pokazania, w stałej kolejności. */
-export function stanyBohatera(hero) {
-  return REJESTR.map(w => w.oblicz(hero)).filter(Boolean);
+export function stanyBohatera(hero, lang = getLang()) {
+  return REJESTR.map(w => w.oblicz(hero, lang)).filter(Boolean);
 }

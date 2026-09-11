@@ -5,6 +5,7 @@
 // w `save.js` i tam zostaje.
 
 import { Game } from './game.js';
+import { t } from './i18n.js';
 
 /** Klucze sortowane rekurencyjnie - bez tego odcisk zależałby od kolejności pól. */
 export function stable(value) {
@@ -26,11 +27,11 @@ export function serialize(game) { return JSON.stringify(stable(game.toJSON())); 
 export function loadFromString(raw) {
   let data;
   try { data = JSON.parse(raw); }
-  catch { return { ok: false, error: 'Zapis jest uszkodzony (nie jest poprawnym JSON-em).' }; }
+  catch { return { ok: false, error: t('zapis.uszkodzony') }; }
   try {
     const game = Game.fromJSON(data);
     return { ok: true, game };
   } catch (e) {
-    return { ok: false, error: `Zapis odrzucony: ${e.message}` };
+    return { ok: false, error: t('zapis.odrzucony', { powod: e.kod ? t(e.kod) : e.message }) };
   }
 }

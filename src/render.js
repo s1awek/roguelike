@@ -5,11 +5,13 @@
 // zamiast rozjeżdżać się w lewy górny róg.
 
 import { WALL, FLOOR, STAIRS_DOWN, STAIRS_UP } from './map.js';
-import { itemLabel, itemGlyph, itemStats, polaSlowo } from './items.js';
+import { itemLabel, itemGlyph, itemStats } from './items.js';
 import { pojemnosc, zajetePola, poleRzeczy, wolnePola, ile as sztuk } from './plecak.js';
 import { opisWLinijkach } from './ocena.js';
 import { buildRules } from './rules.js';
 import { stanyBohatera } from './stany.js';
+import { t } from './i18n.js';
+import { opisPrzyczyny } from './przyczyny.js';
 
 const ESC = '\x1b[';
 export const C = {
@@ -102,15 +104,15 @@ export function renderStatus(game) {
   const p = game.player;
   const hpColor = p.hp / p.maxHp > 0.5 ? C.brightGreen : p.hp / p.maxHp > 0.25 ? C.yellow : C.brightRed;
   return [
-    `${C.bold}HP${C.reset} ${bar(p.hp, p.maxHp, 10, hpColor)} ${hpColor}${p.hp}/${p.maxHp}${C.reset}`,
-    `${C.bold}Poz${C.reset} ${p.level}`,
-    `${C.bold}DP${C.reset} ${p.xp}`,
-    `${C.bold}Atak${C.reset} ${game.playerAttack()}`,
-    `${C.bold}Obrona${C.reset} ${game.playerDefense()}`,
-    `${C.bold}Głębokość${C.reset} ${C.brightCyan}${game.depth}/${game.maxDepth}${C.reset}`,
+    `${C.bold}${t('term.hp')}${C.reset} ${bar(p.hp, p.maxHp, 10, hpColor)} ${hpColor}${p.hp}/${p.maxHp}${C.reset}`,
+    `${C.bold}${t('term.poz')}${C.reset} ${p.level}`,
+    `${C.bold}${t('term.dp')}${C.reset} ${p.xp}`,
+    `${C.bold}${t('term.atak')}${C.reset} ${game.playerAttack()}`,
+    `${C.bold}${t('term.obrona')}${C.reset} ${game.playerDefense()}`,
+    `${C.bold}${t('term.glebokosc')}${C.reset} ${C.brightCyan}${game.depth}/${game.maxDepth}${C.reset}`,
     ...stanyNapis(p),
-    `${C.bold}Tura${C.reset} ${game.turn}`,
-    p.hasAmulet ? `${C.brightYellow}${C.bold}[AMULET]${C.reset}` : '',
+    `${C.bold}${t('term.tura')}${C.reset} ${game.turn}`,
+    p.hasAmulet ? `${C.brightYellow}${C.bold}${t('term.amulet')}${C.reset}` : '',
   ].filter(Boolean).join('  ');
 }
 
@@ -120,14 +122,10 @@ export function renderMessages(game, count = 2) {
   return msgs.map(m => `${C.white}${m}${C.reset}`);
 }
 
-const INV_HINT = {
-  // Wyrzucanie ISTNIEJE od początku (klawisz d), ale było opisane wyłącznie
-  // w księdze zasad - czyli w miejscu, do którego trzeba wyjść z plecaka.
-  // Podpowiedź stoi tam, gdzie gracz akurat patrzy na pełny plecak.
-  inventory: 'litera = użyj/załóż, d = wyrzuć',
-  drop: 'litera = wyrzuć',
-  sniff: 'litera = powąchaj (tylko mikstury)',
-};
+// Wyrzucanie ISTNIEJE od początku (klawisz d), ale było opisane wyłącznie
+// w księdze zasad - czyli w miejscu, do którego trzeba wyjść z plecaka.
+// Podpowiedź stoi tam, gdzie gracz akurat patrzy na pełny plecak.
+const INV_HINT = { inventory: 'term.inv.inventory', drop: 'term.inv.drop', sniff: 'term.inv.sniff' };
 
 export function renderInventory(game, mode = 'inventory') {
   const p = game.player;
@@ -135,14 +133,14 @@ export function renderInventory(game, mode = 'inventory') {
   // same znajdują sobie miejsce. Ta sama reguła co w przeglądarce - różni się
   // tylko to, kto rozmieszcza.
   const zaj = zajetePola(p), poj = pojemnosc(p);
-  const lines = [`${C.bold}Ekwipunek${C.reset} ${C.white}${zaj}/${poj} ${polaSlowo(poj)}${C.reset}`
-    + `  ${C.grey}${INV_HINT[mode] || INV_HINT.inventory}, ESC = wróć${C.reset}`, ''];
-  if (!p.inventory.length) lines.push(`${C.grey}(pusto)${C.reset}`);
+  const lines = [`${C.bold}${t('term.ekwipunek')}${C.reset} ${C.white}${zaj}/${poj} ${t('pola', { n: poj })}${C.reset}`
+    + `  ${C.grey}${t(INV_HINT[mode] || INV_HINT.inventory)}${t('term.wroc')}${C.reset}`, ''];
+  if (!p.inventory.length) lines.push(`${C.grey}${t('term.pusto')}${C.reset}`);
   p.inventory.forEach((it, i) => {
     const letter = String.fromCharCode(97 + i);
     const marks = [];
-    if (p.weapon === it) marks.push('w dłoni');
-    if (p.armor === it) marks.push('na sobie');
+    if (p.weapon === it) marks.push(t('term.wDloni'));
+    if (p.armor === it) marks.push(t('term.naSobie'));
     const suffix = marks.length ? ` ${C.brightGreen}(${marks.join(', ')})${C.reset}` : '';
     // Liczby przy przedmiocie, nie w księdze zasad: decyzja „zakładać czy nie"
     // zapada tutaj, więc tutaj muszą stać skutek i różnica wobec noszonego.
@@ -156,7 +154,9 @@ export function renderInventory(game, mode = 'inventory') {
   return lines;
 }
 
-const RULES = buildRules('term');
+// Księga składana przy KAŻDYM pokazaniu, nie raz przy imporcie: język może się
+// zmienić w trakcie gry, a księga zapamiętana w stałej zostałaby w starym.
+const rules = () => buildRules('term');
 
 /** Zawija akapit do podanej szerokości, po słowach. */
 function wrap(text, width) {
@@ -181,27 +181,28 @@ function tableLines(head, rows) {
   ];
 }
 
-export const RULE_COUNT = RULES.length;
+export const RULE_COUNT = rules().length;
 
 /**
  * Księga zasad w terminalu. Ta sama treść, co w przeglądarce i w `docs/zasady.md` -
  * jedno źródło w `src/rules.js`, więc wersje nie mogą się rozjechać.
  */
 export function renderRules(index = 0, width = 76) {
+  const RULES = rules();
   const i = ((index % RULES.length) + RULES.length) % RULES.length;
   const sec = RULES[i];
   const spis = RULES.map((r, n) => n === i
     ? `${C.brightYellow}${n + 1}.${r.title}${C.reset}`
     : `${C.grey}${n + 1}.${r.title}${C.reset}`).join('  ');
 
-  const out = [`${C.bold}Księga zasad${C.reset}  ${C.grey}rozdział ${i + 1} z ${RULES.length}${C.reset}`, '', spis, ''];
+  const out = [`${C.bold}${t('term.ksiega')}${C.reset}  ${C.grey}${t('term.rozdzial', { i: i + 1, n: RULES.length })}${C.reset}`, '', spis, ''];
   out.push(`${C.bold}${C.brightWhite}${sec.title}${C.reset}`, '');
   for (const b of sec.blocks) {
     if (b.t === 'p') { out.push(...wrap(b.text, width).map(l => `  ${l}`), ''); }
     else if (b.t === 'note') { out.push(...wrap(b.text, width - 2).map(l => `  ${C.brightYellow}|${C.reset} ${l}`), ''); }
     else if (b.t === 'table') { out.push(...tableLines(b.head, b.rows), ''); }
   }
-  out.push(`${C.grey}n / spacja = dalej   p = wstecz   1-${RULES.length} = rozdział   ESC albo ? = wróć do gry${C.reset}`);
+  out.push(`${C.grey}${t('term.ksiegaStopka', { n: RULES.length })}${C.reset}`);
   return out;
 }
 
@@ -214,16 +215,16 @@ export function renderRules(index = 0, width = 76) {
 export function renderObejrzyj(game) {
   const it = game.podNogami();
   if (!it) {
-    return [`${C.grey}Nie ma tu nic do obejrzenia.${C.reset}`, '', `${C.grey}Esc wraca.${C.reset}`];
+    return [`${C.grey}${t('term.nicDoObejrzenia')}${C.reset}`, '', `${C.grey}${t('term.escWraca')}${C.reset}`];
   }
   const o = game.obejrzyj(it);
-  const [nazwa, ...reszta] = opisWLinijkach(game.etykieta(it), o);
+  const [nazwa, ...reszta] = opisWLinijkach(game.nazwa(it)(game.jezyk()), o, game.jezyk());
   const barwa = { plus: C.brightGreen, minus: C.brightRed, rowno: C.grey };
   const out = [`${C.bold}${nazwa}${C.reset}`, ''];
   for (const l of reszta) {
     out.push(l === o.werdykt ? `  ${barwa[o.ton] || ''}${l}${C.reset}` : `  ${C.grey}${l}${C.reset}`);
   }
-  out.push('', `${C.grey}, = podnieś   Esc = wróć${C.reset}`);
+  out.push('', `${C.grey}${t('term.obejrzyjStopka')}${C.reset}`);
   return out;
 }
 
@@ -235,21 +236,20 @@ export function renderObejrzyj(game) {
 export function renderStos(game, wybrane) {
   const stos = game.stosPodNogami();
   const p = game.player;
-  const out = [`${C.bold}Pod nogami leży ${stos.length}:${C.reset}`, ''];
+  const out = [`${C.bold}${t('term.podNogami', { n: stos.length })}${C.reset}`, ''];
   stos.forEach((it, i) => {
     const zazn = wybrane.has(it.id);
     const pola = poleRzeczy(it);
     const st = itemStats(it, p, game.identified);
     out.push(`  ${zazn ? C.brightGreen + '[x]' : C.grey + '[ ]'}${C.reset} `
-      + `${C.bold}${String.fromCharCode(97 + i)})${C.reset} ${game.etykieta(it)}`
-      + `  ${C.grey}${pola} ${polaSlowo(pola)}${st.opis ? ` - ${st.opis}` : ''}${C.reset}`);
+      + `${C.bold}${String.fromCharCode(97 + i)})${C.reset} ${game.nazwa(it)(game.jezyk())}`
+      + `  ${C.grey}${pola} ${t('pola', { n: pola })}${st.opis ? ` - ${st.opis}` : ''}${C.reset}`);
   });
   const zajmie = stos.filter(i => wybrane.has(i.id)).reduce((a, i) => a + poleRzeczy(i), 0);
   const wolne = wolnePola(p);
   const barwa = zajmie > wolne ? C.brightRed : C.grey;
-  out.push('', `  ${barwa}Wybrane zajmą ${zajmie} z ${wolne} wolnych pól`
-    + `${zajmie > wolne ? ' - tyle się nie zmieści' : ''}.${C.reset}`);
-  out.push('', `${C.grey}litera = zaznacz   * = wszystko   Enter = podnieś   Esc = wróć${C.reset}`);
+  out.push('', `  ${barwa}${t('term.wybraneZajma', { zajmie, wolne, zaDuzo: zajmie > wolne })}${C.reset}`);
+  out.push('', `${C.grey}${t('term.stosStopka')}${C.reset}`);
   return out;
 }
 
@@ -271,7 +271,7 @@ export function renderFrame(game, mode = 'map', extra = '', section = 0, wybrane
     return clearScreen() + out.join('\n') + '\n';
   }
   if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') {
-    const titles = { drop: 'Co wyrzucić?', sniff: 'Co powąchać?' };
+    const titles = { drop: t('term.coWyrzucic'), sniff: t('term.coPowachac') };
     const title = titles[mode] ? `${C.bold}${titles[mode]}${C.reset}` : '';
     out.push('', ...(title ? [pad + title, ''] : []), ...renderInventory(game, mode).map(l => pad + l));
     // Ekran ekwipunku nie zamyka się po użyciu rzeczy, więc skutek tego użycia
@@ -284,24 +284,24 @@ export function renderFrame(game, mode = 'map', extra = '', section = 0, wybrane
   out.push(pad + renderStatus(game));
   out.push(...renderMap(game).map(l => pad + l));
   out.push(...renderMessages(game).map(l => pad + l));
-  out.push(pad + (extra || `${C.grey}? = zasady   i = ekwipunek   x = obejrzyj   , = podnieś   > < = schody   S = zapis   Q = wyjście${C.reset}`));
+  out.push(pad + (extra || `${C.grey}${t('term.podpowiedz')}${C.reset}`));
   return clearScreen() + out.join('\n') + '\n';
 }
 
 export function renderGameOver(game) {
   const won = game.status === 'won';
   const title = won
-    ? `${C.brightYellow}${C.bold}ZWYCIĘSTWO${C.reset}`
-    : `${C.brightRed}${C.bold}KONIEC GRY${C.reset}`;
+    ? `${C.brightYellow}${C.bold}${t('term.zwyciestwo')}${C.reset}`
+    : `${C.brightRed}${C.bold}${t('term.koniecGry')}${C.reset}`;
   return [
     '', `  ${title}`, '',
-    `  Przyczyna:    ${game.cause}`,
-    `  Głębokość:    ${game.depth}`,
-    `  Poziom:       ${game.player.level}`,
-    `  Doświadczenie:${game.player.xp}`,
-    `  Pokonanych:   ${game.player.kills}`,
-    `  Tur:          ${game.turn}`,
-    `  ${C.bold}Wynik:        ${game.score()}${C.reset}`,
-    '', `  ${C.grey}Ziarno tej rozgrywki: ${game.seed}${C.reset}`, '',
+    `  ${t('term.go.przyczyna')}${opisPrzyczyny(game.cause)}`,
+    `  ${t('term.go.glebokosc')}${game.depth}`,
+    `  ${t('term.go.poziom')}${game.player.level}`,
+    `  ${t('term.go.dosw')}${game.player.xp}`,
+    `  ${t('term.go.pokonanych')}${game.player.kills}`,
+    `  ${t('term.go.tur')}${game.turn}`,
+    `  ${C.bold}${t('term.go.wynik')}${game.score()}${C.reset}`,
+    '', `  ${C.grey}${t('term.go.ziarno', { seed: game.seed })}${C.reset}`, '',
   ].join('\n');
 }

@@ -17,6 +17,8 @@ import { KINDS, BOSS } from './monsters.js';
 import { STOPNIE_GLODU } from './stany.js';
 import { MAX_DEPTH, FOV_RADIUS, HUNGER_START, HUNGER_MAX, xpForLevel,
   zwrotZaZabicie, PROG_ZMECZENIA, REGEN_MNOZNIK } from './game.js';
+import { getLang } from './i18n.js';
+import { ksiegaAngielska } from './lang/rules-en.js';
 
 const POTION_EFFECT = {
   heal: (p) => `leczy ${p.power} punktów życia`,
@@ -81,8 +83,26 @@ const KEYS = [
  * Składa księgę. `gdzie`: 'web' | 'term' | 'doc'.
  * Rozdziały są te same wszędzie; różni się wyłącznie tablica klawiszy, bo
  * mysz i minimapa nie istnieją w terminalu, a wyjście z gry w przeglądarce.
+ *
+ * `lang`: 'en' | 'pl'. Wersja angielska mieszka w `src/lang/rules-en.js`
+ * i dostaje te same tablice gry, więc liczby liczą się z tych samych źródeł.
+ * Test `jezyki.test.js` pilnuje, żeby obie miały te same rozdziały, te same
+ * tabele i te same liczby w każdym bloku.
  */
-export function buildRules(gdzie = 'doc') {
+export function buildRules(gdzie = 'doc', lang = getLang()) {
+  if (lang === 'en') return ksiegaAngielska(gdzie, ZRODLA);
+  return ksiegaPolska(gdzie);
+}
+
+/** Wszystko, z czego liczy się księga - przekazywane wersji angielskiej. */
+const ZRODLA = {
+  POTIONS, SCROLLS, WEAPONS, ARMORS, FOODS, PACKS, SCENTS, POTION_SCENT, scentGroup,
+  PLECAK_START, LIMIT_STOSU, KINDS, BOSS, STOPNIE_GLODU,
+  MAX_DEPTH, FOV_RADIUS, HUNGER_START, HUNGER_MAX, xpForLevel,
+  zwrotZaZabicie, PROG_ZMECZENIA, REGEN_MNOZNIK, SHARE,
+};
+
+function ksiegaPolska(gdzie) {
   const keyRows = KEYS
     .filter(([, , g]) => g === 'oba' || g === gdzie || gdzie === 'doc')
     .map(([k, opis, g]) => [k, gdzie === 'doc' && g !== 'oba'
@@ -260,6 +280,6 @@ export function buildRules(gdzie = 'doc') {
 }
 
 /** Płaska lista tytułów - do nawigacji. */
-export function ruleTitles(gdzie = 'doc') {
-  return buildRules(gdzie).map(r => ({ id: r.id, title: r.title }));
+export function ruleTitles(gdzie = 'doc', lang = getLang()) {
+  return buildRules(gdzie, lang).map(r => ({ id: r.id, title: r.title }));
 }

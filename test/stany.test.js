@@ -12,6 +12,11 @@ import { Game } from '../src/game.js';
 import { STOPNIE_GLODU, stopienGlodu, stanyBohatera, HUNGER_MAX } from '../src/stany.js';
 import { buildRules } from '../src/rules.js';
 import { renderStatus } from '../src/render.js';
+import { setLang } from '../src/i18n.js';
+
+// Te testy sprawdzają brzmienie POLSKIE. Od D-050 domyślny jest angielski,
+// więc język jest ustawiony jawnie - asercje zostały bez zmian.
+setLang('pl');
 
 /** Sytość spada o 1 na turę; przewijamy grę do zadanej wartości i zbieramy dziennik. */
 function przewin(g, doWartosci) {

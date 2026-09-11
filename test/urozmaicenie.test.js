@@ -13,6 +13,11 @@ import assert from 'node:assert/strict';
 import { Game, PROG_ZMECZENIA, zwrotZaZabicie } from '../src/game.js';
 import { widokDla } from '../src/widok.js';
 import { Bot, decydujWPojedynku } from '../src/bot.js';
+import { setLang } from '../src/i18n.js';
+
+// Te testy sprawdzają brzmienie POLSKIE. Od D-050 domyślny jest angielski,
+// więc język jest ustawiony jawnie - asercje zostały bez zmian.
+setLang('pl');
 
 const ostatnie = (h, ile = 5) => h.messages.slice(-ile).map(m => m.text).join(' | ');
 

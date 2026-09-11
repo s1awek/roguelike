@@ -2,6 +2,11 @@
 // więc gracz nie wie, co pije, dopóki nie spróbuje - ale w obrębie jednej
 // rozgrywki ten sam wygląd znaczy zawsze to samo.
 
+import { t, getLang, nazwaRodzaju } from './i18n.js';
+import { polaSlowo } from './lang/odmiana.js';
+
+export { polaSlowo };
+
 export const POTIONS = [
   { type: 'heal', name: 'mikstura leczenia', power: 12, weight: 20 },
   { type: 'greaterHeal', name: 'mikstura pełni sił', power: 30, weight: 10 },
@@ -62,6 +67,11 @@ export const SCENTS = {
   sharp: { key: 'sharp', short: 'ostry',   full: 'ostry, drapie w gardle' },
 };
 
+/** Zapach w danym języku: `short` albo `full`. */
+export function scentText(scentKey, rodzaj = 'short', lang = getLang()) {
+  return t(`zapach.${scentKey}.${rodzaj}`, {}, lang);
+}
+
 export const POTION_SCENT = {
   heal: 'mild', greaterHeal: 'mild',
   strength: 'sharp', poison: 'sharp',
@@ -72,7 +82,7 @@ export function scentGroup(scentKey) {
   return POTIONS.filter(p => POTION_SCENT[p.type] === scentKey);
 }
 
-const POTION_LOOKS = ['czerwona', 'błękitna', 'zielona', 'perlista', 'mętna', 'bursztynowa', 'srebrzysta', 'czarna'];
+export const POTION_LOOKS = ['czerwona', 'błękitna', 'zielona', 'perlista', 'mętna', 'bursztynowa', 'srebrzysta', 'czarna'];
 const SCROLL_LOOKS = ['ZELGO MER', 'VE FORBRYDERNE', 'HACKEM MUCHE', 'PRIRUTSENIE', 'ELBIB YLOH', 'ANDOVA BEGARIN'];
 
 /** Losuje wygląd mikstur i zwojów na całą rozgrywkę. */
@@ -129,28 +139,53 @@ export function makeAmulet() {
   return { id: nextId++, kind: 'amulet', type: 'amulet', name: 'Amulet Otchłani' };
 }
 
+/**
+ * Nazwa rodzaju w języku gracza - bez wyglądu i bez zagadki. Po polsku to pole
+ * `name`, więc zapisy sprzed wprowadzenia języków nazywają się tak samo.
+ */
+export function itemName(item, lang = getLang()) {
+  return nazwaRodzaju(`${item.kind}:${item.type}`, item.name, lang);
+}
+
+/** Wygląd nierozpoznanej mikstury („czerwona mikstura" / „red potion"). */
+export function potionLook(appearance, lang = getLang()) {
+  return t('miksturaWyglad', { wyglad: appearance }, lang);
+}
+
 /** Nazwa widziana przez gracza - nierozpoznane mikstury i zwoje mają tylko wygląd. */
-export function itemLabel(item, appearances, identified, sniffed = null) {
+export function itemLabel(item, appearances, identified, sniffed = null, lang = getLang()) {
   const known = identified.has(`${item.kind}:${item.type}`);
   if (item.kind === 'potion') {
-    if (known) return item.name;
-    const look = `${appearances.potion[item.type]} mikstura`;
+    if (known) return itemName(item, lang);
+    const look = potionLook(appearances.potion[item.type], lang);
     // Ślad po powąchaniu wisi przy nazwie, a nie tylko w dzienniku. Wiedza, którą
     // gracz musi pamiętać albo notować na kartce, jest wiedzą tylko z nazwy.
     if (sniffed && sniffed.has(`potion:${item.type}`)) {
-      return `${look} (zapach ${SCENTS[POTION_SCENT[item.type]].short})`;
+      return t('miksturaZapach', { nazwa: look, zapach: scentText(POTION_SCENT[item.type], 'short', lang) }, lang);
     }
     return look;
   }
   if (item.kind === 'scroll') {
-    return known ? item.name : `zwój z napisem "${appearances.scroll[item.type]}"`;
+    return known ? itemName(item, lang) : t('zwojNapis', { napis: appearances.scroll[item.type] }, lang);
   }
   if (item.kind === 'weapon' || item.kind === 'armor') {
     const e = item.enchant || 0;
     const sign = e > 0 ? `+${e}` : e < 0 ? `${e}` : '';
-    return sign ? `${item.name} ${sign}` : item.name;
+    const name = itemName(item, lang);
+    return sign ? `${name} ${sign}` : name;
   }
-  return item.name;
+  return itemName(item, lang);
+}
+
+/**
+ * Etykieta, po której łączą się stosy. ZAWSZE po polsku, niezależnie od języka
+ * gracza: stos jest stanem gry i nie może zależeć od tego, jak ktoś ją czyta.
+ * Zbiór rzeczy nierozróżnialnych jest w obu językach ten sam (każdy język ma
+ * osobne słowo na każdy rodzaj i wygląd), ale ta równość byłaby twierdzeniem
+ * o słowniku - a klucz stały jest gwarancją.
+ */
+export function stackLabel(item, appearances, identified, sniffed = null) {
+  return itemLabel(item, appearances, identified, sniffed, 'pl');
 }
 
 export function itemGlyph(item) { return GLYPHS[item.kind] || '*'; }
@@ -185,27 +220,11 @@ export function bonusRazem(it) { return (it.bonus || 0) + (it.enchant || 0); }
 
 const zn = (n) => (n > 0 ? `+${n}` : `${n}`);
 
-/** Odmiana słowa „pole" - napis z błędem gramatycznym czyta się jak usterka. */
-export function polaSlowo(n) {
-  const a = Math.abs(n), d = a % 10, s = a % 100;
-  if (a === 1) return 'pole';
-  if (d >= 2 && d <= 4 && !(s >= 12 && s <= 14)) return 'pola';
-  return 'pól';
-}
-
 const POTION_EFFECT = {
-  heal: (p) => `życie ${zn(p)}`,
-  greaterHeal: (p) => `życie ${zn(p)}`,
-  strength: (p) => `siła ${zn(p)} na stałe`,
-  poison: (p) => `życie ${zn(-p)}`,
-};
-
-const SCROLL_EFFECT = {
-  identify: 'rozpoznaje zawartość plecaka',
-  magicMap: 'odkrywa mapę piętra',
-  teleport: 'przenosi w losowe miejsce',
-  enchantWeapon: 'broń w dłoni: atak +1',
-  enchantArmor: 'pancerz na sobie: obrona +1',
+  heal: (p, lang) => t('st.zycie', { v: zn(p) }, lang),
+  greaterHeal: (p, lang) => t('st.zycie', { v: zn(p) }, lang),
+  strength: (p, lang) => t('st.silaStale', { v: zn(p) }, lang),
+  poison: (p, lang) => t('st.zycie', { v: zn(-p) }, lang),
 };
 
 /**
@@ -216,7 +235,7 @@ const SCROLL_EFFECT = {
  * `identified` jest granicą uczciwości: nierozpoznana mikstura nie zdradza mocy,
  * bo to jest sekret rozgrywki, a nie brakująca podpowiedź.
  */
-export function itemStats(item, hero = null, identified = null) {
+export function itemStats(item, hero = null, identified = null, lang = getLang()) {
   const out = { opis: null, porownanie: null, znak: null, noszone: false, miejsce: null };
   if (!item) return out;
   const [kw, kh] = ksztaltBazowy(item);
@@ -226,43 +245,43 @@ export function itemStats(item, hero = null, identified = null) {
   if (item.kind === 'weapon' || item.kind === 'armor') {
     const bron = item.kind === 'weapon';
     const suma = bonusRazem(item);
-    out.opis = `${bron ? 'atak' : 'obrona'} ${zn(suma)}`;
+    out.opis = t(bron ? 'st.atak' : 'st.obrona', { v: zn(suma) }, lang);
     const noszony = hero ? (bron ? hero.weapon : hero.armor) : null;
     out.noszone = !!noszony && noszony.id === item.id;
     if (hero && !out.noszone) {
       const roznica = suma - (noszony ? bonusRazem(noszony) : 0);
       out.znak = roznica > 0 ? 'plus' : roznica < 0 ? 'minus' : 'rowno';
-      out.porownanie = roznica > 0 ? `lepsze o ${roznica}`
-        : roznica < 0 ? `gorsze o ${-roznica}`
-        : 'bez zmiany';
+      out.porownanie = roznica > 0 ? t('st.lepsze', { n: roznica }, lang)
+        : roznica < 0 ? t('st.gorsze', { n: -roznica }, lang)
+        : t('st.bezZmiany', {}, lang);
     }
     return out;
   }
 
   if (item.kind === 'potion') {
-    out.opis = znane ? POTION_EFFECT[item.type](potionPower(item.type)) : 'nieznane działanie';
+    out.opis = znane ? POTION_EFFECT[item.type](potionPower(item.type), lang) : t('st.nieznane', {}, lang);
     return out;
   }
   if (item.kind === 'scroll') {
-    out.opis = znane ? (SCROLL_EFFECT[item.type] || 'nieznane działanie') : 'nieznane działanie';
+    out.opis = t(znane && SCROLLS.some(x => x.type === item.type) ? `st.zwoj.${item.type}` : 'st.nieznane', {}, lang);
     return out;
   }
   if (item.kind === 'food') {
-    out.opis = `sytość ${zn(item.nutrition || 0)}`;
+    out.opis = t('st.sytosc', { v: zn(item.nutrition || 0) }, lang);
     return out;
   }
   if (item.kind === 'amulet') {
-    out.opis = 'cel wyprawy - wynieś go schodami z pierwszego piętra';
+    out.opis = t('st.amulet', {}, lang);
     return out;
   }
   if (item.kind === 'pack') {
-    out.opis = `plecak ${item.w}x${item.h} = ${item.w * item.h} ${polaSlowo(item.w * item.h)}`;
+    out.opis = t('st.plecak', { w: item.w, h: item.h, n: item.w * item.h }, lang);
     if (hero && hero.plecak) {
       const teraz = hero.plecak.w * hero.plecak.h;
       const roznica = item.w * item.h - teraz;
       out.znak = roznica > 0 ? 'plus' : roznica < 0 ? 'minus' : 'rowno';
-      out.porownanie = roznica > 0 ? `większy o ${roznica} ${polaSlowo(roznica)}`
-        : roznica < 0 ? `mniejszy o ${-roznica} ${polaSlowo(roznica)}` : 'tyle samo co Twój';
+      out.porownanie = roznica > 0 ? t('st.wiekszy', { n: roznica }, lang)
+        : roznica < 0 ? t('st.mniejszy', { n: -roznica }, lang) : t('st.tyleSamo', {}, lang);
     }
     return out;
   }

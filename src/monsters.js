@@ -1,5 +1,7 @@
 // Potwory. Siła rośnie z głębokością; na najniższym poziomie stoi przeciwnik ostateczny.
 
+import { getLang, nazwaRodzaju } from './i18n.js';
+
 export const KINDS = [
   { type: 'rat',      name: 'szczur',        glyph: 'r', hp: 5,   str: 3,  def: 0, xp: 2,   minD: 1, maxD: 3, weight: 24 },
   { type: 'bat',      name: 'nietoperz',     glyph: 'b', hp: 6,   str: 3,  def: 1, xp: 3,   minD: 1, maxD: 4, weight: 20, erratic: true },
@@ -16,6 +18,11 @@ export const BOSS = {
   type: 'dragon', name: 'Smok Otchłani', glyph: 'D',
   hp: 130, str: 19, def: 10, xp: 400, boss: true,
 };
+
+/** Nazwa potwora w języku gracza. Pole `name` zostaje polskie - stoi w zapisach. */
+export function monsterName(m, lang = getLang()) {
+  return nazwaRodzaju(`monster:${m.type}`, m.name, lang);
+}
 
 let nextId = 1;
 export function resetMonsterIds() { nextId = 1; }
