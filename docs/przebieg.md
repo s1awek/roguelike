@@ -1344,3 +1344,31 @@ rozmieszczeniu potworów i rzeczy (strumień losowy bez zmian - odcisk zachowani
 `6127457f4e2352a3` identyczny przed i po), a `descend()` odmawia poniżej dna
 niezależnie od kafla, żeby zapis sprzed tej zmiany, z prawdziwymi schodami na dnie,
 też nie prowadził niżej. Test `pietra.test.js` z kontrolą na piętrze przedostatnim.
+
+## Wątek 8: powrót z Amuletem, stopnie trudności, panel stanu (2026-09-11)
+
+Trzy zgłoszenia właściciela z jednej sesji gry w przeglądarce, spec
+`.workspace/powrot-trudnosc-hud-acceptance-spec.md` (części A-C). Odkładane na
+później, za zgodą właściciela: większe mapy i loch bardziej labiryntowy.
+
+### A. Loch się budzi (D-054)
+
+Zgłoszenie: „cofanie się przez wszystkie puste poziomy jest nudne". Właściciel
+odrzucił odsłanianie mapy przez Amulet (mapa po pierwszym przejściu jest znana),
+wybrał „wracamy przez trudniejsze lochy".
+
+**Zmiana**: `obudzPietro(depth)` w silniku - wywoływane po podniesieniu Amuletu
+i przy każdym postawieniu uczestnika z Amuletem na piętrze (`placeHero`). Piętro
+dostaje `ilePotworow(depth)` nowych z puli `glebokoscWzorcowa(depth) + 2`
+(`BUDZENIE.pula`), połowa czuwa (`BUDZENIE.czuwa`), rozstawianych przez
+`wolnePoleWCiemnosci` - poza widokiem, nie na schodach. Raz na piętro: pole
+`obudzony` w zapisie (zapis bez pola = nieobudzone). Komunikat `loch.budzi`
+w obu językach, akapit w księdze (oba języki, `npm run zasady`).
+
+**Pomiar**: `.workspace/zmierz-budzenie.mjs`, 4 warianty po 300 partii - liczby
+w D-054. Kontrola A-7: `.workspace/odcisk-powrot.mjs` - 47 partii bez Amuletu
+identyczne, 13 z Amuletem inne (wszystkie nadal wygrane). Testy
+`test/powrot.test.js` (5): budzenie po podniesieniu (pula, widoczność, schody,
+mapa/rzeczy/pamięć nietknięte, komunikat), raz na piętro przy wchodzeniu
+i schodzeniu, kontrola bez Amuletu (ten sam stan generatora), zapis z polem
+i bez, głębokość wzorcowa. `npm test` 170/170.

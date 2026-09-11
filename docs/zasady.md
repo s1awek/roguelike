@@ -15,6 +15,8 @@ Zejdź na poziom 8, pokonaj przeciwnika ostatecznego - Smok Otchłani - zabierz 
 
 Schody w górę na poziomie 1 są wyjściem z lochu. Bez Amuletu nie da się nimi wyjść: gra nie pozwoli wrócić z pustymi rękami.
 
+Z Amuletem w ręku loch się budzi. Piętro, na którym go wziąłeś, i każde piętro, na które wejdziesz w drodze na powierzchnię, dostaje nowych mieszkańców - tylu, ilu miało na starcie, ale groźniejszych, jakby leżało dwa piętra głębiej. Część z nich od razu czuwa. Pojawiają się poza Twoim polem widzenia i tylko raz na piętro; mapa, rzeczy na podłodze i schody zostają takie, jakie pamiętasz.
+
 Loch jest generowany z ziarna. Ta sama gra z tego samego ziarna przebiega dokładnie tak samo - to samo rozmieszczenie, te same losowania, ten sam wygląd mikstur.
 
 ## Sterowanie

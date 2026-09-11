@@ -27,6 +27,13 @@ import { bytesToBase64, base64ToBytes } from './bytes.js';
 
 export const MAX_DEPTH = 8;
 export const FOV_RADIUS = 8;
+
+/**
+ * Powrót z Amuletem: ile głębiej sięga pula potworów budzącego się piętra
+ * i jaka część z nich od razu czuwa (reszta śpi jak zwykli mieszkańcy).
+ * Liczby strojone botem - patrz `docs/decyzje.md`, D-054.
+ */
+export const BUDZENIE = { pula: 2, czuwa: 0.5 };
 export { HUNGER_START, HUNGER_MAX } from './stany.js';
 
 const PLAYER_START = { hp: 30, str: 6, def: 2 };
@@ -364,7 +371,8 @@ export class Game {
     // PO rozmieszczeniu, żeby strumień losowy został taki sam jak dotąd.
     if (depth >= this.maxDepth) level.set(level.downPos.x, level.downPos.y, FLOOR);
 
-    return { level, monsters, items };
+    // `obudzony`: czy piętro dostało już swoją porcję po wzięciu Amuletu (`obudzPietro`).
+    return { level, monsters, items, obudzony: false };
   }
 
   enterLevel(depth, from = 'down') { this.placeHero(this.player, depth, from); }
@@ -395,6 +403,8 @@ export class Game {
       }
     }
     this.updateFOV(hero);
+    // Po polu widzenia, żeby nowi mieszkańcy wyrośli poza nim.
+    if (hero.hasAmulet) this.obudzPietro(depth);
   }
 
   updateFOV(hero = this.player) {
@@ -670,6 +680,50 @@ export class Game {
   }
 
   /**
+   * Powrót z Amuletem: piętro budzi się RAZ, gdy staje na nim ktoś z Amuletem
+   * (także to, na którym Amulet został podniesiony). Dostaje tylu nowych
+   * mieszkańców, ilu miało na starcie, ale z puli głębszej o `BUDZENIE.pula`,
+   * i część z nich od razu czuwa - dlatego droga w górę nie jest spacerem
+   * po pustych korytarzach (zgłoszenie właściciela 11.09).
+   *
+   * Nic poza potworami się nie zmienia: pamięć terenu, rzeczy na podłodze
+   * i schody zostają, a nowi mieszkańcy wyrastają wyłącznie poza polem
+   * widzenia. Mapa jest po pierwszym przejściu i tak znana, więc Amulet
+   * nie odsłania niczego - „odsłanianie" byłoby tu pustym gestem.
+   *
+   * Partia bez Amuletu nie wchodzi tu nigdy, więc jej strumień losowy jest
+   * taki sam jak przed tą zmianą.
+   */
+  obudzPietro(depth) {
+    const entry = this.levels.get(depth);
+    if (!entry || entry.obudzony) return false;
+    entry.obudzony = true;
+    const pula = Math.min(MAX_DEPTH, this.glebokoscWzorcowa(depth) + BUDZENIE.pula);
+    const ile = this.ilePotworow(depth);
+    for (let i = 0; i < ile; i++) {
+      const p = this.wolnePoleWCiemnosci(depth, entry);
+      if (!p) break;
+      const m = spawnMonster(this.rng, pula, p.x, p.y);
+      m.id = this.newId();
+      m.asleep = !this.rng.chance(BUDZENIE.czuwa);
+      entry.monsters.push(m);
+    }
+    for (const h of this.heroes) {
+      if (h.status === 'playing' && h.depth === depth) this.tell(h, 'loch.budzi');
+    }
+    return true;
+  }
+
+  /**
+   * Głębokość, jaką dane piętro ma dla puli potworów i przedmiotów. Przy ośmiu
+   * piętrach jest tożsamością; loch krótszy albo dłuższy rozciąga tę samą
+   * drabinę stworów na swoją liczbę pięter, zamiast urywać ją w połowie.
+   */
+  glebokoscWzorcowa(depth) {
+    return Math.max(1, Math.min(MAX_DEPTH, Math.round(depth * MAX_DEPTH / this.maxDepth)));
+  }
+
+  /**
    * Stawka przegranego starcia z innym uczestnikiem. **D-022:** przegrany gubi
    * cały dobytek i budzi się piętro wyżej, ale gra dalej.
    *
@@ -923,6 +977,9 @@ export class Game {
     if (zostalo.length) {
       this.message('podnies.nieZmiescilo', { lista: (lang) => zostalo.map(i => this.nazwa(i)(lang)).join(', ') });
     }
+    // Piętro, na którym Amulet zmienił ręce, budzi się od razu - nie dopiero
+    // przy następnych schodach.
+    if (this.player.hasAmulet) this.obudzPietro(this.depth);
     return true;
   }
 
@@ -1270,6 +1327,7 @@ export class Game {
         level: entry.level.toJSON(),
         monsters: entry.monsters,
         items: entry.items,
+        obudzony: !!entry.obudzony,
       };
     }
     return {
@@ -1306,6 +1364,9 @@ export class Game {
         level: Level.fromJSON(e.level),
         monsters: e.monsters,
         items: e.items,
+        // Zapis sprzed budzenia lochu nie niesie pola: piętro jeszcze nie
+        // budzone, więc obudzi się przy pierwszym wejściu z Amuletem.
+        obudzony: !!e.obudzony,
       });
     }
 

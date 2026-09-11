@@ -58,6 +58,7 @@ export function ksiegaAngielska(gdzie, Z) {
       blocks: [
         { t: 'p', text: `Descend to level ${Z.MAX_DEPTH}, defeat the final enemy - the ${boss} - take the Amulet of the Abyss and carry it back up the stairs all the way to the surface.` },
         { t: 'p', text: 'The up staircase on level 1 is the way out of the dungeon. Without the Amulet you cannot leave by it: the game will not let you return empty-handed.' },
+        { t: 'p', text: 'With the Amulet in hand the dungeon stirs. The level where you took it, and every level you enter on the way back to the surface, gets new inhabitants - as many as it had at the start, but nastier, as if it lay two levels deeper. Some of them are awake from the first moment. They appear outside your field of view and only once per level; the map, the items on the floor and the stairs stay exactly as you remember them.' },
         { t: 'p', text: 'The dungeon is generated from a seed. The same game from the same seed plays out exactly the same way - the same layout, the same rolls, the same potion looks.' },
       ],
     },

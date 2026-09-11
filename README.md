@@ -1,7 +1,8 @@
 # Roguelike
 
 Gra roguelike w czystym Node. Osiem poziomów lochu, na dnie Smok Otchłani,
-wygrywa ten, kto wyniesie Amulet na powierzchnię.
+wygrywa ten, kto wyniesie Amulet na powierzchnię. Z Amuletem w ręku loch się
+budzi: każde piętro w drodze na górę dostaje nowych, groźniejszych mieszkańców.
 
 Dwie skóry na jednym silniku: **terminalowa** (znaki ANSI) i **graficzna**
 (płótno w przeglądarce). Zasady, losowanie i zapisy są wspólne - to ten sam

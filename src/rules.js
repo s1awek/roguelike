@@ -119,6 +119,7 @@ function ksiegaPolska(gdzie) {
       blocks: [
         { t: 'p', text: `Zejdź na poziom ${MAX_DEPTH}, pokonaj przeciwnika ostatecznego - ${BOSS.name} - zabierz Amulet Otchłani i wróć z nim schodami w górę aż na powierzchnię.` },
         { t: 'p', text: 'Schody w górę na poziomie 1 są wyjściem z lochu. Bez Amuletu nie da się nimi wyjść: gra nie pozwoli wrócić z pustymi rękami.' },
+        { t: 'p', text: 'Z Amuletem w ręku loch się budzi. Piętro, na którym go wziąłeś, i każde piętro, na które wejdziesz w drodze na powierzchnię, dostaje nowych mieszkańców - tylu, ilu miało na starcie, ale groźniejszych, jakby leżało dwa piętra głębiej. Część z nich od razu czuwa. Pojawiają się poza Twoim polem widzenia i tylko raz na piętro; mapa, rzeczy na podłodze i schody zostają takie, jakie pamiętasz.' },
         { t: 'p', text: 'Loch jest generowany z ziarna. Ta sama gra z tego samego ziarna przebiega dokładnie tak samo - to samo rozmieszczenie, te same losowania, ten sam wygląd mikstur.' },
       ],
     },

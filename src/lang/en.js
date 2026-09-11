@@ -108,6 +108,7 @@ export const EN = {
   'podnies.nicWybrane': 'Nothing selected.',
   'podnies.brakMiejsca': (p) => `No room in your pack (${p.wolne} of ${p.poj} slots free, and this takes ${p.pola}).`,
   'podnies.amulet': 'You take the Amulet of the Abyss. Head back to the surface!',
+  'loch.budzi': 'The dungeon stirs. Something moves in the dark.',
   'podnies.pozycja': (p) => `${p.nazwa}${p.ile > 1 ? ` x${p.ile}` : ''}${p.reszta > 0 ? ` (${p.reszta} left behind - no room)` : ''}`,
   'podnies.lista': (p) => `You pick up: ${p.lista}.`,
   'podnies.nieZmiescilo': (p) => `Did not fit: ${p.lista}.`,

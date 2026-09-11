@@ -59,6 +59,7 @@ export const PL = {
   'podnies.nicWybrane': 'Nic nie wybrano.',
   'podnies.brakMiejsca': (p) => `Nie ma miejsca w plecaku (${p.wolne} z ${p.poj} pól wolnych, a to zajmuje ${p.pola}).`,
   'podnies.amulet': 'Bierzesz Amulet Otchłani. Wracaj na powierzchnię!',
+  'loch.budzi': 'Loch się budzi. Coś porusza się w ciemności.',
   'podnies.pozycja': (p) => `${p.nazwa}${p.ile > 1 ? ` x${p.ile}` : ''}${p.reszta > 0 ? ` (${p.reszta} zostaje - brak miejsca)` : ''}`,
   'podnies.lista': (p) => `Podnosisz: ${p.lista}.`,
   'podnies.nieZmiescilo': (p) => `Nie zmieściło się: ${p.lista}.`,
