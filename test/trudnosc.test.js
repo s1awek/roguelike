@@ -7,7 +7,7 @@ import { STAIRS_DOWN } from '../src/map.js';
 import { serialize, loadFromString, fingerprint } from '../src/save.js';
 import { playOut } from '../src/bot.js';
 
-// Stopnie trudności (spec `.workspace/powrot-trudnosc-hud-acceptance-spec.md`, część B; D-055).
+// Stopnie trudności (spec `roboczy/powrot-trudnosc-hud-acceptance-spec.md`, część B; D-055).
 
 const rodzaj = (type) => KINDS.find(k => k.type === type);
 const skaluj = (x, m) => Math.max(1, Math.round(x * m));
@@ -124,7 +124,7 @@ test('zapis niesie stopień i liczbę pięter; zapis bez pola wczytuje się jako
 
 test('gracz automatyczny na tych samych ziarnach: łatwy wygrywa nie rzadziej niż normalny, normalny nie rzadziej niż trudny', () => {
   // Zgrubna kontrola kierunku na 30 ziarnach; wiążący pomiar to 300 partii na
-  // stopień (`.workspace/zmierz-trudnosc.mjs`, liczby w D-055).
+  // stopień (`roboczy/zmierz-trudnosc.mjs`, liczby w D-055).
   const wygrane = {};
   for (const stopien of ['latwy', 'normalny', 'trudny']) {
     let n = 0;

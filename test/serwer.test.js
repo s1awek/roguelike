@@ -12,7 +12,7 @@ import { spawn } from 'node:child_process';
 /** Uruchamia prawdziwy serwer i czeka, aż ogłosi otwarcie stołu. */
 async function serwer(args = []) {
   const port = 8100 + Math.floor(Math.random() * 800);
-  const p = spawn('node', ['bin/server.js', '--port', String(port), '--boty', '2',
+  const p = spawn(process.execPath, ['bin/server.js', '--port', String(port), '--boty', '2',
     '--map', '80x24', '--seed', 'test-serwer', ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
   const log = [];
   p.stdout.on('data', (c) => log.push(String(c)));

@@ -7,7 +7,7 @@ import { STAIRS_DOWN, STAIRS_UP } from '../src/map.js';
 import { serialize, loadFromString } from '../src/save.js';
 import { t } from '../src/i18n.js';
 
-// Powrót z Amuletem: loch się budzi (spec `.workspace/powrot-trudnosc-hud-acceptance-spec.md`, część A).
+// Powrót z Amuletem: loch się budzi (spec `roboczy/powrot-trudnosc-hud-acceptance-spec.md`, część A).
 
 /** Gra z bohaterem na piętrze `depth`, z Amuletem pod nogami (bez smoka - to test budzenia, nie walki). */
 function zAmuletemPodNogami(seed, depth) {

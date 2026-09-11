@@ -1,4 +1,4 @@
-// Wielu graczy w jednym lochu - kryteria ze spec-a `.workspace/wielu-graczy-acceptance-spec.md`.
+// Wielu graczy w jednym lochu - kryteria ze spec-a `roboczy/wielu-graczy-acceptance-spec.md`.
 //
 // Część testów to KONTROLA PRZYRZĄDU: przypadki znane-złe, na których widać,
 // że test w ogóle potrafi zgłosić usterkę.
