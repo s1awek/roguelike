@@ -45,7 +45,7 @@ export const PL = {
   'awans': (p) => `Awansujesz na poziom ${p.poziom}!`,
 
   // ---------- dziennik: ruch i schody ----------
-  'lezyTu': (p) => `Leży tu ${p.rzecz}.`,
+  'lezyTu': (p) => `Leży tu ${p.rzecz}. (x - obejrzyj)`,
   'schody.tuDol': 'Są tu schody w dół (>).',
   'schody.tuGora': 'Są tu schody w górę (<).',
   'schody.brakDol': 'Nie ma tu schodów w dół.',

@@ -94,7 +94,7 @@ export const EN = {
   'awans': (p) => `You advance to level ${p.poziom}!`,
 
   // ---------- log: moving and stairs ----------
-  'lezyTu': (p) => `You see here ${a(p.rzecz)}.`,
+  'lezyTu': (p) => `You see here ${a(p.rzecz)}. (x - inspect)`,
   'schody.tuDol': 'There is a staircase down here (>).',
   'schody.tuGora': 'There is a staircase up here (<).',
   'schody.brakDol': 'There are no stairs down here.',
