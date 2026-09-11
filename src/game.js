@@ -13,7 +13,7 @@
 //    identyczny z A*, a koszt spada z O(N * mapa) do O(mapa).
 
 import { RNG } from './rng.js';
-import { generateLevel, Level, STAIRS_DOWN, STAIRS_UP, WALL } from './map.js';
+import { generateLevel, Level, STAIRS_DOWN, STAIRS_UP, WALL, FLOOR } from './map.js';
 import { computeFOV } from './fov.js';
 import { distanceField, neighbors, chebyshev } from './path.js';
 import { randomItem, makeAmulet, makeAppearances, itemLabel, itemName, stackLabel, potionLook, scentText, potionPower, SCENTS, POTION_SCENT, scentGroup, uzupelnijWyglady } from './items.js';
@@ -358,6 +358,11 @@ export class Game {
         items.push(it);
       }
     }
+
+    // Ostatnie piętro nie ma zejścia: loch kończy się tam, gdzie leży Amulet.
+    // Bez tego gracz schodził na piętro 9, 10, ... bez końca (W-29). Zdejmowane
+    // PO rozmieszczeniu, żeby strumień losowy został taki sam jak dotąd.
+    if (depth >= this.maxDepth) level.set(level.downPos.x, level.downPos.y, FLOOR);
 
     return { level, monsters, items };
   }
@@ -1115,7 +1120,9 @@ export class Game {
   }
 
   descend() {
-    if (this.level.at(this.player.x, this.player.y) !== STAIRS_DOWN) {
+    // Warunek głębokości jest osobno od kafla: zapis sprzed W-29 ma na ostatnim
+    // piętrze prawdziwe schody, po których i tak nie wolno zejść.
+    if (this.depth >= this.maxDepth || this.level.at(this.player.x, this.player.y) !== STAIRS_DOWN) {
       this.message('schody.brakDol');
       return false;
     }

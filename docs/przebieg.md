@@ -1331,3 +1331,16 @@ Pełny zapis wraca bajt w bajt (test w `save.test.js` z kontrolą).
 kliknięciem w tło poza oknem (jak Esc; ekran końca i ekran wejścia - nie),
 a podpowiedź do schodów mówi wprost „Shift+. Shift+,", bo same znaki `>` `<`
 nie mówią, gdzie ich szukać na klawiaturze.
+
+### W-29: z ostatniego piętra dało się zejść na dziewiąte
+
+Zgłoszenie właściciela (11.09.2026): „weszłem na level 9 z 8". Generator piętra
+stawiał schody w dół na KAŻDYM piętrze, a `descend()` sprawdzał wyłącznie kafel
+pod nogami - głębokości nie pytał nikt. Bot tego nie wykrył przez tysiące partii,
+bo sam ma warunek `depth < maxDepth` i poniżej dna nie schodzi; człowiek go nie ma.
+
+**Naprawa**: na ostatnim piętrze kafel zejścia zamienia się w podłogę PO
+rozmieszczeniu potworów i rzeczy (strumień losowy bez zmian - odcisk zachowania
+`6127457f4e2352a3` identyczny przed i po), a `descend()` odmawia poniżej dna
+niezależnie od kafla, żeby zapis sprzed tej zmiany, z prawdziwymi schodami na dnie,
+też nie prowadził niżej. Test `pietra.test.js` z kontrolą na piętrze przedostatnim.
