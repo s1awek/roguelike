@@ -1,5 +1,7 @@
 import { t } from '../src/i18n.js';
 import { stanyBohatera } from '../src/stany.js';
+import { xpForLevel } from '../src/game.js';
+import { ikona } from './ikony.js';
 
 // Wspólny kawałek widoku dla obu wersji przeglądarkowych: skutek przedmiotu
 // i różnica wobec noszonego, w jednym kształcie. Treść liczb pochodzi
@@ -46,14 +48,26 @@ export function obejrzyjHtml(nazwa, o) {
  * pokazuje, jak daleko do kłopotu, słowo mówi, jak się ten kłopot nazywa,
  * a kolor działa kątem oka, zanim gracz zdąży cokolwiek przeczytać.
  */
+const IKONA_STANU = { glod: 'chleb' };
+
 export function stanyHtml(hero) {
   return stanyBohatera(hero).map(s => `
-    <div class="stan ${s.ton}" data-id="${s.id}"
+    <div class="poz stan ${s.ton}" data-id="${s.id}"
          title="${esc(t('web.stanTytul', s))}">
-      <span class="lbl">${esc(s.nazwa)}</span>
-      <div class="bar"><i style="width:${(s.frakcja * 100).toFixed(1)}%"></i></div>
-      <span class="num">${esc(s.etykieta)}</span>
+      <span class="rzad">${ikona(IKONA_STANU[s.id] || 'gwiazda')}<span class="bar"><i style="width:${(s.frakcja * 100).toFixed(1)}%"></i></span><span class="num">${esc(s.etykieta)}</span></span>
+      <em>${esc(s.nazwa)}</em>
     </div>`).join('');
+}
+
+/**
+ * Postęp doświadczenia do następnego poziomu. Doświadczenie w grze jest
+ * skumulowane (nie zeruje się przy awansie), więc pasek liczy się od progu
+ * bieżącego poziomu, a nie od zera - inaczej po awansie stałby prawie pełny.
+ */
+export function postepDosw(hero) {
+  const od = xpForLevel(hero.level), prog = xpForLevel(hero.level + 1);
+  const frakcja = Math.max(0, Math.min(1, (hero.xp - od) / (prog - od)));
+  return { xp: hero.xp, prog, frakcja };
 }
 
 /**

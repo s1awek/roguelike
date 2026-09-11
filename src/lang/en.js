@@ -109,6 +109,21 @@ export const EN = {
   'podnies.brakMiejsca': (p) => `No room in your pack (${p.wolne} of ${p.poj} slots free, and this takes ${p.pola}).`,
   'podnies.amulet': 'You take the Amulet of the Abyss. Head back to the surface!',
   'loch.budzi': 'The dungeon stirs. Something moves in the dark.',
+
+  // ---------- difficulty ----------
+  'trudnosc.latwy': 'easy',
+  'trudnosc.normalny': 'normal',
+  'trudnosc.trudny': 'hard',
+  'term.trudnosc': 'Difficulty',
+  'term.go.trudnosc': 'Difficulty:   ',
+  'term.nieznanaTrudnosc': (p) => `Unknown difficulty: ${p.x}. Available: easy, normal, hard.`,
+  'web.hud.trudnoscTytul': (p) => `Difficulty - ${p.pietra} floors`,
+  'web.go.trudnosc': 'Difficulty',
+  'web.nowa.tytul': 'New game',
+  'web.nowa.opis': 'Choose a difficulty. The current game will be abandoned.',
+  'web.nowa.szczegoly': (p) => `${p.pietra} floors, monsters ${p.potwory}%, food fills ${p.glod}%`,
+  'web.nowa.stopka': 'Keys 1-3 choose, Esc keeps the current game.',
+  'web.stol.trudnosc': (p) => `Table difficulty: ${p.nazwa} (${p.pietra} floors).`,
   'podnies.pozycja': (p) => `${p.nazwa}${p.ile > 1 ? ` x${p.ile}` : ''}${p.reszta > 0 ? ` (${p.reszta} left behind - no room)` : ''}`,
   'podnies.lista': (p) => `You pick up: ${p.lista}.`,
   'podnies.nieZmiescilo': (p) => `Did not fit: ${p.lista}.`,
@@ -248,8 +263,20 @@ export const EN = {
   'web.hud.atak': 'attack',
   'web.hud.obrona': 'defense',
   'web.hud.glebokosc': 'depth',
-  'web.hud.wrogow': 'foes here',
+  'web.hud.wrogow': 'foes',
   'web.hud.tura': 'turn',
+  'web.hud.zycie': 'life',
+  'web.hud.grupa.zywotnosc': 'Vitality',
+  'web.hud.grupa.postac': 'Character',
+  'web.hud.grupa.loch': 'Dungeon',
+  'web.hud.tytul.zycie': 'Health: current / maximum',
+  'web.hud.tytul.poziom': 'Character level',
+  'web.hud.tytul.dosw': 'Experience: earned / next level threshold',
+  'web.hud.tytul.atak': 'Attack: strength with weapon',
+  'web.hud.tytul.obrona': 'Defense: armor',
+  'web.hud.tytul.glebokosc': 'Dungeon floor / number of floors',
+  'web.hud.tytul.wrogow': 'Living foes on this floor',
+  'web.hud.tytul.tura': 'Turn number',
   'web.autozapis': 'autosave',
   'web.autozapisTytul': 'The game saves itself - reloading the page does not reset your run',
   'web.bezAutozapisu': 'no autosave',
@@ -390,11 +417,13 @@ export const EN = {
   // ---------- terminal: startup ----------
   'term.pomoc': (p) => `Roguelike - terminal game
 
-  node bin/play.js [--seed <seed>] [--continue] [--lang en|pl]
+  node bin/play.js [--seed <seed>] [--continue] [--lang en|pl] [--difficulty easy|normal|hard]
 
   --seed <seed>     game seed (same seed = same dungeon)
   --continue        resume from the save (${p.sciezka})
   --lang en|pl      game language (English by default)
+  --difficulty easy|normal|hard
+                    difficulty level (normal by default)
   --help            this help
 
 In game: ? = rulebook, x = inspect the item underfoot, w = sniff a potion, S = save, Q = quit.`,

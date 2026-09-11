@@ -17,6 +17,7 @@ node bin/play.js                  # nowa gra
 node bin/play.js --seed jaskinia  # ten sam loch za każdym razem
 node bin/play.js --continue       # wznów zapis
 node bin/play.js --lang pl        # po polsku (domyślnie po angielsku)
+node bin/play.js --difficulty easy   # stopień trudności: easy | normal | hard
 
 node bin/bot.js --watch demo      # popatrz, jak gra komputer
 node bin/bot.js --games 1000      # tysiąc partii, zbiorczy wynik
@@ -44,6 +45,14 @@ npm test                          # testy jednostkowe
 Język: angielski domyślnie, polski do wyboru - w przeglądarce przełącznik EN | PL
 na pasku stanu albo adres z `?lang=pl`, w terminalu `--lang pl`. Wybór zmienia
 wyłącznie opis gry, nie jej przebieg; zapisy są wspólne dla obu języków.
+
+Stopnie trudności: łatwy (6 pięter, słabsze potwory, sytsze jedzenie), normalny
+(gra wzorcowa, 8 pięter) i trudny (10 pięter, mocniejsze potwory, szybszy głód).
+W przeglądarce wybór przy nowej grze (`Shift`+`N`) albo adres z
+`?difficulty=easy|normal|hard`, w terminalu `--difficulty`, przy stole flaga
+serwera `--difficulty` (jeden stopień dla całego stołu). Stopień jest zapisany
+razem z partią; liczby są w księdze zasad, liczone z tej samej tablicy, z której
+korzysta gra.
 
 Znaki: `@` ty, `!` mikstura, `?` zwój, `)` broń, `[` pancerz, `%` jedzenie,
 `"` Amulet. Litery to potwory - małe słabsze, wielkie groźniejsze.
@@ -176,6 +185,7 @@ przeglądarki (`localStorage`).
 ```
 npm run stol            # serwer partii, domyślnie port 8080
 npm run stol -- --port 8099 --boty 5 --map 120x32
+npm run stol -- --difficulty hard     # jeden stopień trudności dla całego stołu
 ```
 
 Potem `http://localhost:8080/web/wielu.html`. Loch jest zamieszkany od pierwszej

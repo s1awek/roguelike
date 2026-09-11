@@ -19,6 +19,18 @@ Z Amuletem w ręku loch się budzi. Piętro, na którym go wziąłeś, i każde 
 
 Loch jest generowany z ziarna. Ta sama gra z tego samego ziarna przebiega dokładnie tak samo - to samo rozmieszczenie, te same losowania, ten sam wygląd mikstur.
 
+## Stopnie trudności
+
+Trzy stopnie. Normalny jest wzorcem - na nim strojono równowagę i tak gra się bez wyboru. Łatwy ma mniej pięter, słabsze potwory i sytsze jedzenie; trudny odwrotnie. Rodzaje potworów rozkładają się po piętrach proporcjonalnie do ich liczby, więc najgroźniejsze stwory czekają zawsze przy dnie, a przeciwnik ostateczny i Amulet - na ostatnim piętrze.
+
+| stopień | pięter | życie i siła potworów | sytość z jedzenia i na start |
+|---|---|---|---|
+| łatwy | 6 | 80% | 125% |
+| normalny | 8 | 100% | 100% |
+| trudny | 10 | 110% | 90% |
+
+W przeglądarce: Shift+N albo ?difficulty=easy|normal|hard w adresie; w terminalu: --difficulty easy|normal|hard; przy stole: flaga serwera --difficulty, jeden stopień dla całego stołu. Stopień jest zapisany razem z partią.
+
 ## Sterowanie
 
 | klawisz | co robi |
@@ -36,7 +48,7 @@ Loch jest generowany z ziarna. Ta sama gra z tego samego ziarna przebiega dokła
 | Q | wyjście z gry (tylko terminal) |
 | kliknięcie w poznane pole | marsz - zatrzymuje się na widok potwora, przy stracie życia i nad przedmiotem (tylko wersja graficzna) |
 | m | minimapa - włącz i wyłącz (tylko wersja graficzna) |
-| Shift+N | nowa gra (tylko wersja graficzna) |
+| Shift+N | nowa gra - z wyborem stopnia trudności (tylko wersja graficzna) |
 
 Działanie odrzucone - ruch w ścianę, podnoszenie z pustego pola, powąchanie czegoś, co nie jest miksturą - NIE kosztuje tury. Świat rusza się tylko wtedy, gdy Ty coś zrobisz.
 

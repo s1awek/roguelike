@@ -1372,3 +1372,27 @@ identyczne, 13 z Amuletem inne (wszystkie nadal wygrane). Testy
 mapa/rzeczy/pamięć nietknięte, komunikat), raz na piętro przy wchodzeniu
 i schodzeniu, kontrola bez Amuletu (ten sam stan generatora), zapis z polem
 i bez, głębokość wzorcowa. `npm test` 170/170.
+
+### B. Stopnie trudności (D-055)
+
+`src/trudnosc.js` (profile, aliasy `easy|normal|hard` i polskie, `wzmocnij`),
+silnik czyta profil (`profilTrudnosci`, `glebokoscWzorcowa` przy losowaniu
+potworów i przedmiotów, sytość na start i pożywność razy mnożnik), pole
+`trudnosc` w zapisie. Terminal `--difficulty`, stół `--difficulty` + `/api/stol`
+z `{trudnosc, pietra}`, przeglądarka: Shift+N otwiera wybór (klawisze 1-3),
+parametr adresu, znacznik w panelu, ekran końca, poczekalnia stołu. Księga:
+sekcja „Stopnie trudności" (oba języki). Pomiary i liczby w D-055.
+Testy `test/trudnosc.test.js` (8). Odbiór w przeglądarce
+`.workspace/sprawdz-trudnosc-web.mjs` 21/21 (jedna wada znaleziona i
+naprawiona: po wczytaniu zapisu nowa partia szła na zapamiętanym stopniu
+zamiast na stopniu zapisu).
+
+### C. Panel stanu (D-056)
+
+`web/ikony.js` (SVG kodem), nowy nagłówek w `web/index.html` i `web/wielu.html`
+(trzy sekcje `.grupa`, pozycje `.poz` z ikoną, liczbą i podpisem, podpowiedzi
+przez `data-t-title`), `web/opis.js` (`stanyHtml` z ikoną i podpisem,
+`postepDosw`), `web/style.css` (nowy blok panelu, tryb ciasny poniżej 1100 px),
+klucze `web.hud.*` w obu słownikach. Testy `test/hud.test.js` (3). Zrzuty
+przed/po: `.workspace/zrzuty-hud.mjs` → `.workspace/hud-zrzuty/`.
+`npm test` 181/181.

@@ -6,6 +6,7 @@
 // inaczej niż terminalowa, winy trzeba szukać w tym pliku, nie w silniku.
 
 import { Game } from '../src/game.js';
+import { TRUDNOSCI, DOMYSLNA_TRUDNOSC, ustalTrudnosc } from '../src/trudnosc.js';
 import { serialize, loadFromString } from '../src/serialize.js';
 import { itemLabel, itemStats } from '../src/items.js';
 import { t, getLang } from '../src/i18n.js';
@@ -13,7 +14,8 @@ import { opisPrzyczyny } from '../src/przyczyny.js';
 import { ustalJezyk, przelacznik } from './jezyk.js';
 import { pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
 import { siatkaHtml, podepnijSiatke } from './plecak-ui.js';
-import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml, dziennikHtml } from './opis.js';
+import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml, dziennikHtml, postepDosw } from './opis.js';
+import { wstawIkony } from './ikony.js';
 import { buildRules } from '../src/rules.js';
 import { findPath } from '../src/path.js';
 import { WALL } from '../src/map.js';
@@ -48,12 +50,19 @@ let notice = '';
 let noticeUntil = 0;
 
 ustalJezyk();
+wstawIkony(document.getElementById('hud'));
 
 // Odświeżenie karty nie może kosztować rozgrywki. Stan wraca z autozapisu, chyba
 // że w adresie stoi jawne ziarno - wtedy gracz prosi o KONKRETNĄ grę i to on ma
 // rację, nie zapisany stan.
 let game = null;
 const seedParam = params.get('seed');
+// Stopień trudności: z adresu (`?difficulty=easy|normal|hard`), a bez niego
+// ostatni wybrany; bez obu - normalny (D-055). Zapamiętany wybór to wygoda
+// na następną partię, nie stan gry - stan gry niesie stopień w zapisie.
+const TRUDNOSC_KEY = 'roguelike:trudnosc';
+const trudnoscParam = ustalTrudnosc(params.get('difficulty'));
+let trudnosc = trudnoscParam ?? ustalTrudnosc(storageGet(TRUDNOSC_KEY)) ?? DOMYSLNA_TRUDNOSC;
 const raw = storageGet(AUTO_KEY);
 if (raw) {
   const r = loadFromString(raw);
@@ -61,10 +70,13 @@ if (raw) {
   // Adres z ziarnem prosi o KONKRETNĄ grę. Autozapis tego samego ziarna to ta
   // sama rozgrywka, więc wraca; autozapis innej gry zostaje pominięty i za
   // chwilę nadpisany - takie jest znaczenie jawnego ziarna w adresie.
-  else if (!seedParam || String(r.game.seed) === seedParam) game = r.game;
+  // Adres ze stopniem działa tak samo: autozapis na innym stopniu jest inną grą.
+  else if ((!seedParam || String(r.game.seed) === seedParam)
+    && (!trudnoscParam || r.game.trudnosc === trudnoscParam)) game = r.game;
 }
 const resumed = !!game;
-if (!game) game = new Game(seedParam || String(Date.now()));
+if (!game) game = new Game(seedParam || String(Date.now()), { trudnosc });
+trudnosc = game.trudnosc;
 // Komunikat o wznowieniu NIE idzie do dziennika gry, bo dziennik jest częścią
 // zapisanego stanu - co odświeżenie dopisywałoby do niego kolejny wiersz.
 if (!resumed) game.message('wejscie');
@@ -144,7 +156,18 @@ window.addEventListener('keydown', (e) => {
 
   if (walk) { walk = null; return; }   // dowolny klawisz przerywa marsz
 
-  if (mode === 'over') { if (k === 'Enter' || k === ' ') newGame(); return; }
+  if (mode === 'over') {
+    if (k === 'Enter' || k === ' ') newGame();          // ten sam stopień, nowa partia
+    else if (k === 'N') pokazWyborTrudnosci();
+    return;
+  }
+  if (mode === 'nowa') {
+    if (k === 'Escape' || k === 'q') { zamknijWybor(); return; }
+    const n = Number(k);
+    const stopnie = Object.keys(TRUDNOSCI);
+    if (Number.isInteger(n) && n >= 1 && n <= stopnie.length) newGame(stopnie[n - 1]);
+    return;
+  }
   // Księga zasad: rozdziały przeglądane bez wychodzenia z gry. Świat stoi,
   // więc czytanie nie kosztuje tury i nie przeczeka potwora.
   if (mode === 'help') {
@@ -198,7 +221,7 @@ window.addEventListener('keydown', (e) => {
     case 'S': doSave(); break;
     case 'L': doLoad(); break;
     case 'm': renderer.minimap = !renderer.minimap; say(t(renderer.minimap ? 'web.minimapaWl' : 'web.minimapaWyl')); break;
-    case 'N': newGame(); break;
+    case 'N': pokazWyborTrudnosci(); break;
     default: break;
   }
 });
@@ -229,6 +252,7 @@ function closeOverlay() { mode = 'map'; overlay.hidden = true; }
 // decyzja gracza (D-044). Ekran końca partii nie ma czego zamykać.
 overlay.addEventListener('click', (e) => {
   if (e.target !== overlay || mode === 'over') return;
+  if (mode === 'nowa') { zamknijWybor(); return; }
   closeOverlay();
 });
 
@@ -424,6 +448,7 @@ function showGameOver() {
     <dl>
       <dt>${t('web.go.przyczyna')}</dt><dd>${escapeHtml(String(opisPrzyczyny(game.cause)))}</dd>
       <dt>${t('web.go.glebokosc')}</dt><dd>${game.depth}</dd>
+      <dt>${t('web.go.trudnosc')}</dt><dd>${t(`trudnosc.${game.trudnosc}`)}</dd>
       <dt>${t('web.go.poziom')}</dt><dd>${game.player.level}</dd>
       <dt>${t('web.go.dosw')}</dt><dd>${game.player.xp}</dd>
       <dt>${t('web.go.pokonanych')}</dt><dd>${game.player.kills}</dd>
@@ -435,8 +460,36 @@ function showGameOver() {
   overlay.hidden = false;
 }
 
-function newGame() {
-  game = new Game(String(Date.now()));
+/**
+ * Wybór stopnia przy nowej grze (Shift+N). Osobne okno, bo nowa gra porzuca
+ * bieżącą - wybór stopnia jest przy okazji potwierdzeniem tej decyzji.
+ */
+function pokazWyborTrudnosci() {
+  mode = 'nowa';
+  panel.innerHTML = `
+    <h2>${t('web.nowa.tytul')}</h2>
+    <p class="muted">${t('web.nowa.opis')}</p>
+    <div class="wybor-trudnosci">${Object.entries(TRUDNOSCI).map(([k, T], i) => `
+      <button data-trudnosc="${k}" class="${k === trudnosc ? 'biezacy' : ''}">
+        <b>${i + 1}</b><span class="nazwa">${t(`trudnosc.${k}`)}</span>
+        <small>${t('web.nowa.szczegoly', { pietra: T.pietra, potwory: Math.round(T.potwory * 100), glod: Math.round(T.glod * 100) })}</small>
+      </button>`).join('')}
+    </div>
+    <p class="foot">${t('web.nowa.stopka')}</p>`;
+  panel.querySelectorAll('button[data-trudnosc]').forEach(b => b.addEventListener('click', () => newGame(b.dataset.trudnosc)));
+  panel.scrollTop = 0;
+  overlay.hidden = false;
+}
+
+/** Rezygnacja z wyboru: wracamy tam, skąd okno wyszło - na mapę albo na ekran końca. */
+function zamknijWybor() {
+  if (game.status !== 'playing') showGameOver(); else closeOverlay();
+}
+
+function newGame(stopien = trudnosc) {
+  trudnosc = ustalTrudnosc(stopien) ?? DOMYSLNA_TRUDNOSC;
+  try { localStorage.setItem(TRUDNOSC_KEY, trudnosc); } catch { /* bez pamięci wyboru gra działa tak samo */ }
+  game = new Game(String(Date.now()), { trudnosc });
   view.reset();
   view.depth = null;
   view.lastPlayerHp = null;
@@ -506,6 +559,7 @@ function doLoad() {
   const r = loadFromString(raw);
   if (!r.ok) { say(r.error); return; }
   game = r.game;
+  trudnosc = game.trudnosc;   // nowa partia po tej wczytanej ma iść na jej stopniu
   view.reset();
   view.depth = null;
   view.lastPlayerHp = null;
@@ -532,16 +586,25 @@ function updateHud() {
   $('hpfill').style.background = frac > 0.5 ? 'var(--green)' : frac > 0.25 ? 'var(--gold)' : 'var(--red)';
   $('hptext').textContent = `${p.hp}/${p.maxHp}`;
   $('plevel').textContent = p.level;
-  $('pxp').textContent = p.xp;
+  const dosw = postepDosw(p);
+  $('pxp').textContent = dosw.xp;
+  $('pxpprog').textContent = dosw.prog;
+  $('xpfill').style.width = `${dosw.frakcja * 100}%`;
   $('patk').textContent = game.playerAttack();
   $('pdef').textContent = game.playerDefense();
   $('pdepth').textContent = `${game.depth}/${game.maxDepth}`;
   // Zaludnienie piętra: liczba zbiorcza, bez położeń. W grze jednoosobowej
   // czytana wprost z poziomu, w wieloosobowej przychodzi w migawce.
-  $('pwrogi').textContent = game.levels.get(game.depth).monsters.filter(m => m.hp > 0).length;
+  const wrogow = game.levels.get(game.depth).monsters.filter(m => m.hp > 0).length;
+  $('pwrogi').textContent = wrogow;
+  $('pwrogi').closest('.poz').classList.toggle('sa', wrogow > 0);
   $('pturn').textContent = game.turn;
   $('stany').innerHTML = stanyHtml(p);
   $('amulet').hidden = !p.hasAmulet;
+  const stopien = $('trudnosc');
+  stopien.hidden = false;
+  stopien.textContent = t(`trudnosc.${game.trudnosc}`);
+  stopien.title = t('web.hud.trudnoscTytul', { pietra: game.maxDepth });
   renderLog();
 }
 
@@ -636,6 +699,7 @@ przelacznik(document.getElementById('jezyk'), () => {
   podpisz(document.getElementById('podpis'));
   if (mode === 'help') showRules(ruleSection);
   else if (mode === 'over') showGameOver();
+  else if (mode === 'nowa') pokazWyborTrudnosci();
   else if (mode === 'obejrzyj') pokazObejrzenie();
   else if (mode === 'stos') pokazStos();
   else if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') openInventory(mode);

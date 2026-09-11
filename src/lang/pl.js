@@ -60,6 +60,21 @@ export const PL = {
   'podnies.brakMiejsca': (p) => `Nie ma miejsca w plecaku (${p.wolne} z ${p.poj} pól wolnych, a to zajmuje ${p.pola}).`,
   'podnies.amulet': 'Bierzesz Amulet Otchłani. Wracaj na powierzchnię!',
   'loch.budzi': 'Loch się budzi. Coś porusza się w ciemności.',
+
+  // ---------- stopnie trudności ----------
+  'trudnosc.latwy': 'łatwy',
+  'trudnosc.normalny': 'normalny',
+  'trudnosc.trudny': 'trudny',
+  'term.trudnosc': 'Stopień',
+  'term.go.trudnosc': 'Stopień:      ',
+  'term.nieznanaTrudnosc': (p) => `Nieznany stopień trudności: ${p.x}. Dostępne: easy, normal, hard.`,
+  'web.hud.trudnoscTytul': (p) => `Stopień trudności - ${p.pietra} pięter`,
+  'web.go.trudnosc': 'Stopień trudności',
+  'web.nowa.tytul': 'Nowa gra',
+  'web.nowa.opis': 'Wybierz stopień trudności. Bieżąca partia zostanie porzucona.',
+  'web.nowa.szczegoly': (p) => `${p.pietra} pięter, potwory ${p.potwory}%, jedzenie syci ${p.glod}%`,
+  'web.nowa.stopka': 'Klawisze 1-3 wybierają, Esc zostawia bieżącą grę.',
+  'web.stol.trudnosc': (p) => `Stopień trudności stołu: ${p.nazwa} (${p.pietra} pięter).`,
   'podnies.pozycja': (p) => `${p.nazwa}${p.ile > 1 ? ` x${p.ile}` : ''}${p.reszta > 0 ? ` (${p.reszta} zostaje - brak miejsca)` : ''}`,
   'podnies.lista': (p) => `Podnosisz: ${p.lista}.`,
   'podnies.nieZmiescilo': (p) => `Nie zmieściło się: ${p.lista}.`,
@@ -198,9 +213,21 @@ export const PL = {
   'web.hud.dosw': 'dośw.',
   'web.hud.atak': 'atak',
   'web.hud.obrona': 'obrona',
-  'web.hud.glebokosc': 'głębokość',
-  'web.hud.wrogow': 'wrogów tu',
+  'web.hud.glebokosc': 'piętro',
+  'web.hud.wrogow': 'wrogów',
   'web.hud.tura': 'tura',
+  'web.hud.zycie': 'życie',
+  'web.hud.grupa.zywotnosc': 'Żywotność',
+  'web.hud.grupa.postac': 'Postać',
+  'web.hud.grupa.loch': 'Loch',
+  'web.hud.tytul.zycie': 'Życie: bieżące / najwyższe',
+  'web.hud.tytul.poziom': 'Poziom postaci',
+  'web.hud.tytul.dosw': 'Doświadczenie: zdobyte / próg następnego poziomu',
+  'web.hud.tytul.atak': 'Atak: siła razem z bronią',
+  'web.hud.tytul.obrona': 'Obrona: zbroja',
+  'web.hud.tytul.glebokosc': 'Piętro lochu / liczba pięter',
+  'web.hud.tytul.wrogow': 'Żywi przeciwnicy na tym piętrze',
+  'web.hud.tytul.tura': 'Numer tury',
   'web.autozapis': 'autozapis',
   'web.autozapisTytul': 'Gra zapisuje się sama - odświeżenie strony nie resetuje rozgrywki',
   'web.bezAutozapisu': 'bez autozapisu',
@@ -341,11 +368,13 @@ export const PL = {
   // ---------- terminal: uruchomienie ----------
   'term.pomoc': (p) => `Roguelike - gra terminalowa
 
-  node bin/play.js [--seed <ziarno>] [--continue] [--lang en|pl]
+  node bin/play.js [--seed <ziarno>] [--continue] [--lang en|pl] [--difficulty easy|normal|hard]
 
   --seed <ziarno>   ziarno rozgrywki (to samo ziarno = ten sam loch)
   --continue        wznów z zapisu (${p.sciezka})
   --lang en|pl      język gry (domyślnie angielski)
+  --difficulty easy|normal|hard
+                    stopień trudności (domyślnie normal)
   --help            ta pomoc
 
 W grze: ? = księga zasad, x = obejrzyj rzecz pod nogami, w = powąchaj miksturę, S = zapis, Q = wyjście.`,

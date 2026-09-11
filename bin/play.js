@@ -10,6 +10,7 @@ import { Game } from '../src/game.js';
 import { saveToFile, loadFromFile } from '../src/save.js';
 import { renderFrame, renderGameOver, clearScreen, hideCursor, showCursor, RULE_COUNT, C } from '../src/render.js';
 import { setLang, znanyJezyk, t } from '../src/i18n.js';
+import { ustalTrudnosc } from '../src/trudnosc.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -29,6 +30,10 @@ const lang = argOf('lang', 'en');
 if (!znanyJezyk(lang)) { console.error(t('term.nieznanyJezyk', { lang })); process.exit(2); }
 setLang(lang);
 
+// Stopień trudności: po angielsku albo po polsku, domyślnie normalny (D-055).
+const trudnosc = ustalTrudnosc(argOf('difficulty', 'normal'));
+if (!trudnosc) { console.error(t('term.nieznanaTrudnosc', { x: argOf('difficulty', '') })); process.exit(2); }
+
 if (args.includes('--help') || args.includes('-h')) {
   console.log(t('term.pomoc', { sciezka: SAVE_PATH }));
   process.exit(0);
@@ -37,10 +42,10 @@ if (args.includes('--help') || args.includes('-h')) {
 let game;
 if (args.includes('--continue')) {
   const r = loadFromFile(SAVE_PATH);
-  if (!r.ok) { console.error(`${r.error}\n${t('term.nowaGra')}`); game = new Game(argOf('seed', String(Date.now()))); }
+  if (!r.ok) { console.error(`${r.error}\n${t('term.nowaGra')}`); game = new Game(argOf('seed', String(Date.now())), { trudnosc }); }
   else game = r.game;
 } else {
-  game = new Game(argOf('seed', String(Date.now())));
+  game = new Game(argOf('seed', String(Date.now())), { trudnosc });
 }
 
 let mode = 'map';

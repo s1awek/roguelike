@@ -15,7 +15,8 @@ import { ustalJezyk, przelacznik } from './jezyk.js';
 import { poloz, pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
 import { obejrzyj } from '../src/ocena.js';
 import { siatkaHtml, podepnijSiatke, trwaCiagniecie } from './plecak-ui.js';
-import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml, dziennikHtml } from './opis.js';
+import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml, dziennikHtml, postepDosw } from './opis.js';
+import { wstawIkony } from './ikony.js';
 import { buildRules } from '../src/rules.js';
 import { Renderer } from './draw.js';
 import { View } from './view.js';
@@ -32,6 +33,7 @@ const renderer = new Renderer(canvas);
 const view = new View();
 const cien = new Cien();
 ustalJezyk();
+wstawIkony(document.getElementById('hud'));
 // Księga w języku czytającego, osobno dla każdego języka (patrz `web/main.js`).
 const ksiegi = {};
 const rules = () => (ksiegi[getLang()] ??= buildRules('web'));
@@ -590,12 +592,16 @@ function odswiezHud() {
   $('hpfill').style.background = frac > 0.5 ? 'var(--green)' : frac > 0.25 ? 'var(--gold)' : 'var(--red)';
   $('hptext').textContent = `${p.hp}/${p.maxHp}`;
   $('plevel').textContent = p.level;
-  $('pxp').textContent = p.xp;
+  const dosw = postepDosw(p);
+  $('pxp').textContent = dosw.xp;
+  $('pxpprog').textContent = dosw.prog;
+  $('xpfill').style.width = `${dosw.frakcja * 100}%`;
   $('patk').textContent = p.atak;
   $('pdef').textContent = p.obrona;
   $('pdepth').textContent = `${p.depth}/${p.maxDepth}`;
   $('pturn').textContent = cien.turn;
   $('pwrogi').textContent = cien.pietro.potwory;
+  $('pwrogi').closest('.poz').classList.toggle('sa', cien.pietro.potwory > 0);
   $('stany').innerHTML = stanyHtml(p);
   $('amulet').hidden = !p.hasAmulet;
 
@@ -688,6 +694,8 @@ async function odswiezStol() {
   try {
     const r = await fetch('/api/stol');
     const d = await r.json();
+    stolInfo = { trudnosc: d.trudnosc, pietra: d.pietra };
+    pokazTrudnosc();
     $('stol').innerHTML = d.uczestnicy.map(u => {
       const kl = u.status !== 'playing' ? 'poza' : u.rodzaj === 'bot' ? 'bot' : 'czlowiek';
       const mnie = ja && u.hid === ja.hid ? ' ja' : '';
@@ -695,6 +703,21 @@ async function odswiezStol() {
         + `${escapeHtml(u.name)} <em>${t('web.stol.pietro', { d: u.depth })}</em></span>`;
     }).join('');
   } catch { /* serwer zaraz wróci */ }
+}
+/**
+ * Stopień trudności stołu: znacznik w panelu i zdanie w poczekalni. Starszy
+ * serwer nie przysyła pola - wtedy nic nie pokazujemy, zamiast pokazywać
+ * „undefined".
+ */
+let stolInfo = null;
+function pokazTrudnosc() {
+  if (!stolInfo || !stolInfo.trudnosc) return;
+  const nazwa = t(`trudnosc.${stolInfo.trudnosc}`);
+  const tag = $('trudnosc');
+  tag.hidden = false;
+  tag.textContent = nazwa;
+  tag.title = t('web.hud.trudnoscTytul', { pietra: stolInfo.pietra });
+  $('stol-info').textContent = t('web.stol.trudnosc', { nazwa, pietra: stolInfo.pietra });
 }
 window.addEventListener('resize', () => { if (cien.poziom) renderer.resize(cien); });
 // Płótno idzie za rozmiarem SWOJEGO miejsca, nie tylko za rozmiarem okna.

@@ -15,6 +15,7 @@ import { POTIONS, SCROLLS, WEAPONS, ARMORS, FOODS, PACKS, SCENTS, POTION_SCENT, 
 import { PLECAK_START, LIMIT_STOSU } from './plecak.js';
 import { KINDS, BOSS } from './monsters.js';
 import { STOPNIE_GLODU } from './stany.js';
+import { TRUDNOSCI } from './trudnosc.js';
 import { MAX_DEPTH, FOV_RADIUS, HUNGER_START, HUNGER_MAX, xpForLevel,
   zwrotZaZabicie, PROG_ZMECZENIA, REGEN_MNOZNIK } from './game.js';
 import { getLang } from './i18n.js';
@@ -76,7 +77,7 @@ const KEYS = [
   ['Q', 'wyjście z gry', 'term'],
   ['kliknięcie w poznane pole', 'marsz - zatrzymuje się na widok potwora, przy stracie życia i nad przedmiotem', 'web'],
   ['m', 'minimapa - włącz i wyłącz', 'web'],
-  ['Shift+N', 'nowa gra', 'web'],
+  ['Shift+N', 'nowa gra - z wyborem stopnia trudności', 'web'],
 ];
 
 /**
@@ -96,7 +97,7 @@ export function buildRules(gdzie = 'doc', lang = getLang()) {
 
 /** Wszystko, z czego liczy się księga - przekazywane wersji angielskiej. */
 const ZRODLA = {
-  POTIONS, SCROLLS, WEAPONS, ARMORS, FOODS, PACKS, SCENTS, POTION_SCENT, scentGroup,
+  POTIONS, SCROLLS, WEAPONS, ARMORS, FOODS, PACKS, SCENTS, POTION_SCENT, scentGroup, TRUDNOSCI,
   PLECAK_START, LIMIT_STOSU, KINDS, BOSS, STOPNIE_GLODU,
   MAX_DEPTH, FOV_RADIUS, HUNGER_START, HUNGER_MAX, xpForLevel,
   zwrotZaZabicie, PROG_ZMECZENIA, REGEN_MNOZNIK, SHARE,
@@ -121,6 +122,20 @@ function ksiegaPolska(gdzie) {
         { t: 'p', text: 'Schody w górę na poziomie 1 są wyjściem z lochu. Bez Amuletu nie da się nimi wyjść: gra nie pozwoli wrócić z pustymi rękami.' },
         { t: 'p', text: 'Z Amuletem w ręku loch się budzi. Piętro, na którym go wziąłeś, i każde piętro, na które wejdziesz w drodze na powierzchnię, dostaje nowych mieszkańców - tylu, ilu miało na starcie, ale groźniejszych, jakby leżało dwa piętra głębiej. Część z nich od razu czuwa. Pojawiają się poza Twoim polem widzenia i tylko raz na piętro; mapa, rzeczy na podłodze i schody zostają takie, jakie pamiętasz.' },
         { t: 'p', text: 'Loch jest generowany z ziarna. Ta sama gra z tego samego ziarna przebiega dokładnie tak samo - to samo rozmieszczenie, te same losowania, ten sam wygląd mikstur.' },
+      ],
+    },
+    {
+      id: 'trudnosc',
+      title: 'Stopnie trudności',
+      blocks: [
+        { t: 'p', text: 'Trzy stopnie. Normalny jest wzorcem - na nim strojono równowagę i tak gra się bez wyboru. Łatwy ma mniej pięter, słabsze potwory i sytsze jedzenie; trudny odwrotnie. Rodzaje potworów rozkładają się po piętrach proporcjonalnie do ich liczby, więc najgroźniejsze stwory czekają zawsze przy dnie, a przeciwnik ostateczny i Amulet - na ostatnim piętrze.' },
+        { t: 'table', head: ['stopień', 'pięter', 'życie i siła potworów', 'sytość z jedzenia i na start'], rows:
+          Object.values(TRUDNOSCI).map(T => [T.nazwa, String(T.pietra), `${Math.round(T.potwory * 100)}%`, `${Math.round(T.glod * 100)}%`]) },
+        { t: 'p', text: gdzie === 'web'
+          ? 'Wybór przy nowej grze (Shift+N) albo w adresie strony: ?difficulty=easy, normal albo hard. Stopień jest zapisany razem z partią.'
+          : gdzie === 'term'
+            ? 'Wybór flagą --difficulty easy|normal|hard. Stopień jest zapisany razem z partią.'
+            : 'W przeglądarce: Shift+N albo ?difficulty=easy|normal|hard w adresie; w terminalu: --difficulty easy|normal|hard; przy stole: flaga serwera --difficulty, jeden stopień dla całego stołu. Stopień jest zapisany razem z partią.' },
       ],
     },
     {

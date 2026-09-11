@@ -20,6 +20,7 @@ import { Stol } from '../src/stol.js';
 import { Bot as BotKlasa } from '../src/bot.js';
 import { widokDla } from '../src/widok.js';
 import { t, znanyJezyk } from '../src/i18n.js';
+import { ustalTrudnosc } from '../src/trudnosc.js';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d; };
@@ -32,6 +33,9 @@ const LASKA_MS = Number(arg('--laska', 60000));   // ile czekamy na powrót roz�
 const TICK_MS = 60;
 const ZADAN_NA_SEKUNDE = Number(arg('--limit-zadan', 25));
 const MIEJSC_NA_ADRES = Number(arg('--miejsc-na-adres', 3));
+// Jeden stopień trudności dla całego stołu - loch jest jeden (D-055).
+const TRUDNOSC = ustalTrudnosc(arg('--difficulty', 'normal'));
+if (!TRUDNOSC) { console.error(t('term.nieznanaTrudnosc', { x: arg('--difficulty', '') })); process.exit(2); }
 const STRUMIENI_NA_MIEJSCE = 3;
 
 const TYPES = {
@@ -50,7 +54,7 @@ const [MW, MH] = MAPA.split('x').map(Number);
 // na tysiącu partii - nie ruszyła się ani o krok (D-034).
 // Boty nazywają się tak samo w każdym języku: imię uczestnika widzą wszyscy
 // przy stole, a ci mogą czytać grę w różnych językach (D-051).
-const game = new Game(ZIARNO, { name: 'Bot 1', w: MW, h: MH, odnawianie: true });
+const game = new Game(ZIARNO, { name: 'Bot 1', w: MW, h: MH, odnawianie: true, trudnosc: TRUDNOSC });
 // Pierwszy uczestnik powstaje razem z grą, więc trafia na schody. Rozrzucamy go
 // tak samo jak wszystkich pozostałych - inaczej każda partia zaczynałaby się
 // bijatyką przy wejściu.
@@ -282,6 +286,7 @@ const server = createServer(async (req, res) => {
   if (path === '/api/stol') {
     return json(res, 200, {
       ziarno: ZIARNO, mapa: MAPA, turn: game.turn,
+      trudnosc: TRUDNOSC, pietra: game.maxDepth,
       limit: LIMIT_MIEJSC, grajacych: grajacy(),
       uczestnicy: stol.stan().uczestnicy.map(u2 => ({
         hid: u2.hid, name: u2.name, rodzaj: u2.rodzaj, status: u2.status,
@@ -442,5 +447,5 @@ function log(t) {
 
 server.listen(PORT, () => {
   log(`stol otwarty na http://localhost:${PORT}/web/wielu.html`);
-  log(`ziarno ${ZIARNO}, mapa ${MAPA}, boty ${ILE_BOTOW}`);
+  log(`ziarno ${ZIARNO}, mapa ${MAPA}, boty ${ILE_BOTOW}, stopien ${TRUDNOSC} (${game.maxDepth} pieter)`);
 });

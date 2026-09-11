@@ -21,6 +21,7 @@ import { PLECAK_START, dolozDoPlecaka, przepakuj, zmiesciSie, poloz, mozna, ile 
 import { obejrzyj as obejrzyjRzecz } from './ocena.js';
 import { HUNGER_START, HUNGER_MAX, stopienGlodu, komunikatGlodu } from './stany.js';
 import { spawnMonster, spawnBoss, monsterName } from './monsters.js';
+import { TRUDNOSCI, DOMYSLNA_TRUDNOSC, wzmocnij } from './trudnosc.js';
 import { t, getLang } from './i18n.js';
 import { zabityPrzez, opisPrzyczyny } from './przyczyny.js';
 import { bytesToBase64, base64ToBytes } from './bytes.js';
@@ -90,7 +91,12 @@ export class Game {
   constructor(seed = 'los', opts = {}) {
     this.seed = seed;
     this.rng = new RNG(seed);
-    this.maxDepth = opts.maxDepth ?? MAX_DEPTH;
+    // Stopień trudności daje liczbę pięter, siłę potworów i tempo głodu
+    // (`src/trudnosc.js`, D-055). Nieznany stopień = normalny, żeby zapis
+    // z innej wersji nie wywracał gry. Jawne `maxDepth` ma pierwszeństwo:
+    // tak wczytuje się zapis i tak testy skracają loch.
+    this.trudnosc = TRUDNOSCI[opts.trudnosc] ? opts.trudnosc : DOMYSLNA_TRUDNOSC;
+    this.maxDepth = opts.maxDepth ?? this.profilTrudnosci.pietra;
     this.width = opts.w ?? 76;
     this.height = opts.h ?? 20;
     // Odnawianie lochu jest WYŁĄCZONE domyślnie. Partia jednoosobowa ma być
@@ -125,6 +131,8 @@ export class Game {
 
   newId() { return this._idCounter++; }
 
+  get profilTrudnosci() { return TRUDNOSCI[this.trudnosc]; }
+
   /**
    * Nowy uczestnik. Wszystko, co jest CIAŁEM albo WIEDZĄ, należy do niego:
    * położenie, życie, plecak, pamięć terenu, dziennik, rozpoznane rodzaje.
@@ -142,7 +150,7 @@ export class Game {
       hp: PLAYER_START.hp, maxHp: PLAYER_START.hp,
       str: PLAYER_START.str, def: PLAYER_START.def,
       level: 1, xp: 0,
-      hunger: HUNGER_START,
+      hunger: Math.round(HUNGER_START * this.profilTrudnosci.glod),
       inventory: [],
       plecak: { ...PLECAK_START },
       weapon: null, armor: null,
@@ -329,17 +337,20 @@ export class Game {
     const monsters = [];
     const items = [];
 
+    // Pule potworów i rzeczy pytają o głębokość WZORCOWĄ: loch o innej liczbie
+    // pięter rozciąga tę samą drabinę stworów na całą swoją długość.
+    const pula = this.glebokoscWzorcowa(depth);
     const count = this.ilePotworow(depth);
     for (let i = 0; i < count; i++) {
       const p = this.freeTile(level, monsters, items, [level.upPos]);
       if (!p) break;
-      const m = spawnMonster(this.rng, depth, p.x, p.y);
+      const m = wzmocnij(spawnMonster(this.rng, pula, p.x, p.y), this.profilTrudnosci.potwory);
       m.id = this.newId();
       monsters.push(m);
     }
     if (depth === this.maxDepth) {
       const p = this.freeTile(level, monsters, items, [level.upPos]) || { x: level.downPos.x, y: level.downPos.y };
-      const b = spawnBoss(p.x, p.y);
+      const b = wzmocnij(spawnBoss(p.x, p.y), this.profilTrudnosci.potwory);
       b.id = this.newId();
       b.asleep = true;
       monsters.push(b);
@@ -349,7 +360,7 @@ export class Game {
     for (let i = 0; i < itemCount; i++) {
       const p = this.freeTile(level, monsters, items);
       if (!p) break;
-      const it = randomItem(this.rng, depth);
+      const it = randomItem(this.rng, pula);
       it.id = this.newId();
       it.x = p.x; it.y = p.y;
       items.push(it);
@@ -359,7 +370,7 @@ export class Game {
     if (!items.some(i => i.kind === 'food')) {
       const p = this.freeTile(level, monsters, items);
       if (p) {
-        const it = randomItem(this.rng, depth);
+        const it = randomItem(this.rng, pula);
         it.kind = 'food'; it.type = 'ration'; it.name = 'racja żywnościowa'; it.nutrition = 800;
         it.id = this.newId(); it.x = p.x; it.y = p.y;
         items.push(it);
@@ -649,7 +660,7 @@ export class Game {
       if (zywe.length < this.ilePotworow(depth)) {
         const p = this.wolnePoleWCiemnosci(depth, entry);
         if (p) {
-          const m = spawnMonster(this.rng, depth, p.x, p.y);
+          const m = wzmocnij(spawnMonster(this.rng, this.glebokoscWzorcowa(depth), p.x, p.y), this.profilTrudnosci.potwory);
           m.id = this.newId();
           entry.monsters.push(m);
         }
@@ -657,7 +668,7 @@ export class Game {
       if (entry.items.length < this.ilePrzedmiotow(depth) && this.rng.int(3) === 0) {
         const p = this.wolnePoleWCiemnosci(depth, entry);
         if (p) {
-          const it = randomItem(this.rng, depth);
+          const it = randomItem(this.rng, this.glebokoscWzorcowa(depth));
           it.id = this.newId();
           it.x = p.x; it.y = p.y;
           entry.items.push(it);
@@ -703,7 +714,7 @@ export class Game {
     for (let i = 0; i < ile; i++) {
       const p = this.wolnePoleWCiemnosci(depth, entry);
       if (!p) break;
-      const m = spawnMonster(this.rng, pula, p.x, p.y);
+      const m = wzmocnij(spawnMonster(this.rng, pula, p.x, p.y), this.profilTrudnosci.potwory);
       m.id = this.newId();
       m.asleep = !this.rng.chance(BUDZENIE.czuwa);
       entry.monsters.push(m);
@@ -1062,7 +1073,7 @@ export class Game {
       case 'potion': return this.quaff(it, index);
       case 'scroll': return this.read(it, index);
       case 'food': {
-        this.player.hunger = Math.min(HUNGER_MAX, this.player.hunger + it.nutrition);
+        this.player.hunger = Math.min(HUNGER_MAX, this.player.hunger + Math.round(it.nutrition * this.profilTrudnosci.glod));
         this.zuzyj(it, index);
         this.message('jesz', { nazwa: (lang) => itemName(it, lang) });
         return true;
@@ -1336,6 +1347,7 @@ export class Game {
       rng: this.rng.getState(),
       idCounter: this._idCounter,
       maxDepth: this.maxDepth,
+      trudnosc: this.trudnosc,
       width: this.width, height: this.height,
       appearances: this.appearances,
       turn: this.turn,
@@ -1352,7 +1364,8 @@ export class Game {
     if (data.format === 1) data = przepiszFormat1(data);
     if (data.format !== 2) throw bladZapisu();
 
-    const g = new Game(data.seed, { deferStart: true, maxDepth: data.maxDepth, w: data.width, h: data.height });
+    // Zapis sprzed stopni trudności nie niesie `trudnosc` - to partia normalna.
+    const g = new Game(data.seed, { deferStart: true, maxDepth: data.maxDepth, w: data.width, h: data.height, trudnosc: data.trudnosc });
     g.rng.setState(data.rng);
     g._idCounter = data.idCounter;
     g.appearances = uzupelnijWyglady(data.appearances);

@@ -19,7 +19,7 @@ const KEYS_EN = [
   ['Q', 'quit the game', 'term'],
   ['click on a known tile', 'walk there - stops at the sight of a monster, on losing health and over an item', 'web'],
   ['m', 'minimap - on and off', 'web'],
-  ['Shift+N', 'new game', 'web'],
+  ['Shift+N', 'new game - with a choice of difficulty', 'web'],
 ];
 
 const POTION_EFFECT = {
@@ -60,6 +60,20 @@ export function ksiegaAngielska(gdzie, Z) {
         { t: 'p', text: 'The up staircase on level 1 is the way out of the dungeon. Without the Amulet you cannot leave by it: the game will not let you return empty-handed.' },
         { t: 'p', text: 'With the Amulet in hand the dungeon stirs. The level where you took it, and every level you enter on the way back to the surface, gets new inhabitants - as many as it had at the start, but nastier, as if it lay two levels deeper. Some of them are awake from the first moment. They appear outside your field of view and only once per level; the map, the items on the floor and the stairs stay exactly as you remember them.' },
         { t: 'p', text: 'The dungeon is generated from a seed. The same game from the same seed plays out exactly the same way - the same layout, the same rolls, the same potion looks.' },
+      ],
+    },
+    {
+      id: 'trudnosc',
+      title: 'Difficulty levels',
+      blocks: [
+        { t: 'p', text: 'Three levels. Normal is the reference - the balance was tuned on it and it is what you get without choosing. Easy has fewer floors, weaker monsters and more filling food; hard is the opposite. Monster kinds are spread over the floors in proportion to their number, so the nastiest creatures always wait near the bottom, and the final enemy and the Amulet are on the last floor.' },
+        { t: 'table', head: ['level', 'floors', 'monster health and strength', 'food and starting satiety'], rows:
+          Object.entries(Z.TRUDNOSCI).map(([k, T]) => [EN[`trudnosc.${k}`], String(T.pietra), `${Math.round(T.potwory * 100)}%`, `${Math.round(T.glod * 100)}%`]) },
+        { t: 'p', text: gdzie === 'web'
+          ? 'Choose when starting a new game (Shift+N) or in the page address: ?difficulty=easy, normal or hard. The level is saved with the game.'
+          : gdzie === 'term'
+            ? 'Choose with the --difficulty easy|normal|hard flag. The level is saved with the game.'
+            : 'In the browser: Shift+N or ?difficulty=easy|normal|hard in the address; in the terminal: --difficulty easy|normal|hard; at the table: the server flag --difficulty, one level for the whole table. The level is saved with the game.' },
       ],
     },
     {

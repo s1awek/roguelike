@@ -19,6 +19,18 @@ With the Amulet in hand the dungeon stirs. The level where you took it, and ever
 
 The dungeon is generated from a seed. The same game from the same seed plays out exactly the same way - the same layout, the same rolls, the same potion looks.
 
+## Difficulty levels
+
+Three levels. Normal is the reference - the balance was tuned on it and it is what you get without choosing. Easy has fewer floors, weaker monsters and more filling food; hard is the opposite. Monster kinds are spread over the floors in proportion to their number, so the nastiest creatures always wait near the bottom, and the final enemy and the Amulet are on the last floor.
+
+| level | floors | monster health and strength | food and starting satiety |
+|---|---|---|---|
+| easy | 6 | 80% | 125% |
+| normal | 8 | 100% | 100% |
+| hard | 10 | 110% | 90% |
+
+In the browser: Shift+N or ?difficulty=easy|normal|hard in the address; in the terminal: --difficulty easy|normal|hard; at the table: the server flag --difficulty, one level for the whole table. The level is saved with the game.
+
 ## Controls
 
 | key | what it does |
@@ -36,7 +48,7 @@ The dungeon is generated from a seed. The same game from the same seed plays out
 | Q | quit the game (terminal only) |
 | click on a known tile | walk there - stops at the sight of a monster, on losing health and over an item (graphical version only) |
 | m | minimap - on and off (graphical version only) |
-| Shift+N | new game (graphical version only) |
+| Shift+N | new game - with a choice of difficulty (graphical version only) |
 
 A rejected action - walking into a wall, picking up from an empty tile, sniffing something that is not a potion - does NOT cost a turn. The world only moves when you do something.
 

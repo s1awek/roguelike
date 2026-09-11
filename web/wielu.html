@@ -10,22 +10,26 @@
 <body>
 <div id="shell">
   <header id="hud">
-    <div class="hp">
-      <span class="lbl">HP</span>
-      <div class="bar"><i id="hpfill"></i></div>
-      <span id="hptext" class="num">0/0</span>
-    </div>
-    <div id="stany" class="stany"></div>
-    <div class="stats">
-      <span><b id="plevel">1</b><em data-t="web.hud.poziom">level</em></span>
-      <span><b id="pxp">0</b><em data-t="web.hud.dosw">XP</em></span>
-      <span><b id="patk">0</b><em data-t="web.hud.atak">attack</em></span>
-      <span><b id="pdef">0</b><em data-t="web.hud.obrona">defense</em></span>
-      <span><b id="pdepth">1/8</b><em data-t="web.hud.glebokosc">depth</em></span>
-      <span><b id="pwrogi">0</b><em data-t="web.hud.wrogow">foes here</em></span>
-      <span><b id="pturn">0</b><em data-t="web.hud.tura">turn</em></span>
-    </div>
+    <section class="grupa zywotnosc" data-t-title="web.hud.grupa.zywotnosc">
+      <div class="poz zycie" data-t-title="web.hud.tytul.zycie">
+        <span class="rzad"><i class="ikona" data-ikona="serce"></i><span class="bar"><i id="hpfill"></i></span><span id="hptext" class="num">0/0</span></span>
+        <em data-t="web.hud.zycie">life</em>
+      </div>
+      <div id="stany" class="stany"></div>
+    </section>
+    <section class="grupa postac" data-t-title="web.hud.grupa.postac">
+      <div class="poz" data-t-title="web.hud.tytul.poziom"><i class="ikona" data-ikona="gwiazda"></i><span class="kol"><b id="plevel">1</b><em data-t="web.hud.poziom">level</em></span></div>
+      <div class="poz dosw" data-t-title="web.hud.tytul.dosw"><i class="ikona" data-ikona="iskra"></i><span class="kol"><b><span id="pxp">0</span><small>/</small><span id="pxpprog">10</span></b><span class="bar mini"><i id="xpfill"></i></span><em data-t="web.hud.dosw">XP</em></span></div>
+      <div class="poz" data-t-title="web.hud.tytul.atak"><i class="ikona" data-ikona="miecz"></i><span class="kol"><b id="patk">0</b><em data-t="web.hud.atak">attack</em></span></div>
+      <div class="poz" data-t-title="web.hud.tytul.obrona"><i class="ikona" data-ikona="tarcza"></i><span class="kol"><b id="pdef">0</b><em data-t="web.hud.obrona">defense</em></span></div>
+    </section>
+    <section class="grupa loch" data-t-title="web.hud.grupa.loch">
+      <div class="poz" data-t-title="web.hud.tytul.glebokosc"><i class="ikona" data-ikona="schody"></i><span class="kol"><b id="pdepth">1/8</b><em data-t="web.hud.glebokosc">depth</em></span></div>
+      <div class="poz wrogowie" data-t-title="web.hud.tytul.wrogow"><i class="ikona" data-ikona="czaszka"></i><span class="kol"><b id="pwrogi">0</b><em data-t="web.hud.wrogow">foes</em></span></div>
+      <div class="poz" data-t-title="web.hud.tytul.tura"><i class="ikona" data-ikona="klepsydra"></i><span class="kol"><b id="pturn">0</b><em data-t="web.hud.tura">turn</em></span></div>
+    </section>
     <div class="right">
+      <span id="trudnosc" class="tag" hidden></span>
       <span id="kontakt" class="tag" hidden></span>
       <span id="oddech" class="tag bad" hidden></span>
       <span id="amulet" class="tag gold" hidden data-t="web.amulet">AMULET</span>
@@ -62,6 +66,7 @@
     <p class="muted" data-t-html="web.stol.lobby1"></p>
     <p class="muted" data-t-html="web.stol.lobby2"></p>
     <p class="muted" data-t-html="web.stol.lobby3"></p>
+    <p id="stol-info" class="muted"></p>
     <label for="imie" data-t="web.stol.imie"></label>
     <input id="imie" maxlength="16" autocomplete="off" data-t-placeholder="web.stol.imiePrzyklad">
     <button id="wejdz" data-t="web.stol.wejdz"></button>
