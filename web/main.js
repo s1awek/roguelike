@@ -8,11 +8,11 @@
 import { Game } from '../src/game.js';
 import { TRUDNOSCI, DOMYSLNA_TRUDNOSC, ustalTrudnosc } from '../src/trudnosc.js';
 import { serialize, loadFromString } from '../src/serialize.js';
-import { itemLabel, itemStats } from '../src/items.js';
+import { itemLabel, itemStats, makeAmulet } from '../src/items.js';
 import { t, getLang } from '../src/i18n.js';
 import { opisPrzyczyny } from '../src/przyczyny.js';
 import { ustalJezyk, przelacznik } from './jezyk.js';
-import { pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
+import { pojemnosc, zajetePola, poleRzeczy, wolnePola, dolozDoPlecaka } from '../src/plecak.js';
 import { siatkaHtml, podepnijSiatke } from './plecak-ui.js';
 import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml, dziennikHtml, postepDosw } from './opis.js';
 import { wstawIkony } from './ikony.js';
@@ -89,7 +89,18 @@ if (game.status === 'playing' && Number.isInteger(pietroParam)
   && pietroParam >= 1 && pietroParam <= game.maxDepth && pietroParam !== game.depth) {
   game.enterLevel(pietroParam, pietroParam > game.depth ? 'down' : 'up');
 }
-if (params.get('amulet') === '1' && game.status === 'playing') game.player.hasAmulet = true;
+// Amulet jest zwykłą rzeczą w plecaku (wyrzucenie go cofa powrót), więc idzie
+// do plecaka jak przy podniesieniu, a egzemplarz z dna lochu znika, żeby nie
+// było dwóch. Przy pełnym plecaku nie ma Amuletu - tak jak przy podnoszeniu.
+if (params.get('amulet') === '1' && game.status === 'playing' && !game.player.hasAmulet) {
+  const it = makeAmulet();
+  it.id = game.newId();
+  if (dolozDoPlecaka(game.player, it, (x) => game.etykieta(x)) > 0) {
+    game.player.hasAmulet = true;
+    const dno = game.levels.get(game.maxDepth);
+    if (dno) dno.items = dno.items.filter(i => i.kind !== 'amulet');
+  }
+}
 // `?bog=1` włącza nieśmiertelność (`?bog=0` wyłącza); stan jedzie w zapisie
 // razem z bohaterem, więc trzyma się do odwołania, a znacznik w panelu mówi,
 // że partia nie jest uczciwa.
