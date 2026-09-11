@@ -414,3 +414,16 @@ kbd {
 #panel .dziennik-panel li { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 #panel .dziennik-panel li:last-child { color: var(--ink); }
 
+
+/* ---------- przełącznik języka ---------- */
+/* Stale widoczny w pasku stanu i na ekranie wejścia do stołu (spec A-2): gracz
+   anglojęzyczny nie może musieć zgadywać klawisza, żeby go znaleźć. */
+.jezyk { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.jezyk button, #lobby .jezyk button {
+  all: unset; cursor: pointer; padding: 3px 9px; font-size: 12px; letter-spacing: .06em;
+  color: var(--dim); background: transparent;
+}
+.jezyk button:hover { color: var(--ink); }
+.jezyk button.on, #lobby .jezyk button.on { color: #0d0a02; background: var(--gold); font-weight: 700; }
+.jezyk button:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+#lobby .jezyk { float: right; margin: 0 0 8px 12px; }

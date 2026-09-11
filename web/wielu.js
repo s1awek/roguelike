@@ -8,7 +8,10 @@
 // się jednocześnie, więc nikt nie może zobaczyć skutku swojego ruchu, zanim
 // drugi zadeklaruje własny.
 
-import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
+import { itemLabel, itemStats, stackLabel } from '../src/items.js';
+import { t, getLang } from '../src/i18n.js';
+import { opisPrzyczyny } from '../src/przyczyny.js';
+import { ustalJezyk, przelacznik } from './jezyk.js';
 import { poloz, pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
 import { obejrzyj } from '../src/ocena.js';
 import { siatkaHtml, podepnijSiatke, trwaCiagniecie } from './plecak-ui.js';
@@ -28,7 +31,10 @@ const logEl = $('log');
 const renderer = new Renderer(canvas);
 const view = new View();
 const cien = new Cien();
-const RULES = buildRules('web');
+ustalJezyk();
+// Księga w języku czytającego, osobno dla każdego języka (patrz `web/main.js`).
+const ksiegi = {};
+const rules = () => (ksiegi[getLang()] ??= buildRules('web'));
 
 let ja = null;              // {hid, token, name}
 let strumien = null;
@@ -39,6 +45,13 @@ let turaZgloszenia = -1;
 let notice = '';
 let noticeUntil = 0;
 let wymiar = '';
+
+/**
+ * Odmowa ze stołu w języku gracza. Nowszy stół przysyła `kod` i tłumaczy go
+ * klient; starszy przysyła gotowe zdanie, które pokazujemy takie, jakie jest
+ * (spec C-3: co najwyżej część tekstów w języku stołu, bez wywrotki).
+ */
+const odmowa = (b, zapas) => (b && b.kod ? t(b.kod, b.p || {}) : (b && (b.powod || b.blad)) || zapas);
 
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -83,12 +96,11 @@ async function dosiadz(name) {
   if (dosiadanie || ja) return;
   dosiadanie = true;
   const przycisk = $('wejdz');
-  const napis = przycisk.textContent;
   przycisk.disabled = true;
-  przycisk.textContent = 'Dosiadam...';
+  przycisk.textContent = t('web.stol.dosiadam');
   try {
-    const { code, body } = await post('/api/dosiadz', { name });
-    if (code !== 200) { say(`Nie udało się dosiąść: ${body.blad || code}`); return; }
+    const { code, body } = await post('/api/dosiadz', { name, lang: getLang() });
+    if (code !== 200) { say(t('web.stol.nieDosiadl', { powod: odmowa(body, code) })); return; }
     ja = body;
     sessionStorage.setItem('roguelike:miejsce', JSON.stringify(ja));
     // Ekran wejścia znika, gdy miejsce JEST PRZYZNANE, a nie gdy przyjdzie
@@ -104,7 +116,7 @@ async function dosiadz(name) {
     // widział, gdy coś poszło nie tak - a wyglądał jak zawieszenie.
     dosiadanie = false;
     przycisk.disabled = false;
-    przycisk.textContent = napis;
+    przycisk.textContent = t('web.stol.wejdz');
   }
 }
 
@@ -114,7 +126,7 @@ let pierwszyWidok = false;
 function doMapy() {
   mode = 'map';
   $('lobby').hidden = true;
-  say('Miejsce zajęte, czekam na pierwszy widok lochu...', 4000);
+  say(t('web.stol.czekamNaWidok'), 4000);
 }
 
 function otworzStrumien() {
@@ -162,9 +174,8 @@ function otworzStrumien() {
     // stołu jest bezwartościowy, więc trzeba to sprawdzić i wrócić do lobby -
     // inaczej gracz ogląda „próbuję dalej" bez końca, a przycisk wejścia jest
     // zablokowany, bo miejsce formalnie ma.
-    if (ja && !(await miejsceIstnieje(ja))) return doLobby(
-      'Stół został podniesiony od nowa - Twoja poprzednia partia przepadła. Wejdź jeszcze raz.');
-    say('Zerwane połączenie ze stołem, próbuję dalej...', 4000);
+    if (ja && !(await miejsceIstnieje(ja))) return doLobby(t('web.stol.podniesiony'));
+    say(t('web.stol.zerwane'), 4000);
   };
 }
 
@@ -190,7 +201,7 @@ function doLobby(powod) {
   $('lobby').hidden = false;
   const przycisk = $('wejdz');
   przycisk.disabled = false;
-  przycisk.textContent = 'Wejdź do lochu';
+  przycisk.textContent = t('web.stol.wejdz');
   if (powod) say(powod, 8000);
 }
 
@@ -199,7 +210,7 @@ function zglos(action) {
   zgloszone = action;
   turaZgloszenia = cien.turn;
   post('/api/dzialanie', { hid: ja.hid, token: ja.token, action }).then(({ code, body }) => {
-    if (code !== 200 || body.ok === false) { zgloszone = null; say(body.powod || body.blad || 'odmowa'); }
+    if (code !== 200 || body.ok === false) { zgloszone = null; say(odmowa(body, t('web.stol.odmowa'))); }
   });
 }
 
@@ -223,7 +234,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'n' || k === ' ' || k === 'ArrowRight' || k === 'ArrowDown') { pokazZasady(ruleSection + 1); return; }
     if (k === 'p' || k === 'ArrowLeft' || k === 'ArrowUp') { pokazZasady(ruleSection - 1); return; }
     const n = Number(k);
-    if (Number.isInteger(n) && n >= 1 && n <= RULES.length) pokazZasady(n - 1);
+    if (Number.isInteger(n) && n >= 1 && n <= rules().length) pokazZasady(n - 1);
     return;
   }
   // Ekran przegranego starcia gaśnie dowolnym klawiszem - ale dopiero
@@ -263,7 +274,7 @@ window.addEventListener('keydown', (e) => {
     case 'w': otworzPlecak('sniff'); break;
     case 'x': pokazObejrzenie(); break;
     case '?': pokazZasady(ruleSection); break;
-    case 'm': renderer.minimap = !renderer.minimap; say(renderer.minimap ? 'Plan włączony.' : 'Plan wyłączony.'); break;
+    case 'm': renderer.minimap = !renderer.minimap; say(t(renderer.minimap ? 'web.planWl' : 'web.planWyl')); break;
     default: break;
   }
 });
@@ -283,9 +294,15 @@ function uzyj(idx) {
   const nadpisuje = zgloszone && cien.turn === turaZgloszenia;
   zamknij();
   zglos({ type: typ, index: idx });
-  if (nadpisuje) say('Zamiast poprzedniego zgłoszenia - przy stole wychodzi jedno działanie na turę.');
+  if (nadpisuje) say(t('web.stol.zamiastDzialania'));
   if (cien.ja && cien.ja.status === 'playing') otworzPlecak(which);
 }
+
+/**
+ * Klucz łączenia w stos - ten sam, którym łączy serwer, niezależny od języka.
+ * Do porównań, nigdy do pokazania graczowi.
+ */
+const klStosu = (x) => stackLabel(x, cien.appearances, cien.identified, cien.sniffed);
 
 /**
  * Obejrzenie rzeczy pod nogami. Liczone U SIEBIE, z migawki - i wolno tak
@@ -299,16 +316,16 @@ function pokazObejrzenie() {
   mode = 'obejrzyj';
   const etykieta = (x) => itemLabel(x, cien.appearances, cien.identified, cien.sniffed);
   const naSiatce = !!(p.plecak && p.plecak.w);
-  const o = it && naSiatce ? obejrzyj(it, p, cien.identified, etykieta) : null;
+  const o = it && naSiatce ? obejrzyj(it, p, cien.identified, klStosu) : null;
   // Rzecz pod nogami JEST, tylko starszy stół nie przysyła wymiarów plecaka -
   // wtedy pokazujemy tyle, ile wiemy, zamiast twierdzić, że nic tu nie leży.
   const tresc = it && !o
     ? `<h2>${escapeHtml(etykieta(it))}</h2>`
-      + `<p>${statsHtml(itemStats(it, p, cien.identified)) || '<span class="muted">bez opisu</span>'}</p>`
-      + '<p class="muted">Miejsce w plecaku policzy dopiero nowsza wersja stołu.</p>'
+      + `<p>${statsHtml(itemStats(it, p, cien.identified)) || `<span class="muted">${t('web.stol.bezOpisu')}</span>`}</p>`
+      + `<p class="muted">${t('web.stol.staryStol')}</p>`
     : obejrzyjHtml(it ? etykieta(it) : '', o);
   panel.innerHTML = tresc
-    + `<p class="foot">${it ? '<kbd>,</kbd> podnosi. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+    + `<p class="foot">${it ? t('web.podnosiKbd') : ''}${t('web.escWraca')}</p>`;
   overlay.hidden = false;
 }
 
@@ -338,16 +355,15 @@ function sprawdzPrzegrana() {
   ostatniaPrzegrana = tura;
   const d = p.przegrana || {};
   mode = 'przegrana';
-  panel.innerHTML = `<h2 class="zle">Przegrane starcie</h2>
-    <p><b>${escapeHtml(d.kto || 'Ktoś')}</b> położył Cię na deski.</p>
+  panel.innerHTML = `<h2 class="zle">${t('web.stol.pg.tytul')}</h2>
+    <p>${t('web.stol.pg.polozyl', { kto: escapeHtml(d.kto || t('web.stol.pg.ktos')) })}</p>
     <ul class="karta">
-      <li>Cały dobytek (${d.ile ?? 0} ${d.ile === 1 ? 'rzecz' : 'rzeczy'}) został na podłodze tam, gdzie padłeś
-        <span class="muted">- razem z bronią, pancerzem i Amuletem, jeśli go miałeś</span></li>
-      <li>Uciekłeś z głębokości ${d.zPietra ?? '?'} na ${d.naPietro ?? '?'} i stoisz przy schodach</li>
-      <li>Zostało Ci ćwierć życia</li>
+      <li>${t('web.stol.pg.dobytek', { ile: d.ile ?? 0 })}</li>
+      <li>${t('web.stol.pg.ucieczka', { z: d.zPietra ?? '?', na: d.naPietro ?? '?' })}</li>
+      <li>${t('web.stol.pg.cwierc')}</li>
     </ul>
-    <p class="muted">To nie jest koniec partii: po dobytek można wrócić, ale ktoś inny może być tam pierwszy.</p>
-    <p class="foot">Dowolny klawisz wraca do gry.</p>`;
+    <p class="muted">${t('web.stol.pg.niekoniec')}</p>
+    <p class="foot">${t('web.stol.pg.stopka')}</p>`;
   overlay.hidden = false;
 }
 
@@ -376,7 +392,7 @@ function odswiezStos() {
   const p = cien.ja;
   if (!p) return;
   stos = (cien.items || []).filter(i => i.x === p.x && i.y === p.y);
-  if (!stos.length) { zamknij(); say('Nic już tu nie leży.'); return; }
+  if (!stos.length) { zamknij(); say(t('web.stol.nicNieLezy')); return; }
   const sa = new Set(stos.map(i => i.id));
   wybrane = new Set([...wybrane].filter(id => sa.has(id)));
   pokazStos();
@@ -406,11 +422,11 @@ function pokazStos() {
   const etykieta = (it) => itemLabel(it, cien.appearances, cien.identified, cien.sniffed);
   const naSiatce = !!(p.plecak && p.plecak.w);
   const lista = stos.map((it) => {
-    const o = naSiatce ? obejrzyj(it, p, cien.identified, etykieta) : null;
+    const o = naSiatce ? obejrzyj(it, p, cien.identified, klStosu) : null;
     return {
       nazwa: etykieta(it),
       opis: itemStats(it, p, cien.identified).opis,
-      pola: naSiatce ? `${poleRzeczy(it)} ${polaSlowo(poleRzeczy(it))}` : '',
+      pola: naSiatce ? `${poleRzeczy(it)} ${t('pola', { n: poleRzeczy(it) })}` : '',
       wybrane: wybrane.has(it.id),
       werdykt: o ? o.werdykt : '',
       ton: o ? o.ton : '',
@@ -430,8 +446,8 @@ function pokazStos() {
   overlay.hidden = false;
 }
 
-const INV_TITLE = { drop: 'Co wyrzucić?', sniff: 'Co powąchać?', inventory: 'Ekwipunek' };
-const INV_HINT = { drop: 'wyrzuca', sniff: 'wącha', inventory: 'używa' };
+const INV_TITLE = { drop: 'term.coWyrzucic', sniff: 'term.coPowachac', inventory: 'term.ekwipunek' };
+const INV_HINT = { drop: 'web.inv.drop', sniff: 'web.inv.sniffKrotko', inventory: 'web.inv.useKrotko' };
 
 /**
  * Przekładanie w plecaku przy stole.
@@ -451,7 +467,7 @@ function przelozUSiebie(index, x, y, obrot) {
     .then(({ code, body }) => {
       if (code === 200 && body.ok !== false) return;
       Object.assign(it, stare);           // serwer wie lepiej
-      say(body.powod || body.blad || 'nie udało się przełożyć');
+      say(odmowa(body, t('web.stol.nieprzelozone')));
       if (mode === 'inventory') otworzPlecak('inventory');
     });
 }
@@ -466,7 +482,7 @@ function otworzPlecak(which) {
     const ile = (it.ile || 1) > 1 ? ` <span class="worn">x${it.ile}</span>` : '';
     return `<li class="item" data-i="${i}"><span class="key">${String.fromCharCode(97 + i)}</span>`
       + `<canvas class="ico" width="44" height="44"></canvas>`
-      + `<span class="nm">${escapeHtml(etykieta(it))}${ile}${noszone ? ' <em class="muted">(noszone)</em>' : ''}`
+      + `<span class="nm">${escapeHtml(etykieta(it))}${ile}${noszone ? ` <em class="muted">${t('web.noszone')}</em>` : ''}`
       + `${statsHtml(itemStats(it, p, cien.identified))}</span></li>`;
   }).join('');
   // Migawka ze STARSZEGO stołu nie zna plecaka na siatce - wtedy pokazujemy
@@ -475,15 +491,15 @@ function otworzPlecak(which) {
   // warunek tego, żeby wgranie nowego pliku nie kładło komuś trwającej partii.
   const naSiatce = !!(p.plecak && p.plecak.w);
   const licznik = naSiatce
-    ? `${zajetePola(p)}/${pojemnosc(p)} ${polaSlowo(pojemnosc(p))}`
-    : `${p.inventory.length} rzeczy`;
+    ? `${zajetePola(p)}/${pojemnosc(p)} ${t('pola', { n: pojemnosc(p) })}`
+    : t('web.nRzeczy', { n: p.inventory.length });
   panel.innerHTML = `
-    <h2>${INV_TITLE[which]} <span class="muted">${licznik}</span></h2>
+    <h2>${t(INV_TITLE[which])} <span class="muted">${licznik}</span></h2>
     <div class="ekwipunek">${which === 'inventory' && naSiatce ? siatkaHtml(p, etykieta, { kosz: true }) : ''}
-      <ul>${rows || '<li class="muted">(pusto)</li>'}</ul></div>
+      <ul>${rows || `<li class="muted">${t('web.pusto')}</li>`}</ul></div>
     ${dziennikHtml(cien.messages)}
-    <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
-      ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+    <p class="foot">${t('web.inv.stopka', { co: t(INV_HINT[which]) })}${which === 'inventory'
+      ? t('web.inv.dWyrzuca') : ''}${t('web.escWraca')}</p>`;
   panel.querySelectorAll('li.item').forEach(li => {
     const it = p.inventory[Number(li.dataset.i)];
     const c = li.querySelector('canvas.ico');
@@ -509,9 +525,7 @@ function otworzPlecak(which) {
       const nadpisuje = zgloszone && cien.turn === turaZgloszenia;
       zamknij();                       // `zglos` deklaruje tylko z mapy
       zglos({ type: 'drop', index: i });
-      say(nadpisuje
-        ? 'Zamiast poprzedniego zgłoszenia - przy stole wychodzi jedna rzecz na turę.'
-        : 'Wyrzucenie zgłoszone: rzecz wypadnie, gdy zejdzie tura.');
+      say(t(nadpisuje ? 'web.stol.zamiastRzeczy' : 'web.stol.wyrzucenieZgloszone'));
       otworzPlecak(which);
     },
     rysuj: (c, it) => renderer.drawItemShape(c.getContext('2d'), it,
@@ -522,6 +536,7 @@ function otworzPlecak(which) {
 
 function pokazZasady(index) {
   mode = 'help';
+  const RULES = rules();
   ruleSection = ((index % RULES.length) + RULES.length) % RULES.length;
   const sec = RULES[ruleSection];
   const nav = RULES.map((r, i) =>
@@ -536,7 +551,7 @@ function pokazZasady(index) {
     return '';
   }).join('');
   panel.innerHTML = `<div class="tabs">${nav}</div><h2>${escapeHtml(sec.title)}</h2>${body}`
-    + `<p class="foot"><kbd>n</kbd> dalej &nbsp;<kbd>p</kbd> wstecz &nbsp;<kbd>Esc</kbd> wraca</p>`;
+    + `<p class="foot">${t('web.ksiegaStopkaStol')}</p>`;
   panel.querySelectorAll('button.tab').forEach(btn =>
     btn.addEventListener('click', () => pokazZasady(Number(btn.dataset.i))));
   overlay.hidden = false;
@@ -551,10 +566,10 @@ function koniec() {
   // i natychmiast ustępował ekranowi końca - bez żadnej drogi dalej.
   sessionStorage.removeItem('roguelike:miejsce');
   const wygral = p.status === 'won';
-  panel.innerHTML = `<h2>${wygral ? 'Wyszedłeś z lochu' : 'Koniec'}</h2>`
-    + `<p class="muted">${escapeHtml(p.cause || (wygral ? 'z Amuletem' : 'rany'))}</p>`
-    + `<p class="muted">Poziom ${p.level}, doświadczenie ${p.xp}, głębokość ${p.depth}, tura ${cien.turn}.</p>`
-    + `<p class="foot">Wciśnij <kbd>Enter</kbd>, żeby wrócić do wejścia i dosiąść jako ktoś nowy.</p>`;
+  panel.innerHTML = `<h2>${t(wygral ? 'web.stol.wyszedles' : 'web.stol.koniec')}</h2>`
+    + `<p class="muted">${escapeHtml(opisPrzyczyny(p.cause || (wygral ? 'wyniesiono Amulet Otchłani' : 'rany')))}</p>`
+    + `<p class="muted">${t('web.stol.staty', { level: p.level, xp: p.xp, depth: p.depth, turn: cien.turn })}</p>`
+    + `<p class="foot">${t('web.stol.koniecStopka')}</p>`;
   overlay.hidden = false;
 }
 
@@ -584,21 +599,19 @@ function odswiezHud() {
   const bezTchu = zm >= prog;
   const oddech = $('oddech');
   oddech.hidden = zm < Math.ceil(prog / 2);
-  oddech.textContent = bezTchu ? 'bez tchu' : `oddech ${prog - zm}`;
+  oddech.textContent = bezTchu ? t('web.stol.bezTchu') : t('web.stol.oddech', { n: prog - zm });
   oddech.className = bezTchu ? 'tag bad' : 'tag warn';
-  oddech.title = bezTchu
-    ? 'Cofasz się zbyt długo - najbliższa próba odwrotu skończy się przystankiem na oddech.'
-    : `Możesz się jeszcze cofnąć ${prog - zm} razy, potem musisz zaczerpnąć powietrza.`;
+  oddech.title = bezTchu ? t('web.stol.bezTchuTytul') : t('web.stol.oddechTytul', { n: prog - zm });
 
   // Znacznik tury wspólnej. Gracz musi WIEDZIEĆ, że jego ruch czeka na kogoś -
   // inaczej nieruchomy ekran po naciśnięciu klawisza wygląda jak zawieszona gra.
   const wKontakcie = cien.kontakt.length > 0;
   const kto = cien.kontakt.map(k => k.name).join(', ');
-  const t = $('kontakt');
-  t.hidden = !wKontakcie;
+  const znacznik = $('kontakt');
+  znacznik.hidden = !wKontakcie;
   if (wKontakcie) {
-    t.textContent = zgloszone ? `tura wspólna: czekasz na ${kto}` : `widzisz: ${kto}`;
-    t.className = zgloszone ? 'tag gold' : 'tag';
+    znacznik.textContent = t(zgloszone ? 'web.stol.czekaszNa' : 'web.stol.widzisz', { kto });
+    znacznik.className = zgloszone ? 'tag gold' : 'tag';
   }
 
   // Pasek pod planszą: nazywa stan, podaje powód i mówi, co gracz ma zrobić.
@@ -614,25 +627,26 @@ function odswiezHud() {
   // ekranem. Miejsce jest zarezerwowane na stałe, zmienia się tylko treść.
   pasek.classList.toggle('pusty', !wKontakcie);
   if (wKontakcie) {
-    const t = cien.tura || null;
-    const toJa = t ? t.wspolna && t.jaMilcze : !zgloszone;
-    terminTury = t && t.zaMs !== null && toJa ? Date.now() + t.zaMs : null;
-    const czekamNa = t && t.milczacy.length ? t.milczacy.join(', ') : kto;
-    if (!toJa && (zgloszone || (t && t.milczacy.length))) {
+    const tu = cien.tura || null;
+    const toJa = tu ? tu.wspolna && tu.jaMilcze : !zgloszone;
+    terminTury = tu && tu.zaMs !== null && toJa ? Date.now() + tu.zaMs : null;
+    const czekamNa = tu && tu.milczacy.length ? tu.milczacy.join(', ') : kto;
+    // Tytuł paska ma w HTML-u własny klucz tłumaczenia (stan spoczynkowy), więc
+    // nadpisując treść, nadpisujemy też klucz - inaczej zmiana języka wróciłaby
+    // do napisu spoczynkowego w środku tury wspólnej.
+    const tytul = (k) => { $('turowy-tytul').dataset.t = k; $('turowy-tytul').textContent = t(k); };
+    if (!toJa && (zgloszone || (tu && tu.milczacy.length))) {
       pasek.className = 'czeka';
-      $('turowy-tytul').textContent = 'CZEKAM NA RUCH';
-      $('turowy-powod').textContent =
-        `Ruch zgłoszony. Czekam na ${czekamNa} - obie strony działają w tej samej turze, więc nikt nie dostaje darmowego ciosu.`;
+      tytul('web.stol.czekamNaRuch');
+      $('turowy-powod').textContent = t('web.stol.czekamPowod', { kto: czekamNa });
     } else if (toJa) {
       pasek.className = 'ty';
-      $('turowy-tytul').textContent = 'TWÓJ RUCH';
-      $('turowy-powod').textContent =
-        `${kto} w zasięgu wzroku - cała grupa czeka na Twoje zgłoszenie i do tego czasu stoi w miejscu.`;
+      tytul('web.stol.twojRuch');
+      $('turowy-powod').textContent = t('web.stol.twojPowod', { kto });
     } else {
       pasek.className = '';
-      $('turowy-tytul').textContent = 'TRYB TUROWY';
-      $('turowy-powod').textContent =
-        `${kto} w zasięgu wzroku. Wasze ruchy rozstrzygają się jednocześnie, więc plansza czeka na drugą stronę. To nie zawieszenie gry.`;
+      tytul('web.stol.trybTurowy');
+      $('turowy-powod').textContent = t('web.stol.turowyPowod', { kto });
     }
     odliczTure();
   } else {
@@ -657,7 +671,7 @@ function odliczTure() {
   if (terminTury === null) { el.hidden = true; return; }
   const zostalo = Math.max(0, Math.ceil((terminTury - Date.now()) / 1000));
   el.hidden = false;
-  el.textContent = zostalo > 0 ? `plansza ruszy bez Ciebie za ${zostalo} s` : 'plansza rusza bez Ciebie';
+  el.textContent = zostalo > 0 ? t('web.stol.ruszyZa', { s: zostalo }) : t('web.stol.rusza');
 }
 setInterval(odliczTure, 500);
 
@@ -670,8 +684,8 @@ async function odswiezStol() {
     $('stol').innerHTML = d.uczestnicy.map(u => {
       const kl = u.status !== 'playing' ? 'poza' : u.rodzaj === 'bot' ? 'bot' : 'czlowiek';
       const mnie = ja && u.hid === ja.hid ? ' ja' : '';
-      return `<span class="gracz ${kl}${mnie}" title="${u.rodzaj === 'bot' ? 'gracz automatyczny' : 'człowiek'}">`
-        + `${escapeHtml(u.name)} <em>p${u.depth}</em></span>`;
+      return `<span class="gracz ${kl}${mnie}" title="${t(u.rodzaj === 'bot' ? 'web.stol.bot' : 'web.stol.czlowiek')}">`
+        + `${escapeHtml(u.name)} <em>${t('web.stol.pietro', { d: u.depth })}</em></span>`;
     }).join('');
   } catch { /* serwer zaraz wróci */ }
 }
@@ -721,7 +735,7 @@ if (zapamietane) {
   try {
     const m = JSON.parse(zapamietane);
     if (await miejsceIstnieje(m)) { ja = m; otworzStrumien(); }
-    else doLobby('Poprzedni stół już nie istnieje - wejdź jeszcze raz.');
+    else doLobby(t('web.stol.nieIstnieje'));
   } catch { doLobby(); }
 }
 
@@ -751,6 +765,9 @@ window.roguelike = {
   // przegra potyczkę - czyli nigdy na żądanie. Wystawiony, żeby dało się go
   // zmierzyć na PODSTAWIONEJ migawce, tym samym kodem, którym rysuje go gra.
   sprawdzPrzegrana,
+  // Ekran końca przy stole - z tego samego powodu: na żądanie da się go
+  // zobaczyć tylko na podstawionej migawce.
+  koniec,
 };
 
 
@@ -788,3 +805,24 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 podpisz(document.getElementById('podpis'));
+
+/**
+ * Zmiana języka przy stole. Stół dostaje ją osobno, bo to on składa zdania
+ * dziennika - każde w języku odbiorcy w chwili doręczenia. Język jednego
+ * gracza nie rusza niczego u pozostałych (spec C-2). Starszy stół nie zna tego
+ * adresu i odpowiada 404: wtedy zmienia się tylko to, co rysuje klient.
+ */
+function poZmianieJezyka(lang) {
+  if (ja) post('/api/jezyk', { hid: ja.hid, token: ja.token, lang }).catch(() => {});
+  podpisz(document.getElementById('podpis'));
+  odswiezStol();
+  if (!cien.ja) return;
+  odswiezHud();
+  if (mode === 'help') pokazZasady(ruleSection);
+  else if (mode === 'over') koniec();
+  else if (mode === 'obejrzyj') pokazObejrzenie();
+  else if (mode === 'stos') pokazStos();
+  else if (['inventory', 'drop', 'sniff'].includes(mode)) otworzPlecak(mode);
+}
+przelacznik(document.getElementById('jezyk'), poZmianieJezyka);
+przelacznik(document.getElementById('jezyk-lobby'), poZmianieJezyka);

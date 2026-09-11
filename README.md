@@ -15,6 +15,7 @@ npm run web                       # wersja graficzna: http://localhost:8080/web/
 node bin/play.js                  # nowa gra
 node bin/play.js --seed jaskinia  # ten sam loch za każdym razem
 node bin/play.js --continue       # wznów zapis
+node bin/play.js --lang pl        # po polsku (domyślnie po angielsku)
 
 node bin/bot.js --watch demo      # popatrz, jak gra komputer
 node bin/bot.js --games 1000      # tysiąc partii, zbiorczy wynik
@@ -31,6 +32,7 @@ npm test                          # testy jednostkowe
 | podnieś | `,` albo `g` |
 | schody | `>` w dół, `<` w górę |
 | ekwipunek | `i`, potem litera przedmiotu |
+| obejrzyj rzecz pod nogami (bez podnoszenia) | `x` |
 | wyrzuć | `d` |
 | powąchaj miksturę | `w`, potem litera |
 | zapis / wczytaj | `S` / `L` |
@@ -38,13 +40,17 @@ npm test                          # testy jednostkowe
 | minimapa (tylko przeglądarka) | `m` |
 | nowa gra (tylko przeglądarka) | `Shift`+`N` |
 
+Język: angielski domyślnie, polski do wyboru - w przeglądarce przełącznik EN | PL
+na pasku stanu albo adres z `?lang=pl`, w terminalu `--lang pl`. Wybór zmienia
+wyłącznie opis gry, nie jej przebieg; zapisy są wspólne dla obu języków.
+
 Znaki: `@` ty, `!` mikstura, `?` zwój, `)` broń, `[` pancerz, `%` jedzenie,
 `"` Amulet. Litery to potwory - małe słabsze, wielkie groźniejsze.
 
 ## Zasady
 
 Pełne reguły - walka, rozwój, głód, przedmioty, rozpoznawanie mikstur, pole
-widzenia - są w **[księdze zasad](docs/zasady.md)**. Ta sama treść jest dostępna
+widzenia - są w **[księdze zasad](docs/zasady.md)** (po angielsku: [rules.md](docs/rules.md)). Ta sama treść jest dostępna
 w trakcie gry pod klawiszem `?`, w obu wersjach, i nie może się z plikiem
 rozjechać: jedno źródło w [`src/rules.js`](src/rules.js), z którego plik jest
 generowany przez `npm run zasady`. Liczby w tabelach nie są przepisane ręcznie -
@@ -92,6 +98,7 @@ leczy, raz truje - dowiesz się, dopiero gdy wypijesz.
 | [`web/view.js`](web/view.js) | stan wizualny - płynny ruch, błyski, liczby obrażeń |
 | [`web/main.js`](web/main.js) | wejście, HUD, zapis w przeglądarce |
 | [`src/rules.js`](src/rules.js) | księga zasad - jedno źródło dla gry i dla `docs/zasady.md` |
+| [`src/i18n.js`](src/i18n.js), [`src/lang/`](src/lang/) | słowniki `pl` i `en`; tłumaczenie dzieje się przy pokazaniu, stan gry zna tylko polskie identyfikatory |
 | [`tools/browser.js`](tools/browser.js) | sterownik przeglądarki po CDP - przyrząd, którym mierzone są twierdzenia o wersji graficznej |
 | [`bin/serve.js`](bin/serve.js) | serwer plików statycznych, bez zależności |
 

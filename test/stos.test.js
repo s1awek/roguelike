@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
 import { setLang } from '../src/i18n.js';
 
-// Te testy sprawdzają brzmienie POLSKIE. Od D-050 domyślny jest angielski,
+// Te testy sprawdzają brzmienie POLSKIE. Od D-051 domyślny jest angielski,
 // więc język jest ustawiony jawnie - asercje zostały bez zmian.
 setLang('pl');
 

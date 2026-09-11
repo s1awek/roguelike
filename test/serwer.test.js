@@ -72,8 +72,10 @@ test('seria żądań z jednego adresu nie zajmuje więcej miejsc niż pułap', a
     // miejsc i dwóch graczach byłoby komunikatem mylącym gracza.
     const odmowa = wyniki.find(r => r.code !== 200);
     assert.equal(odmowa.code, 503);
-    assert.match(odmowa.body.blad, /z tego adresu/,
+    // Przyczyna po kodzie, nie po treści: treść jest w języku gracza (D-051).
+    assert.equal(odmowa.body.kod, 'serwer.adresPelny',
       `odmowa podaje inną przyczynę niż pułap adresu: ${odmowa.body.blad}`);
+    assert.ok(odmowa.body.blad, 'starszy klient zna tylko gotowe zdanie - musi przyjść');
   } finally { s.koniec(); }
 });
 

@@ -19,6 +19,7 @@ import { Game } from '../src/game.js';
 import { Stol } from '../src/stol.js';
 import { Bot as BotKlasa } from '../src/bot.js';
 import { widokDla } from '../src/widok.js';
+import { t, znanyJezyk } from '../src/i18n.js';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d; };
@@ -47,7 +48,9 @@ const [MW, MH] = MAPA.split('x').map(Number);
 // botach: poziom pierwszy miał zero potworów i zero przedmiotów w turze 1891.
 // Partia jednoosobowa zostaje bez odnawiania, żeby jej równowaga - zmierzona
 // na tysiącu partii - nie ruszyła się ani o krok (D-034).
-const game = new Game(ZIARNO, { name: 'Pierwszy', w: MW, h: MH, odnawianie: true });
+// Boty nazywają się tak samo w każdym języku: imię uczestnika widzą wszyscy
+// przy stole, a ci mogą czytać grę w różnych językach (D-051).
+const game = new Game(ZIARNO, { name: 'Bot 1', w: MW, h: MH, odnawianie: true });
 // Pierwszy uczestnik powstaje razem z grą, więc trafia na schody. Rozrzucamy go
 // tak samo jak wszystkich pozostałych - inaczej każda partia zaczynałaby się
 // bijatyką przy wejściu.
@@ -58,7 +61,7 @@ const stol = new Stol(game);
 // gry jednoosobowej - a wtedy nie ma po co było robić stołu.
 stol.miejsca.get(0).rodzaj = 'bot';
 stol.miejsca.get(0).bot = new BotKlasa();
-for (let i = 1; i < ILE_BOTOW; i++) stol.dosiadz(`Automat ${i}`, { rodzaj: 'bot' });
+for (let i = 1; i < ILE_BOTOW; i++) stol.dosiadz(`Bot ${i + 1}`, { rodzaj: 'bot' });
 let licznikBotow = ILE_BOTOW;
 
 /** Miejsca zajęte przez ludzi: hid -> {token, strumienie, dziennikDo, ...} */
@@ -110,14 +113,18 @@ const miejscAdresu = (adres) => [...ludzie.values()]
  * kliknięć. Miejsce zwolnione przez porządki przestaje się liczyć, bo wychodzi
  * ze zbioru ludzi.
  */
-function dosiadz(name, adres = '?') {
-  const czyste = String(name || '').replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 16) || 'Gość';
+function dosiadz(name, adres = '?', lang = null) {
+  const czyste = String(name || '').replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 16) || t('serwer.gosc', {}, lang ?? undefined);
   if (miejscAdresu(adres) >= MIEJSC_NA_ADRES) {
     log(`odmowa: adres ${adres} ma juz ${miejscAdresu(adres)} miejsc`);
-    return { blad: `z tego adresu zajęte są już ${MIEJSC_NA_ADRES} miejsca - zamknij starą kartę albo poczekaj chwilę` };
+    return blad('serwer.adresPelny', lang, { n: MIEJSC_NA_ADRES });
   }
-  if (grajacy() >= LIMIT_MIEJSC) return { blad: 'stół pełny, spróbuj za chwilę' };
-  const m = stol.dosiadz(czyste, { rodzaj: 'czlowiek' }).miejsce;
+  if (grajacy() >= LIMIT_MIEJSC) return blad('serwer.stolPelny', lang);
+  const { hero, miejsce: m } = stol.dosiadz(czyste, { rodzaj: 'czlowiek' });
+  // Język jest cechą UCZESTNIKA, nie stołu: każdy dostaje dziennik we własnym
+  // języku, także o zdarzeniach z udziałem innych. Klient bez języka (starszy)
+  // dostaje język domyślny stołu.
+  if (lang) hero.lang = lang;
   const token = randomBytes(12).toString('hex');
   ludzie.set(m.hid, { token, adres, strumienie: new Set(), dziennikDo: 0,
     kafelWyslany: null, rozlaczonyOd: null, bylPolaczony: false });
@@ -152,9 +159,17 @@ function porzadki(t) {
     .filter(m => m.rodzaj === 'bot' && game.heroes[m.hid].status === 'playing').length;
   if (zyweBoty < ILE_BOTOW && grajacy() < LIMIT_MIEJSC) {
     licznikBotow++;
-    stol.dosiadz(`Automat ${licznikBotow}`, { rodzaj: 'bot' });
+    stol.dosiadz(`Bot ${licznikBotow}`, { rodzaj: 'bot' });
     log(`nowy bot na miejscu, zywych botow bylo ${zyweBoty}`);
   }
+}
+
+/**
+ * Odmowa ze stołu: `kod` do przetłumaczenia po stronie klienta i gotowe zdanie
+ * w `blad` - to drugie dla klienta starszego niż ta zmiana, który zna tylko je.
+ */
+function blad(kod, lang = null, p = {}) {
+  return { blad: t(kod, p, lang ?? undefined), kod, p };
 }
 
 function uwierzytelnij(hid, token) {
@@ -247,7 +262,7 @@ function cialo(req) {
     let s = '', n = 0;
     req.on('data', (c) => {
       n += c.length;
-      if (n > 8192) { reject(new Error('zbyt duże żądanie')); req.destroy(); return; }
+      if (n > 8192) { reject(Object.assign(new Error('zbyt duże żądanie'), { kod: 'serwer.zaDuzeZadanie' })); req.destroy(); return; }
       s += c;
     });
     req.on('end', () => { try { resolve(s ? JSON.parse(s) : {}); } catch (e) { reject(e); } });
@@ -261,7 +276,7 @@ const server = createServer(async (req, res) => {
   const adres = req.socket.remoteAddress || '?';
 
   if (path.startsWith('/api/') && !przepusc(adres)) {
-    return json(res, 429, { blad: 'za dużo żądań, zwolnij' });
+    return json(res, 429, blad('serwer.zaDuzo', znanyJezyk(u.searchParams.get('lang'))));
   }
 
   if (path === '/api/stol') {
@@ -278,16 +293,16 @@ const server = createServer(async (req, res) => {
   if (path === '/api/dosiadz' && req.method === 'POST') {
     try {
       const b = await cialo(req);
-      const r = dosiadz(b.name, adres);
+      const r = dosiadz(b.name, adres, znanyJezyk(b.lang));
       return json(res, r.blad ? 503 : 200, r);
-    } catch (e) { return json(res, 400, { blad: e.message }); }
+    } catch (e) { return json(res, 400, blad(e.kod || 'serwer.zleZadanie')); }
   }
 
   if (path === '/api/dzialanie' && req.method === 'POST') {
     try {
       const b = await cialo(req);
       const w = uwierzytelnij(b.hid, b.token);
-      if (!w) return json(res, 403, { blad: 'nie twoje miejsce' });
+      if (!w) return json(res, 403, blad('serwer.nieTwoje', znanyJezyk(b.lang)));
       // Porządkowanie plecaka omija deklaracje: nie jest działaniem w świecie,
       // więc nie ma na co czekać ani czego rozstrzygać wspólną turą.
       if (b.action && b.action.type === 'przeloz') {
@@ -296,7 +311,24 @@ const server = createServer(async (req, res) => {
         return json(res, 200, r);
       }
       return json(res, 200, stol.zadeklaruj(Number(b.hid), b.action));
-    } catch (e) { return json(res, 400, { blad: e.message }); }
+    } catch (e) { return json(res, 400, blad(e.kod || 'serwer.zleZadanie')); }
+  }
+
+  /**
+   * Zmiana języka w trakcie partii. Nie jest działaniem w świecie: nie czeka
+   * na turę i nie zmienia niczego u innych. Wpisy dziennika już doręczone
+   * zostają w starym języku; nowe przychodzą w nowym.
+   */
+  if (path === '/api/jezyk' && req.method === 'POST') {
+    try {
+      const b = await cialo(req);
+      const w = uwierzytelnij(b.hid, b.token);
+      const lang = znanyJezyk(b.lang);
+      if (!w) return json(res, 403, blad('serwer.nieTwoje', lang));
+      if (!lang) return json(res, 400, blad('serwer.zleZadanie'));
+      game.heroes[Number(b.hid)].lang = lang;
+      return json(res, 200, { ok: true, lang });
+    } catch (e) { return json(res, 400, blad(e.kod || 'serwer.zleZadanie')); }
   }
 
   /**
@@ -327,13 +359,13 @@ const server = createServer(async (req, res) => {
       const czysty = String(b.tekst || '').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 300);
       if (czysty) log(`SKARGA PRZEGLADARKI [${adres}] ${czysty}`);
       return json(res, 204, {});
-    } catch { return json(res, 400, { blad: 'zła skarga' }); }
+    } catch { return json(res, 400, blad('serwer.zlaSkarga')); }
   }
 
   if (path === '/api/moje') {
     const hid = Number(u.searchParams.get('hid'));
     const w = uwierzytelnij(hid, u.searchParams.get('token'));
-    if (!w) return json(res, 403, { blad: 'miejsce już nie istnieje' });
+    if (!w) return json(res, 403, blad('serwer.nieIstnieje', znanyJezyk(u.searchParams.get('lang'))));
     // Samo istnienie miejsca nie wystarczy przeglądarce: miejsce po ZMARŁYM
     // bohaterze nadal istnieje, a wracanie na nie kończy się ekranem „Koniec"
     // bez wyjścia. Stan wraca razem z odpowiedzią, żeby klient miał czym
@@ -345,7 +377,7 @@ const server = createServer(async (req, res) => {
   if (path === '/api/strumien') {
     const hid = Number(u.searchParams.get('hid'));
     const w = uwierzytelnij(hid, u.searchParams.get('token'));
-    if (!w) return json(res, 403, { blad: 'nie twoje miejsce' });
+    if (!w) return json(res, 403, blad('serwer.nieTwoje', znanyJezyk(u.searchParams.get('lang'))));
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-store',

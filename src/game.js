@@ -94,7 +94,7 @@ export class Game {
     this.odnawianie = !!opts.odnawianie;
     // Język dziennika, gdy uczestnik nie ma własnego (`hero.lang`, ustawia go
     // stół). Bez obu - język bieżący modułu `i18n`. Języka nie ma w zapisie:
-    // to jest cecha czytającego, nie stanu gry (D-050).
+    // to jest cecha czytającego, nie stanu gry (D-051).
     this.lang = opts.lang ?? null;
     this.ostatniaOdnowa = 0;
     this._idCounter = 1;

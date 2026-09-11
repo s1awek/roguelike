@@ -1257,3 +1257,56 @@ puszczona w tle robiła `git stash` na pliku, przy którym trwała praca, więc 
 chwilę badał kod sprzed zmiany i zapalił się na czerwono bez powodu. Pomiar
 porównawczy należy uruchamiać na OSOBNEJ kopii drzewa, nie przestawiając bieżącej.
 
+
+## Wątek 7: dwa języki i widoczne obejrzenie (2026-09-11)
+
+Zlecenie właściciela przed publikacją: angielski jako język gry, polski do wyboru;
+do tego „obejrzyj przed podniesieniem". Spec zamrożony w `.workspace/jezyki-acceptance-spec.md`
+(poza repo). Decyzje: D-051 (tłumaczenie na krawędzi), D-052 (język uczestnika przy
+stole, kody odmów), D-053 (obejrzenie było, brakowało podpowiedzi).
+
+**Przyrządy, zanim ruszył kod.** Dwa odciski zrobione na starym drzewie:
+odcisk całego tekstu, jaki gra wypisuje na 6 ziarnach (każdy komunikat, każdy ekran),
+i odcisk zachowania (przebieg partii bez tekstu). Przebudowa miała zostawić oba
+bez zmian w wersji polskiej - i zostawiła: odcisk zachowania `6127457f4e2352a3` przed
+i po, polski tekst bajt w bajt identyczny. Jedyna zamierzona różnica to dopisek
+„(x - obejrzyj)" z D-053: po jego wycięciu z nowego zrzutu tekst znów był identyczny,
+a sam dopisek pojawił się 1373 razy na 1373 komunikaty o rzeczy pod nogami.
+
+**Co pilnuje wersji angielskiej na stałe** (`test/jezyki.test.js`):
+- oba słowniki mają te same klucze, a angielski nie ma ani jednej polskiej litery;
+- pełna partia po angielsku na 6 ziarnach nie wypisuje żadnej polskiej litery -
+  z kontrolą, że ten sam przyrząd na partii polskiej litery znajduje;
+- księgi zasad w obu językach mają te same rozdziały, bloki, kształt tabel i te same
+  liczby w każdym bloku - z kontrolą na zasianej różnicy jednej liczby;
+- przebieg partii (tura, wynik, przyczyna, stan losowania) nie zależy od języka;
+- przy stole walka Polki z Anglikiem daje każdej stronie dziennik identyczny
+  z partią jednojęzyczną.
+
+**Przeglądarka** (`tools/browser.js`, oba ekrany, oba języki, 29 sprawdzeń):
+pierwsze wejście po angielsku, przełącznik widoczny na obu stronach, wybór przeżywa
+odświeżenie, `?lang=` wygrywa z pamięcią, zmiana w trakcie nie rusza tury, życia,
+pozycji, dziennika ani stanu losowania. Zero polskich liter w wersji angielskiej
+na wszystkich ekranach (ok. 25 tys. znaków w grze jednoosobowej, 22 tys. przy
+stole, wliczając przegrane starcie, pasek tury i ekran końca), zero angielskich
+napisów interfejsu w polskiej. Przy stole komunikat serwera po przełączeniu
+przychodzi już w nowym języku („There is nothing here to pick up." -> „Nie ma tu
+nic do podniesienia."). Konsola czysta.
+
+**Zapisy.** Zapis zrobiony kodem sprzed zmiany (osobna kopia drzewa) wczytuje się
+w obu językach, zapisuje z powrotem bajt w bajt tak samo i dogrywa się do tego samego
+końca co w starym kodzie, na trzech ziarnach (dwie śmierci, jedno zwycięstwo).
+Kontrola: zapis ze zmienionym jednym bitem losowania daje inny koniec.
+
+**Dwie pułapki po drodze.**
+- Pierwsze sprawdzenie przełącznika w przeglądarce dało 6 porażek naraz - wszystkie
+  z jednej przyczyny: klik szedł przy otwartym plecaku, a nakładka jest modalna
+  i zasłania pasek stanu. Przełącznik działał, przyrząd klikał w nakładkę
+  (`elementFromPoint` to pokazał). Sprawdzenie przestawione na przełączanie z planszy.
+- Numer D-050 zajęła w międzyczasie decyzja o pasku tury; komentarze w kodzie
+  wskazywały na złą decyzję, dopóki nie przenumerowano ich na D-051.
+
+**Poza zakresem, świadomie:** dokumentacja wewnętrzna, komentarze i identyfikatory
+zostają po polsku; README po angielsku - później. Link „wielu graczy" w pasku
+podpowiedzi nie ma własnego stylu i świeci domyślnym niebieskim - tak było także
+przed zmianą.

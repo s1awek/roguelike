@@ -3,7 +3,7 @@
 // W stanie gry przyczyna jest POLSKIM napisem ('rany', 'głód', 'zabity przez:
 // szczur') i taka zostaje: stoi w zapisach sprzed wprowadzenia języków, a gracz
 // automatyczny i seria pomiarowa zliczają po niej wyniki. Tłumaczenie odbywa się
-// dopiero przy pokazaniu (D-050).
+// dopiero przy pokazaniu (D-051).
 
 import { t, getLang } from './i18n.js';
 import { KINDS, BOSS, monsterName } from './monsters.js';

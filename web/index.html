@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loch - wersja graficzna</title>
+<title data-t="web.tytul">Dungeon - graphical edition</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2306070b'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23f6f4ee'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23ffcd82' stroke-width='2.5'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="./style.css">
 </head>
@@ -17,17 +17,18 @@
     </div>
     <div id="stany" class="stany"></div>
     <div class="stats">
-      <span><b id="plevel">1</b><em>poziom</em></span>
-      <span><b id="pxp">0</b><em>dośw.</em></span>
-      <span><b id="patk">0</b><em>atak</em></span>
-      <span><b id="pdef">0</b><em>obrona</em></span>
-      <span><b id="pdepth">1/8</b><em>głębokość</em></span>
-      <span><b id="pwrogi">0</b><em>wrogów tu</em></span>
-      <span><b id="pturn">0</b><em>tura</em></span>
+      <span><b id="plevel">1</b><em data-t="web.hud.poziom">level</em></span>
+      <span><b id="pxp">0</b><em data-t="web.hud.dosw">XP</em></span>
+      <span><b id="patk">0</b><em data-t="web.hud.atak">attack</em></span>
+      <span><b id="pdef">0</b><em data-t="web.hud.obrona">defense</em></span>
+      <span><b id="pdepth">1/8</b><em data-t="web.hud.glebokosc">depth</em></span>
+      <span><b id="pwrogi">0</b><em data-t="web.hud.wrogow">foes here</em></span>
+      <span><b id="pturn">0</b><em data-t="web.hud.tura">turn</em></span>
     </div>
     <div class="right">
-      <span id="autotag" class="tag auto" title="Gra zapisuje się sama - odświeżenie strony nie resetuje rozgrywki">autozapis</span>
-      <span id="amulet" class="tag gold" hidden>AMULET</span>
+      <span id="autotag" class="tag auto" data-t="web.autozapis" data-t-title="web.autozapisTytul">autosave</span>
+      <span id="amulet" class="tag gold" hidden data-t="web.amulet">AMULET</span>
+      <span id="jezyk" class="jezyk"></span>
     </div>
   </header>
 
@@ -35,7 +36,7 @@
 
   <footer id="foot">
     <ul id="log"></ul>
-    <p id="hint">? zasady &nbsp;·&nbsp; i ekwipunek &nbsp;·&nbsp; w powąchaj &nbsp;·&nbsp; , podnieś &nbsp;·&nbsp; &gt; &lt; schody &nbsp;·&nbsp; m minimapa &nbsp;·&nbsp; S zapis &nbsp;·&nbsp; Shift+N nowa gra &nbsp;·&nbsp; klik = idź &nbsp;·&nbsp; <a href="./wielu.html">wielu graczy</a><span id="podpis" hidden></span></p>
+    <p id="hint"><span data-t-html="web.podpowiedz"></span><span id="podpis" hidden></span></p>
   </footer>
 </div>
 

@@ -11,6 +11,7 @@
 // się go podstawić.
 
 import { Bot, decydujWPojedynku, grupyWKontakcie } from './bot.js';
+import { t } from './i18n.js';
 
 export const CZAS_NA_DEKLARACJE_MS = 12000;
 export const TEMPO_BOTA_MS = 400;
@@ -52,14 +53,22 @@ export class Stol {
   }
 
   /**
+   * Odmowa z kodem i zdaniem w języku uczestnika. Kod jest dla klienta, który
+   * tłumaczy sam; zdanie - dla klienta starszego, który pokazuje je wprost.
+   */
+  odmowa(kod, hero = null) {
+    return { ok: false, kod, powod: t(kod, {}, this.game.jezyk(hero)) };
+  }
+
+  /**
    * Zgłoszenie działania. Deklaracja jest NIEJAWNA: leży w miejscu uczestnika
    * i nikt jej nie czyta aż do rozstrzygnięcia tury (kryterium 17).
    */
   zadeklaruj(hid, action) {
     const m = this.miejsca.get(hid);
-    if (!m) return { ok: false, powod: 'nie ma takiego miejsca' };
+    if (!m) return this.odmowa('stol.brakMiejsca');
     const hero = this.game.heroes[hid];
-    if (!hero || hero.status !== 'playing') return { ok: false, powod: 'partia tego uczestnika skończona' };
+    if (!hero || hero.status !== 'playing') return this.odmowa('stol.skonczona', hero);
     m.deklaracja = action;
     return { ok: true };
   }
@@ -73,11 +82,11 @@ export class Stol {
    */
   przeloz(hid, { index, x, y, obrot } = {}) {
     const m = this.miejsca.get(hid);
-    if (!m) return { ok: false, powod: 'nie ma takiego miejsca' };
+    if (!m) return this.odmowa('stol.brakMiejsca');
     const hero = this.game.heroes[hid];
-    if (!hero || hero.status !== 'playing') return { ok: false, powod: 'partia tego uczestnika skończona' };
+    if (!hero || hero.status !== 'playing') return this.odmowa('stol.skonczona', hero);
     const ok = this.game.przelozWPlecaku(hero, Number(index), Number(x), Number(y), Number(obrot) || 0);
-    return ok ? { ok: true } : { ok: false, powod: 'tam się nie mieści' };
+    return ok ? { ok: true } : this.odmowa('stol.nieMiesci', hero);
   }
 
   /** Uczestnicy pogrupowani po kontakcie; grupa dłuższa niż jeden idzie turą wspólną. */

@@ -7,7 +7,10 @@
 
 import { Game } from '../src/game.js';
 import { serialize, loadFromString } from '../src/serialize.js';
-import { itemLabel, itemStats, polaSlowo } from '../src/items.js';
+import { itemLabel, itemStats } from '../src/items.js';
+import { t, getLang } from '../src/i18n.js';
+import { opisPrzyczyny } from '../src/przyczyny.js';
+import { ustalJezyk, przelacznik } from './jezyk.js';
 import { pojemnosc, zajetePola, poleRzeczy, wolnePola } from '../src/plecak.js';
 import { siatkaHtml, podepnijSiatke } from './plecak-ui.js';
 import { statsHtml, obejrzyjHtml, stanyHtml, stosHtml, dziennikHtml } from './opis.js';
@@ -35,11 +38,16 @@ const view = new View();
 
 const params = new URLSearchParams(location.search);
 let mode = 'map';                // 'map' | 'inventory' | 'drop' | 'sniff' | 'stos' | 'obejrzyj' | 'help' | 'over'
-const RULES = buildRules('web');
+// Księga budowana w języku czytającego i trzymana osobno dla każdego języka -
+// zbudowana raz przy starcie zostawałaby w języku, w którym strona wstała.
+const ksiegi = {};
+const rules = () => (ksiegi[getLang()] ??= buildRules('web'));
 let ruleSection = 0;
 let walk = null;
 let notice = '';
 let noticeUntil = 0;
+
+ustalJezyk();
 
 // Odświeżenie karty nie może kosztować rozgrywki. Stan wraca z autozapisu, chyba
 // że w adresie stoi jawne ziarno - wtedy gracz prosi o KONKRETNĄ grę i to on ma
@@ -59,7 +67,7 @@ const resumed = !!game;
 if (!game) game = new Game(seedParam || String(Date.now()));
 // Komunikat o wznowieniu NIE idzie do dziennika gry, bo dziennik jest częścią
 // zapisanego stanu - co odświeżenie dopisywałoby do niego kolejny wiersz.
-if (!resumed) game.message('Wchodzisz do lochu. Naciśnij ? po pomoc.');
+if (!resumed) game.message('wejscie');
 view.sync(game);
 renderer.resize(game);
 
@@ -97,7 +105,7 @@ function threatInSight() {
 
 function startWalk(tx, ty) {
   if (mode !== 'map' || game.status !== 'playing') return;
-  if (threatInSight()) { say('Nie w obecności potwora.'); return; }
+  if (threatInSight()) { say(t('web.nieWObecnosci')); return; }
   if (!passableKnown(tx, ty)) return;
   const path = findPath({ x: game.player.x, y: game.player.y }, { x: tx, y: ty }, passableKnown);
   if (!path || !path.length) return;
@@ -144,7 +152,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'n' || k === ' ' || k === 'ArrowRight' || k === 'ArrowDown') { showRules(ruleSection + 1); return; }
     if (k === 'p' || k === 'ArrowLeft' || k === 'ArrowUp') { showRules(ruleSection - 1); return; }
     const n = Number(k);
-    if (Number.isInteger(n) && n >= 1 && n <= RULES.length) showRules(n - 1);
+    if (Number.isInteger(n) && n >= 1 && n <= rules().length) showRules(n - 1);
     return;
   }
 
@@ -189,7 +197,7 @@ window.addEventListener('keydown', (e) => {
     case '?': showRules(ruleSection); break;
     case 'S': doSave(); break;
     case 'L': doLoad(); break;
-    case 'm': renderer.minimap = !renderer.minimap; say(renderer.minimap ? 'Minimapa włączona.' : 'Minimapa wyłączona.'); break;
+    case 'm': renderer.minimap = !renderer.minimap; say(t(renderer.minimap ? 'web.minimapaWl' : 'web.minimapaWyl')); break;
     case 'N': newGame(); break;
     default: break;
   }
@@ -244,7 +252,7 @@ function pokazObejrzenie() {
   const o = game.obejrzyj(it);
   const nazwa = it ? itemLabel(it, game.appearances, game.identified, game.sniffed) : '';
   panel.innerHTML = obejrzyjHtml(nazwa, o)
-    + `<p class="foot">${o ? '<kbd>,</kbd> podnosi. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+    + `<p class="foot">${o ? t('web.podnosiKbd') : ''}${t('web.escWraca')}</p>`;
   overlay.hidden = false;
 }
 
@@ -292,7 +300,7 @@ function pokazStos() {
     return {
       nazwa: etykieta(it),
       opis: itemStats(it, p, game.identified).opis,
-      pola: `${poleRzeczy(it)} ${polaSlowo(poleRzeczy(it))}`,
+      pola: `${poleRzeczy(it)} ${t('pola', { n: poleRzeczy(it) })}`,
       wybrane: wybrane.has(it.id),
       werdykt: o ? o.werdykt : '',
       ton: o ? o.ton : '',
@@ -309,10 +317,8 @@ function pokazStos() {
   overlay.hidden = false;
 }
 
-const INV_TITLE = { drop: 'Co wyrzucić?', sniff: 'Co powąchać?', inventory: 'Ekwipunek' };
-const INV_HINT = {
-  drop: 'wyrzuca', sniff: 'wącha - tylko mikstury, koszt jednej tury', inventory: 'używa lub zakłada',
-};
+const INV_TITLE = { drop: 'term.coWyrzucic', sniff: 'term.coPowachac', inventory: 'term.ekwipunek' };
+const INV_HINT = { drop: 'web.inv.drop', sniff: 'web.inv.sniff', inventory: 'web.inv.use' };
 
 function openInventory(which) {
   mode = which;
@@ -320,8 +326,8 @@ function openInventory(which) {
   const etykieta = (it) => itemLabel(it, game.appearances, game.identified, game.sniffed);
   const rows = p.inventory.map((it, i) => {
     const marks = [];
-    if (p.weapon === it) marks.push('w dłoni');
-    if (p.armor === it) marks.push('na sobie');
+    if (p.weapon === it) marks.push(t('term.wDloni'));
+    if (p.armor === it) marks.push(t('term.naSobie'));
     const worn = marks.length ? `<span class="worn">(${marks.join(', ')})</span>` : '';
     const ile = (it.ile || 1) > 1 ? `<span class="worn">x${it.ile}</span>` : '';
     return `<li class="item" data-i="${i}"><span class="key">${String.fromCharCode(97 + i)})</span>
@@ -331,12 +337,12 @@ function openInventory(which) {
   }).join('');
   const poj = pojemnosc(p);
   panel.innerHTML = `
-    <h2>${INV_TITLE[which]} <span class="muted">${zajetePola(p)}/${poj} ${polaSlowo(poj)}</span></h2>
+    <h2>${t(INV_TITLE[which])} <span class="muted">${zajetePola(p)}/${poj} ${t('pola', { n: poj })}</span></h2>
     <div class="ekwipunek">${which === 'inventory' ? siatkaHtml(p, etykieta, { kosz: true }) : ''}
-      <ul>${rows || '<li class="muted">(pusto)</li>'}</ul></div>
+      <ul>${rows || `<li class="muted">${t('web.pusto')}</li>`}</ul></div>
     ${dziennikHtml(game.messages)}
-    <p class="foot">Litera albo kliknięcie ${INV_HINT[which]}. ${which === 'inventory'
-      ? '<kbd>d</kbd> otwiera to samo do wyrzucania. ' : ''}<kbd>Esc</kbd> wraca.</p>`;
+    <p class="foot">${t('web.inv.stopka', { co: t(INV_HINT[which]) })}${which === 'inventory'
+      ? t('web.inv.dWyrzuca') : ''}${t('web.escWraca')}</p>`;
   // Ikona rysowana tą samą funkcją co przedmiot leżący na podłodze. Dzięki temu
   // "czarna mikstura" w plecaku to dokładnie ta czarna flaszka, którą gracz
   // widział na kaflu - a nie osobna, rozjeżdżająca się z czasem grafika.
@@ -377,6 +383,7 @@ function openInventory(which) {
  */
 function showRules(index) {
   mode = 'help';
+  const RULES = rules();
   ruleSection = ((index % RULES.length) + RULES.length) % RULES.length;
   const sec = RULES[ruleSection];
   const nav = RULES.map((r, i) =>
@@ -391,12 +398,11 @@ function showRules(index) {
   }).join('');
 
   panel.innerHTML = `
-    <h2>Księga zasad <span class="muted">rozdział ${ruleSection + 1} z ${RULES.length}</span></h2>
+    <h2>${t('term.ksiega')} <span class="muted">${t('term.rozdzial', { i: ruleSection + 1, n: RULES.length })}</span></h2>
     <nav class="tabs">${nav}</nav>
     <h3>${escapeHtml(sec.title)}</h3>
     ${body}
-    <p class="foot"><kbd>n</kbd> dalej &nbsp; <kbd>p</kbd> wstecz &nbsp; <kbd>1</kbd>-<kbd>${RULES.length}</kbd> rozdział
-      &nbsp; <kbd>Esc</kbd> wraca do gry. Ziarno tej rozgrywki: <b>${escapeHtml(String(game.seed))}</b>.</p>`;
+    <p class="foot">${t('web.ksiegaStopka', { n: RULES.length, seed: escapeHtml(String(game.seed)) })}</p>`;
   panel.querySelectorAll('button.tab').forEach(btn =>
     btn.addEventListener('click', () => showRules(Number(btn.dataset.i))));
   panel.scrollTop = 0;
@@ -407,18 +413,18 @@ function showGameOver() {
   mode = 'over';
   const won = game.status === 'won';
   panel.innerHTML = `
-    <h2 class="${won ? 'win' : 'lose'}">${won ? 'ZWYCIĘSTWO' : 'KONIEC GRY'}</h2>
+    <h2 class="${won ? 'win' : 'lose'}">${t(won ? 'term.zwyciestwo' : 'term.koniecGry')}</h2>
     <dl>
-      <dt>przyczyna</dt><dd>${escapeHtml(String(game.cause))}</dd>
-      <dt>głębokość</dt><dd>${game.depth}</dd>
-      <dt>poziom</dt><dd>${game.player.level}</dd>
-      <dt>doświadczenie</dt><dd>${game.player.xp}</dd>
-      <dt>pokonanych</dt><dd>${game.player.kills}</dd>
-      <dt>tur</dt><dd>${game.turn}</dd>
-      <dt>wynik</dt><dd><b>${game.score()}</b></dd>
-      <dt>ziarno</dt><dd>${escapeHtml(String(game.seed))}</dd>
+      <dt>${t('web.go.przyczyna')}</dt><dd>${escapeHtml(String(opisPrzyczyny(game.cause)))}</dd>
+      <dt>${t('web.go.glebokosc')}</dt><dd>${game.depth}</dd>
+      <dt>${t('web.go.poziom')}</dt><dd>${game.player.level}</dd>
+      <dt>${t('web.go.dosw')}</dt><dd>${game.player.xp}</dd>
+      <dt>${t('web.go.pokonanych')}</dt><dd>${game.player.kills}</dd>
+      <dt>${t('web.go.tur')}</dt><dd>${game.turn}</dd>
+      <dt>${t('web.go.wynik')}</dt><dd><b>${game.score()}</b></dd>
+      <dt>${t('web.go.ziarno')}</dt><dd>${escapeHtml(String(game.seed))}</dd>
     </dl>
-    <p class="foot"><kbd>Enter</kbd> zaczyna nową grę.</p>`;
+    <p class="foot">${t('web.go.stopka')}</p>`;
   overlay.hidden = false;
 }
 
@@ -428,7 +434,7 @@ function newGame() {
   view.depth = null;
   view.lastPlayerHp = null;
   view.lastPlayerPos = null;
-  game.message('Wchodzisz do lochu. Naciśnij ? po pomoc.');
+  game.message('wejscie');
   view.sync(game);
   renderer.resize(game);
   closeOverlay();
@@ -468,9 +474,9 @@ function flushAuto() {
     blinkAuto();
   } catch (e) {
     autoBroken = true;
-    say(`Autozapis niemożliwy: ${e.message}`);
+    say(t('web.autozapisNiemozliwy', { powod: e.message }));
     const tag = $('autotag');
-    if (tag) { tag.textContent = 'bez autozapisu'; tag.className = 'tag bad'; }
+    if (tag) { tag.dataset.t = 'web.bezAutozapisu'; tag.textContent = t('web.bezAutozapisu'); tag.className = 'tag bad'; }
   }
 }
 
@@ -483,13 +489,13 @@ function blinkAuto() {
 }
 
 function doSave() {
-  try { localStorage.setItem(SAVE_KEY, serialize(game)); say('Zapisano w przeglądarce.'); }
-  catch (e) { say(`Zapis nieudany: ${e.message}`); }
+  try { localStorage.setItem(SAVE_KEY, serialize(game)); say(t('web.zapisano')); }
+  catch (e) { say(t('web.zapisNieudany', { powod: e.message })); }
 }
 
 function doLoad() {
   const raw = localStorage.getItem(SAVE_KEY);
-  if (!raw) { say('Nie ma takiego zapisu.'); return; }
+  if (!raw) { say(t('zapis.brak')); return; }
   const r = loadFromString(raw);
   if (!r.ok) { say(r.error); return; }
   game = r.game;
@@ -499,7 +505,7 @@ function doLoad() {
   view.lastPlayerPos = null;
   view.sync(game);
   renderer.resize(game);
-  say('Wczytano zapis.');
+  say(t('web.wczytano'));
   autoDirty = true;
   updateHud();
   // Zapis zrobiony tuż przed śmiercią wczytywał się do stanu, w którym gra jest
@@ -610,8 +616,20 @@ if (window.ResizeObserver) {
 }
 updateHud();
 flushAuto();
-if (resumed) say('Wznowiono grę z autozapisu. Nowa gra: Shift+N.');
+if (resumed) say(t('web.wznowiono'));
 if (game.status !== 'playing') showGameOver();
 requestAnimationFrame(frame);
 
 podpisz(document.getElementById('podpis'));
+
+// Zmiana języka w trakcie partii: bez tury, bez ruszania stanu gry. Przerysowuje
+// się to, co strona zbudowała sama - panel stanu, otwarta nakładka i podpis.
+przelacznik(document.getElementById('jezyk'), () => {
+  updateHud();
+  podpisz(document.getElementById('podpis'));
+  if (mode === 'help') showRules(ruleSection);
+  else if (mode === 'over') showGameOver();
+  else if (mode === 'obejrzyj') pokazObejrzenie();
+  else if (mode === 'stos') pokazStos();
+  else if (mode === 'inventory' || mode === 'drop' || mode === 'sniff') openInventory(mode);
+});

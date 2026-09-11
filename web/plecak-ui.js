@@ -11,7 +11,8 @@
 // przybliżonej reguły po stronie interfejsu.
 
 import { mozna, wymiary, pojemnosc, zajetePola, ile as sztuk } from '../src/plecak.js';
-import { itemStats, polaSlowo } from '../src/items.js';
+import { itemStats } from '../src/items.js';
+import { t } from '../src/i18n.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -53,11 +54,9 @@ export function siatkaHtml(p, etykieta, { kosz = false } = {}) {
       <div class="siatka" style="--kol:${P.w}; --wier:${P.h}; --pole:${POLE_PX}px">
         ${rzeczy}<div class="podglad" hidden></div>
       </div>
-      ${kosz ? `<div class="kosz"><span class="ikona">↷</span><b>wyrzuć</b>
-        <em>przeciągnij tutaj</em></div>` : ''}
-      <p class="zajetosc"><b>${zaj}</b> z <b>${poj}</b> ${polaSlowo(poj)} zajęte
-        <span class="muted">- przeciągnij, żeby przełożyć; <kbd>spacja</kbd> obraca${
-          kosz ? '; przeciągnij na kosz, żeby wyrzucić' : ''}</span></p>
+      ${kosz ? `<div class="kosz"><span class="ikona">↷</span><b>${t('web.kosz')}</b>
+        <em>${t('web.koszTutaj')}</em></div>` : ''}
+      <p class="zajetosc">${t('web.zajetosc', { zaj, poj, kosz })}</p>
     </div>`;
 }
 

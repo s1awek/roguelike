@@ -1,4 +1,4 @@
-import { polaSlowo } from '../src/items.js';
+import { t } from '../src/i18n.js';
 import { stanyBohatera } from '../src/stany.js';
 
 // Wspólny kawałek widoku dla obu wersji przeglądarkowych: skutek przedmiotu
@@ -23,15 +23,15 @@ export function statsHtml(st) {
  * samymi zdaniami - tutaj jest wyłącznie oprawa.
  */
 export function obejrzyjHtml(nazwa, o) {
-  if (!o) return '<p class="muted">Nie ma tu nic do obejrzenia.</p>';
+  if (!o) return `<p class="muted">${t('term.nicDoObejrzenia')}</p>`;
   const w = [];
-  if (o.opis) w.push(`<li><span class="etyk">skutek</span> ${esc(o.opis)}</li>`);
+  if (o.opis) w.push(`<li><span class="etyk">${t('web.karta.skutek')}</span> ${esc(o.opis)}</li>`);
   if (o.porownanie) {
-    w.push(`<li><span class="etyk">wobec noszonego</span> <em class="cmp ${o.znak}">${esc(o.porownanie)}</em></li>`);
+    w.push(`<li><span class="etyk">${t('web.karta.wobec')}</span> <em class="cmp ${o.znak}">${esc(o.porownanie)}</em></li>`);
   }
-  w.push(`<li><span class="etyk">miejsce</span> ${esc(o.miejsce)} = ${o.pola} ${polaSlowo(o.pola)}`
-    + (o.wPlecaku ? '' : `, wolnych ${o.wolne} z ${o.pojemnosc}`) + '</li>');
-  if (o.sztuk > 1) w.push(`<li><span class="etyk">sztuk</span> ${o.sztuk}</li>`);
+  w.push(`<li><span class="etyk">${t('web.karta.miejsce')}</span> ${esc(o.miejsce)} = ${o.pola} ${t('pola', { n: o.pola })}`
+    + (o.wPlecaku ? '' : t('web.karta.wolnych', { wolne: o.wolne, poj: o.pojemnosc })) + '</li>');
+  if (o.sztuk > 1) w.push(`<li><span class="etyk">${t('web.karta.sztuk')}</span> ${o.sztuk}</li>`);
   return `<h2>${esc(nazwa)}</h2><ul class="karta">${w.join('')}</ul>`
     + (o.werdykt ? `<p class="werdykt ${o.ton}">${esc(o.werdykt)}</p>` : '');
 }
@@ -49,7 +49,7 @@ export function obejrzyjHtml(nazwa, o) {
 export function stanyHtml(hero) {
   return stanyBohatera(hero).map(s => `
     <div class="stan ${s.ton}" data-id="${s.id}"
-         title="${esc(s.nazwa)}: ${s.wartosc} z ${s.max}${s.doNastepnego > 0 ? `, ${s.doNastepnego} tur do gorszego stopnia` : ''}">
+         title="${esc(t('web.stanTytul', s))}">
       <span class="lbl">${esc(s.nazwa)}</span>
       <div class="bar"><i style="width:${(s.frakcja * 100).toFixed(1)}%"></i></div>
       <span class="num">${esc(s.etykieta)}</span>
@@ -79,12 +79,10 @@ export function stosHtml(lista, bilans) {
         ${w.werdykt ? `<em class="cmp ${w.ton || ''}">${esc(w.werdykt)}</em>` : ''}</span>
     </li>`).join('');
   const zle = bilans.zajmie > bilans.wolne;
-  return `<h2>Pod nogami <span class="muted">${lista.length} rzeczy</span></h2>
+  return `<h2>${t('web.podNogami')} <span class="muted">${t('web.nRzeczy', { n: lista.length })}</span></h2>
     <ul class="stos">${rows}</ul>
-    <p class="bilans ${zle ? 'minus' : 'rowno'}">Wybrane zajmą <b>${bilans.zajmie}</b>
-      z <b>${bilans.wolne}</b> wolnych pól${zle ? ' - tyle się nie zmieści' : ''}.</p>
-    <p class="foot"><kbd>Enter</kbd> podnosi zaznaczone. Litera albo kliknięcie zaznacza,
-      <kbd>*</kbd> zaznacza wszystko, <kbd>Esc</kbd> wraca.</p>`;
+    <p class="bilans ${zle ? 'minus' : 'rowno'}">${t('web.bilans', { ...bilans, zaDuzo: zle })}</p>
+    <p class="foot">${t('web.stosStopka')}</p>`;
 }
 
 /**

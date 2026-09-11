@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loch - wielu graczy</title>
+<title data-t="web.tytulStol">Dungeon - multiplayer</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2306070b'/%3E%3Ccircle cx='12' cy='16' r='5' fill='%23f6f4ee'/%3E%3Ccircle cx='22' cy='16' r='5' fill='none' stroke='%2382beff' stroke-width='2.5'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="./style.css">
 </head>
@@ -17,22 +17,23 @@
     </div>
     <div id="stany" class="stany"></div>
     <div class="stats">
-      <span><b id="plevel">1</b><em>poziom</em></span>
-      <span><b id="pxp">0</b><em>dośw.</em></span>
-      <span><b id="patk">0</b><em>atak</em></span>
-      <span><b id="pdef">0</b><em>obrona</em></span>
-      <span><b id="pdepth">1/8</b><em>głębokość</em></span>
-      <span><b id="pwrogi">0</b><em>wrogów tu</em></span>
-      <span><b id="pturn">0</b><em>tura</em></span>
+      <span><b id="plevel">1</b><em data-t="web.hud.poziom">level</em></span>
+      <span><b id="pxp">0</b><em data-t="web.hud.dosw">XP</em></span>
+      <span><b id="patk">0</b><em data-t="web.hud.atak">attack</em></span>
+      <span><b id="pdef">0</b><em data-t="web.hud.obrona">defense</em></span>
+      <span><b id="pdepth">1/8</b><em data-t="web.hud.glebokosc">depth</em></span>
+      <span><b id="pwrogi">0</b><em data-t="web.hud.wrogow">foes here</em></span>
+      <span><b id="pturn">0</b><em data-t="web.hud.tura">turn</em></span>
     </div>
     <div class="right">
       <span id="kontakt" class="tag" hidden></span>
-      <span id="oddech" class="tag bad" hidden>bez tchu</span>
-      <span id="amulet" class="tag gold" hidden>AMULET</span>
+      <span id="oddech" class="tag bad" hidden></span>
+      <span id="amulet" class="tag gold" hidden data-t="web.amulet">AMULET</span>
+      <span id="jezyk" class="jezyk"></span>
     </div>
   </header>
 
-  <div id="stolpas"><span class="pas-lbl">przy stole</span><div id="stol"></div></div>
+  <div id="stolpas"><span class="pas-lbl" data-t="web.stol.przyStole">at the table</span><div id="stol"></div></div>
 
   <main id="stage">
     <canvas id="map"></canvas>
@@ -45,33 +46,26 @@
          którym toczyła się gra. Zasłonięcie grywalnego kawałka mapy jest
          gorsze niż podpowiedź stojąca kawałek dalej od oczu. -->
     <div id="turowy" class="pusty">
-      <b id="turowy-tytul">TRYB TUROWY</b>
+      <b id="turowy-tytul" data-t="web.stol.trybTurowy">TURN MODE</b>
       <span id="turowy-powod"></span>
       <span id="turowy-zegar" hidden></span>
     </div>
     <ul id="log"></ul>
-    <p id="hint">? zasady &nbsp;·&nbsp; i ekwipunek &nbsp;·&nbsp; w powąchaj &nbsp;·&nbsp; , podnieś &nbsp;·&nbsp; &gt; &lt; schody &nbsp;·&nbsp; m plan &nbsp;·&nbsp; . czekaj<span id="podpis" hidden></span></p>
+    <p id="hint"><span data-t-html="web.podpowiedzStol"></span><span id="podpis" hidden></span></p>
   </footer>
 </div>
 
 <div id="lobby">
   <div class="karta">
-    <h1>Ten sam loch, kilku śmiałków</h1>
-    <p class="muted">Każdy chodzi własnym tempem, dopóki nikogo nie widzi. Gdy dwoje graczy
-      staje w polu widzenia, ich tura rozstrzyga się <b>jednocześnie</b>: oboje deklarują
-      w ślepo i oboje działają w tej samej turze. Nikt nie dostaje darmowej serii ciosów,
-      więc odskok jest zawsze wykonalny.</p>
-    <p class="muted">Przegrane starcie <b>nie kończy partii</b>. Gubisz cały dobytek na miejscu
-      i budzisz się piętro wyżej z resztką sił. Loch jest jeden i wspólny, ale odkryta mapa,
-      dziennik i wiedza o miksturach są twoje własne.</p>
-    <p class="muted">Odwrót ma cenę: kto odskakuje od przeciwnika, który zostaje, dostaje cios
-      w plecy, a cofać się pod rząd można ograniczoną liczbę razy - potem trzeba stanąć
-      i zaczerpnąć tchu. Dlatego <b>ucieczka bez końca nie jest taktyką</b>. Cała reszta zasad
-      siedzi pod klawiszem <b>?</b>.</p>
-    <label for="imie">Twoje imię przy stole</label>
-    <input id="imie" maxlength="16" autocomplete="off" placeholder="np. Halina">
-    <button id="wejdz">Wejdź do lochu</button>
-    <p class="foot"><a href="./">Wolisz sam? Wersja jednoosobowa</a></p>
+    <div id="jezyk-lobby" class="jezyk"></div>
+    <h1 data-t="web.stol.lobbyTytul"></h1>
+    <p class="muted" data-t-html="web.stol.lobby1"></p>
+    <p class="muted" data-t-html="web.stol.lobby2"></p>
+    <p class="muted" data-t-html="web.stol.lobby3"></p>
+    <label for="imie" data-t="web.stol.imie"></label>
+    <input id="imie" maxlength="16" autocomplete="off" data-t-placeholder="web.stol.imiePrzyklad">
+    <button id="wejdz" data-t="web.stol.wejdz"></button>
+    <p class="foot"><a href="./" data-t="web.stol.solo"></a></p>
   </div>
 </div>
 

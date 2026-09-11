@@ -1,5 +1,7 @@
 # Księga zasad
 
+English version: [rules.md](rules.md).
+
 Ten plik jest **generowany** z `src/rules.js` poleceniem `npm run zasady`.
 Nie edytuj go ręcznie - poprawki nanoś w `src/rules.js`, żeby zmiana trafiła
 jednocześnie tutaj, do gry w terminalu (`?`) i do gry w przeglądarce (`?`).

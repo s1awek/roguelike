@@ -1,6 +1,6 @@
 // Słownik polski. Brzmienie jest przepisane CO DO ZNAKU z napisów, które przed
 // wprowadzeniem języków stały wprost w kodzie - odcisk tekstu partii polskiej
-// po przebudowie ma być identyczny z odciskiem sprzed niej (D-050).
+// po przebudowie ma być identyczny z odciskiem sprzed niej (D-051).
 //
 // Nazw rzeczy i potworów tu nie ma: po polsku są nimi pola `name` z tablic gry,
 // bo te same napisy są też identyfikatorami w zapisach.
@@ -188,4 +188,175 @@ export const PL = {
   'zapis.nieznanyFormat': 'Nieznany format zapisu',
   'zapis.brak': 'Nie ma takiego zapisu.',
   'zapis.nieOdczyt': (p) => `Nie da się odczytać pliku: ${p.powod}`,
+
+  // ---------- przeglądarka (web/) ----------
+  'web.tytul': 'Loch - wersja graficzna',
+  'web.tytulStol': 'Loch - wielu graczy',
+  'web.jezyk': 'Język',
+  'web.hud.poziom': 'poziom',
+  'web.hud.dosw': 'dośw.',
+  'web.hud.atak': 'atak',
+  'web.hud.obrona': 'obrona',
+  'web.hud.glebokosc': 'głębokość',
+  'web.hud.wrogow': 'wrogów tu',
+  'web.hud.tura': 'tura',
+  'web.autozapis': 'autozapis',
+  'web.autozapisTytul': 'Gra zapisuje się sama - odświeżenie strony nie resetuje rozgrywki',
+  'web.bezAutozapisu': 'bez autozapisu',
+  'web.amulet': 'AMULET',
+  'web.podpowiedz': '? zasady &nbsp;·&nbsp; i ekwipunek &nbsp;·&nbsp; x obejrzyj &nbsp;·&nbsp; w powąchaj &nbsp;·&nbsp; , podnieś &nbsp;·&nbsp; &gt; &lt; schody &nbsp;·&nbsp; m minimapa &nbsp;·&nbsp; S zapis &nbsp;·&nbsp; Shift+N nowa gra &nbsp;·&nbsp; klik = idź &nbsp;·&nbsp; <a href="./wielu.html">wielu graczy</a>',
+  'web.podpowiedzStol': '? zasady &nbsp;·&nbsp; i ekwipunek &nbsp;·&nbsp; x obejrzyj &nbsp;·&nbsp; w powąchaj &nbsp;·&nbsp; , podnieś &nbsp;·&nbsp; &gt; &lt; schody &nbsp;·&nbsp; m plan &nbsp;·&nbsp; . czekaj',
+  'wejscie': 'Wchodzisz do lochu. Naciśnij ? po pomoc.',
+  'web.nieWObecnosci': 'Nie w obecności potwora.',
+  'web.minimapaWl': 'Minimapa włączona.',
+  'web.minimapaWyl': 'Minimapa wyłączona.',
+  'web.planWl': 'Plan włączony.',
+  'web.planWyl': 'Plan wyłączony.',
+  'web.podnosiKbd': '<kbd>,</kbd> podnosi. ',
+  'web.escWraca': '<kbd>Esc</kbd> wraca.',
+  'web.inv.drop': 'wyrzuca',
+  'web.inv.sniff': 'wącha - tylko mikstury, koszt jednej tury',
+  'web.inv.use': 'używa lub zakłada',
+  'web.inv.sniffKrotko': 'wącha',
+  'web.inv.useKrotko': 'używa',
+  'web.inv.stopka': (p) => `Litera albo kliknięcie ${p.co}. `,
+  'web.inv.dWyrzuca': '<kbd>d</kbd> otwiera to samo do wyrzucania. ',
+  'web.pusto': '(pusto)',
+  'web.noszone': '(noszone)',
+  'web.nRzeczy': (p) => `${p.n} rzeczy`,
+  'web.ksiegaStopka': (p) => `<kbd>n</kbd> dalej &nbsp; <kbd>p</kbd> wstecz &nbsp; <kbd>1</kbd>-<kbd>${p.n}</kbd> rozdział
+      &nbsp; <kbd>Esc</kbd> wraca do gry. Ziarno tej rozgrywki: <b>${p.seed}</b>.`,
+  'web.ksiegaStopkaStol': '<kbd>n</kbd> dalej &nbsp;<kbd>p</kbd> wstecz &nbsp;<kbd>Esc</kbd> wraca',
+  'web.go.przyczyna': 'przyczyna',
+  'web.go.glebokosc': 'głębokość',
+  'web.go.poziom': 'poziom',
+  'web.go.dosw': 'doświadczenie',
+  'web.go.pokonanych': 'pokonanych',
+  'web.go.tur': 'tur',
+  'web.go.wynik': 'wynik',
+  'web.go.ziarno': 'ziarno',
+  'web.go.stopka': '<kbd>Enter</kbd> zaczyna nową grę.',
+  'web.autozapisNiemozliwy': (p) => `Autozapis niemożliwy: ${p.powod}`,
+  'web.zapisano': 'Zapisano w przeglądarce.',
+  'web.zapisNieudany': (p) => `Zapis nieudany: ${p.powod}`,
+  'web.wczytano': 'Wczytano zapis.',
+  'web.wznowiono': 'Wznowiono grę z autozapisu. Nowa gra: Shift+N.',
+  'web.karta.skutek': 'skutek',
+  'web.karta.wobec': 'wobec noszonego',
+  'web.karta.miejsce': 'miejsce',
+  'web.karta.wolnych': (p) => `, wolnych ${p.wolne} z ${p.poj}`,
+  'web.karta.sztuk': 'sztuk',
+  'web.stanTytul': (p) => `${p.nazwa}: ${p.wartosc} z ${p.max}${p.doNastepnego > 0 ? `, ${p.doNastepnego} tur do gorszego stopnia` : ''}`,
+  'web.podNogami': 'Pod nogami',
+  'web.bilans': (p) => `Wybrane zajmą <b>${p.zajmie}</b>
+      z <b>${p.wolne}</b> wolnych pól${p.zaDuzo ? ' - tyle się nie zmieści' : ''}.`,
+  'web.stosStopka': `<kbd>Enter</kbd> podnosi zaznaczone. Litera albo kliknięcie zaznacza,
+      <kbd>*</kbd> zaznacza wszystko, <kbd>Esc</kbd> wraca.`,
+  'web.kosz': 'wyrzuć',
+  'web.koszTutaj': 'przeciągnij tutaj',
+  'web.zajetosc': (p) => `<b>${p.zaj}</b> z <b>${p.poj}</b> ${polaSlowo(p.poj)} zajęte
+        <span class="muted">- przeciągnij, żeby przełożyć; <kbd>spacja</kbd> obraca${
+          p.kosz ? '; przeciągnij na kosz, żeby wyrzucić' : ''}</span>`,
+  'web.oAutorze': 'o autorze',
+  'web.kod': 'kod źródłowy',
+
+  // ---------- przeglądarka: stół ----------
+  'web.stol.przyStole': 'przy stole',
+  'web.stol.lobbyTytul': 'Ten sam loch, kilku śmiałków',
+  'web.stol.lobby1': `Każdy chodzi własnym tempem, dopóki nikogo nie widzi. Gdy dwoje graczy
+      staje w polu widzenia, ich tura rozstrzyga się <b>jednocześnie</b>: oboje deklarują
+      w ślepo i oboje działają w tej samej turze. Nikt nie dostaje darmowej serii ciosów,
+      więc odskok jest zawsze wykonalny.`,
+  'web.stol.lobby2': `Przegrane starcie <b>nie kończy partii</b>. Gubisz cały dobytek na miejscu
+      i budzisz się piętro wyżej z resztką sił. Loch jest jeden i wspólny, ale odkryta mapa,
+      dziennik i wiedza o miksturach są twoje własne.`,
+  'web.stol.lobby3': `Odwrót ma cenę: kto odskakuje od przeciwnika, który zostaje, dostaje cios
+      w plecy, a cofać się pod rząd można ograniczoną liczbę razy - potem trzeba stanąć
+      i zaczerpnąć tchu. Dlatego <b>ucieczka bez końca nie jest taktyką</b>. Cała reszta zasad
+      siedzi pod klawiszem <b>?</b>.`,
+  'web.stol.imie': 'Twoje imię przy stole',
+  'web.stol.imiePrzyklad': 'np. Halina',
+  'web.stol.wejdz': 'Wejdź do lochu',
+  'web.stol.solo': 'Wolisz sam? Wersja jednoosobowa',
+  'web.stol.dosiadam': 'Dosiadam...',
+  'web.stol.nieDosiadl': (p) => `Nie udało się dosiąść: ${p.powod}`,
+  'web.stol.czekamNaWidok': 'Miejsce zajęte, czekam na pierwszy widok lochu...',
+  'web.stol.podniesiony': 'Stół został podniesiony od nowa - Twoja poprzednia partia przepadła. Wejdź jeszcze raz.',
+  'web.stol.zerwane': 'Zerwane połączenie ze stołem, próbuję dalej...',
+  'web.stol.nieIstnieje': 'Poprzedni stół już nie istnieje - wejdź jeszcze raz.',
+  'web.stol.odmowa': 'odmowa',
+  'web.stol.zamiastDzialania': 'Zamiast poprzedniego zgłoszenia - przy stole wychodzi jedno działanie na turę.',
+  'web.stol.zamiastRzeczy': 'Zamiast poprzedniego zgłoszenia - przy stole wychodzi jedna rzecz na turę.',
+  'web.stol.wyrzucenieZgloszone': 'Wyrzucenie zgłoszone: rzecz wypadnie, gdy zejdzie tura.',
+  'web.stol.bezOpisu': 'bez opisu',
+  'web.stol.staryStol': 'Miejsce w plecaku policzy dopiero nowsza wersja stołu.',
+  'web.stol.nicNieLezy': 'Nic już tu nie leży.',
+  'web.stol.nieprzelozone': 'nie udało się przełożyć',
+  'web.stol.pg.tytul': 'Przegrane starcie',
+  'web.stol.pg.ktos': 'Ktoś',
+  'web.stol.pg.polozyl': (p) => `<b>${p.kto}</b> położył Cię na deski.`,
+  'web.stol.pg.dobytek': (p) => `Cały dobytek (${p.ile} ${p.ile === 1 ? 'rzecz' : 'rzeczy'}) został na podłodze tam, gdzie padłeś
+        <span class="muted">- razem z bronią, pancerzem i Amuletem, jeśli go miałeś</span>`,
+  'web.stol.pg.ucieczka': (p) => `Uciekłeś z głębokości ${p.z} na ${p.na} i stoisz przy schodach`,
+  'web.stol.pg.cwierc': 'Zostało Ci ćwierć życia',
+  'web.stol.pg.niekoniec': 'To nie jest koniec partii: po dobytek można wrócić, ale ktoś inny może być tam pierwszy.',
+  'web.stol.pg.stopka': 'Dowolny klawisz wraca do gry.',
+  'web.stol.wyszedles': 'Wyszedłeś z lochu',
+  'web.stol.koniec': 'Koniec',
+  'web.stol.staty': (p) => `Poziom ${p.level}, doświadczenie ${p.xp}, głębokość ${p.depth}, tura ${p.turn}.`,
+  'web.stol.koniecStopka': 'Wciśnij <kbd>Enter</kbd>, żeby wrócić do wejścia i dosiąść jako ktoś nowy.',
+  'web.stol.bezTchu': 'bez tchu',
+  'web.stol.oddech': (p) => `oddech ${p.n}`,
+  'web.stol.bezTchuTytul': 'Cofasz się zbyt długo - najbliższa próba odwrotu skończy się przystankiem na oddech.',
+  'web.stol.oddechTytul': (p) => `Możesz się jeszcze cofnąć ${p.n} razy, potem musisz zaczerpnąć powietrza.`,
+  'web.stol.czekaszNa': (p) => `tura wspólna: czekasz na ${p.kto}`,
+  'web.stol.widzisz': (p) => `widzisz: ${p.kto}`,
+  'web.stol.czekamNaRuch': 'CZEKAM NA RUCH',
+  'web.stol.czekamPowod': (p) => `Ruch zgłoszony. Czekam na ${p.kto} - obie strony działają w tej samej turze, więc nikt nie dostaje darmowego ciosu.`,
+  'web.stol.twojRuch': 'TWÓJ RUCH',
+  'web.stol.twojPowod': (p) => `${p.kto} w zasięgu wzroku - cała grupa czeka na Twoje zgłoszenie i do tego czasu stoi w miejscu.`,
+  'web.stol.trybTurowy': 'TRYB TUROWY',
+  'web.stol.turowyPowod': (p) => `${p.kto} w zasięgu wzroku. Wasze ruchy rozstrzygają się jednocześnie, więc plansza czeka na drugą stronę. To nie zawieszenie gry.`,
+  'web.stol.ruszyZa': (p) => `plansza ruszy bez Ciebie za ${p.s} s`,
+  'web.stol.rusza': 'plansza rusza bez Ciebie',
+  'web.stol.bot': 'gracz automatyczny',
+  'web.stol.czlowiek': 'człowiek',
+  'web.stol.pietro': (p) => `p${p.d}`,
+
+  // ---------- serwer stołu: odmowy ----------
+  'serwer.zaDuzo': 'za dużo żądań, zwolnij',
+  'serwer.adresPelny': (p) => `z tego adresu zajęte są już ${p.n} miejsca - zamknij starą kartę albo poczekaj chwilę`,
+  'serwer.stolPelny': 'stół pełny, spróbuj za chwilę',
+  'serwer.nieTwoje': 'nie twoje miejsce',
+  'serwer.nieIstnieje': 'miejsce już nie istnieje',
+  'serwer.zaDuzeZadanie': 'zbyt duże żądanie',
+  'serwer.zlaSkarga': 'zła skarga',
+  'serwer.zleZadanie': 'niepoprawne żądanie',
+  'serwer.gosc': 'Gość',
+  'stol.brakMiejsca': 'nie ma takiego miejsca',
+  'stol.skonczona': 'partia tego uczestnika skończona',
+  'stol.nieMiesci': 'tam się nie mieści',
+
+  // ---------- terminal: uruchomienie ----------
+  'term.pomoc': (p) => `Roguelike - gra terminalowa
+
+  node bin/play.js [--seed <ziarno>] [--continue] [--lang en|pl]
+
+  --seed <ziarno>   ziarno rozgrywki (to samo ziarno = ten sam loch)
+  --continue        wznów z zapisu (${p.sciezka})
+  --lang en|pl      język gry (domyślnie angielski)
+  --help            ta pomoc
+
+W grze: ? = księga zasad, x = obejrzyj rzecz pod nogami, w = powąchaj miksturę, S = zapis, Q = wyjście.`,
+  'term.nowaGra': 'Zaczynam nową grę.',
+  'term.dowolnyKonczy': 'Dowolny klawisz kończy.',
+  'term.ziarnoWynik': (p) => `Ziarno: ${p.seed}   Wynik: ${p.wynik}`,
+  'term.zapisano': (p) => `Zapisano: ${p.sciezka}`,
+  'term.zapisNieudany': (p) => `Zapis nieudany: ${p.powod}`,
+  'term.wczytano': 'Wczytano zapis.',
+  'term.doZobaczenia': (p) => `Do zobaczenia. Ziarno: ${p.seed}`,
+  'term.wymagaTerminala': 'Ta gra wymaga terminala. Do rozgrywki bez człowieka użyj: node bin/bot.js',
+  'term.przerwane': 'Przerwane.',
+  'term.wywrotka': '\nGra się wywróciła. To jest błąd programu, nie Twoja wina.\n',
+  'term.nieznanyJezyk': (p) => `Nieznany język: ${p.lang}. Do wyboru: en, pl.`,
 };

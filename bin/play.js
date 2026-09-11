@@ -9,6 +9,7 @@
 import { Game } from '../src/game.js';
 import { saveToFile, loadFromFile } from '../src/save.js';
 import { renderFrame, renderGameOver, clearScreen, hideCursor, showCursor, RULE_COUNT, C } from '../src/render.js';
+import { setLang, znanyJezyk, t } from '../src/i18n.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -22,23 +23,21 @@ const argOf = (name, dflt) => {
   return a.includes('=') ? a.split('=').slice(1).join('=') : (args[i + 1] ?? dflt);
 };
 
+// Język gry: angielski, chyba że gracz poprosi jawnie o inny (D-051). Ustalany
+// PRZED wszystkim innym, bo już pierwszy komunikat idzie w wybranym języku.
+const lang = argOf('lang', 'en');
+if (!znanyJezyk(lang)) { console.error(t('term.nieznanyJezyk', { lang })); process.exit(2); }
+setLang(lang);
+
 if (args.includes('--help') || args.includes('-h')) {
-  console.log(`Roguelike - gra terminalowa
-
-  node bin/play.js [--seed <ziarno>] [--continue]
-
-  --seed <ziarno>   ziarno rozgrywki (to samo ziarno = ten sam loch)
-  --continue        wznów z zapisu (${SAVE_PATH})
-  --help            ta pomoc
-
-W grze: ? = księga zasad, w = powąchaj miksturę, S = zapis, Q = wyjście.`);
+  console.log(t('term.pomoc', { sciezka: SAVE_PATH }));
   process.exit(0);
 }
 
 let game;
 if (args.includes('--continue')) {
   const r = loadFromFile(SAVE_PATH);
-  if (!r.ok) { console.error(`${r.error}\nZaczynam nową grę.`); game = new Game(argOf('seed', String(Date.now()))); }
+  if (!r.ok) { console.error(`${r.error}\n${t('term.nowaGra')}`); game = new Game(argOf('seed', String(Date.now()))); }
   else game = r.game;
 } else {
   game = new Game(argOf('seed', String(Date.now())));
@@ -67,7 +66,7 @@ const DIR_KEYS = {
 
 function draw() {
   if (game.status !== 'playing' && mode === 'map') {
-    process.stdout.write(clearScreen() + renderGameOver(game) + `\n  ${C.grey}Dowolny klawisz kończy.${C.reset}\n`);
+    process.stdout.write(clearScreen() + renderGameOver(game) + `\n  ${C.grey}${t('term.dowolnyKonczy')}${C.reset}\n`);
     return;
   }
   process.stdout.write(renderFrame(game, mode, extra, section, wybrane));
@@ -87,7 +86,7 @@ function quit(msg) {
 }
 
 function handleKey(key) {
-  if (game.status !== 'playing') quit(`Ziarno: ${game.seed}   Wynik: ${game.score()}`);
+  if (game.status !== 'playing') quit(t('term.ziarnoWynik', { seed: game.seed, wynik: game.score() }));
 
   // Księga zasad: rozdziały przeglądane bez wychodzenia z gry. Świat stoi -
   // czytanie nie kosztuje tury i nie da się nim przeczekać potwora.
@@ -154,17 +153,17 @@ function handleKey(key) {
     case 'x': mode = 'obejrzyj'; break;
     case '?': mode = 'help'; break;
     case 'S': {
-      try { saveToFile(game, SAVE_PATH); extra = `${C.brightGreen}Zapisano: ${SAVE_PATH}${C.reset}`; }
-      catch (e) { extra = `${C.brightRed}Zapis nieudany: ${e.message}${C.reset}`; }
+      try { saveToFile(game, SAVE_PATH); extra = `${C.brightGreen}${t('term.zapisano', { sciezka: SAVE_PATH })}${C.reset}`; }
+      catch (e) { extra = `${C.brightRed}${t('term.zapisNieudany', { powod: e.message })}${C.reset}`; }
       break;
     }
     case 'L': {
       const r = loadFromFile(SAVE_PATH);
-      if (r.ok) { game = r.game; extra = `${C.brightGreen}Wczytano zapis.${C.reset}`; }
+      if (r.ok) { game = r.game; extra = `${C.brightGreen}${t('term.wczytano')}${C.reset}`; }
       else extra = `${C.brightRed}${r.error}${C.reset}`;
       break;
     }
-    case 'Q': quit(`Do zobaczenia. Ziarno: ${game.seed}`); break;
+    case 'Q': quit(t('term.doZobaczenia', { seed: game.seed })); break;
     default: break;
   }
 }
@@ -182,7 +181,7 @@ function keyName(buf) {
 }
 
 if (!process.stdin.isTTY) {
-  console.error('Ta gra wymaga terminala. Do rozgrywki bez człowieka użyj: node bin/bot.js');
+  console.error(t('term.wymagaTerminala'));
   process.exit(1);
 }
 
@@ -190,20 +189,20 @@ process.stdin.setRawMode(true);
 process.stdin.resume();
 process.stdout.write(hideCursor());
 process.on('exit', cleanup);
-process.on('SIGINT', () => quit('Przerwane.'));
+process.on('SIGINT', () => quit(t('term.przerwane')));
 process.on('uncaughtException', (e) => {
   cleanup();
-  console.error('\nGra się wywróciła. To jest błąd programu, nie Twoja wina.\n', e);
+  console.error(t('term.wywrotka'), e);
   process.exit(1);
 });
 process.stdout.on('resize', draw);
 
 process.stdin.on('data', (buf) => {
   const key = keyName(buf);
-  if (key === 'CTRL_C') quit('Przerwane.');
+  if (key === 'CTRL_C') quit(t('term.przerwane'));
   handleKey(key);
   draw();
 });
 
-game.message('Wchodzisz do lochu. Naciśnij ? po pomoc.');
+game.message('wejscie');
 draw();

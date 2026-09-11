@@ -1,4 +1,4 @@
-// Języki (D-050): kompletność słowników, brak polskich znaków w wersji
+// Języki (D-051): kompletność słowników, brak polskich znaków w wersji
 // angielskiej, zgodność księgi zasad i niezmienność rozgrywki.
 //
 // Każde sprawdzenie jest funkcją, którą da się puścić na słowniku celowo
@@ -201,4 +201,50 @@ test('stos łączy się tak samo w obu językach - klucz stosu nie zależy od j�
 
 test('nieznany klucz wraca jako klucz - brak tłumaczenia nie chowa się pod drugim językiem', () => {
   assert.equal(t('nie.ma.takiego', {}, 'en'), 'nie.ma.takiego');
+});
+
+// ---------- stół: język jest cechą uczestnika ----------
+
+/**
+ * Dwóch uczestników okłada się nawzajem, aż jeden przegra starcie. Zwraca
+ * dzienniki obu. Te same ziarno i te same ciosy - zmienia się tylko język.
+ */
+function potyczka(jezykA, jezykB) {
+  const g = new Game('stol-jezyk', { name: 'Halina', w: 60, h: 20 });
+  const a = g.player;
+  const b = g.addHero('Bob', 1, { scatter: false });
+  a.lang = jezykA; b.lang = jezykB;
+  b.x = a.x; b.y = a.y;
+  for (let i = 0; i < 60 && a.status === 'playing' && b.status === 'playing' && !a.przegrana && !b.przegrana; i++) {
+    g.attack(i % 2 ? b : a, i % 2 ? a : b);
+  }
+  return { a: a.messages.map(m => m.text), b: b.messages.map(m => m.text) };
+}
+
+test('stół: każdy uczestnik czyta potyczkę we własnym języku, a język jednego nie rusza drugiego', () => {
+  const mieszany = potyczka('pl', 'en');
+  const obaPl = potyczka('pl', 'pl');
+  const obaEn = potyczka('en', 'en');
+  assert.ok(mieszany.a.length > 3 && mieszany.b.length > 3, 'przyrząd: potyczka musi coś wyprodukować po obu stronach');
+  // C-2: dziennik A nie zależy od języka B, i odwrotnie
+  assert.deepEqual(mieszany.a, obaPl.a);
+  assert.deepEqual(mieszany.b, obaEn.b);
+  // C-1: to naprawdę dwa języki, nie ten sam tekst dwa razy
+  assert.notDeepEqual(mieszany.a, obaEn.a);
+  assert.equal(mieszany.b.join('\n').match(POLSKIE), null, mieszany.b.join(' | '));
+});
+
+test('stół: odmowa niesie kod i zdanie w języku uczestnika', async () => {
+  const { Stol } = await import('../src/stol.js');
+  const g = new Game('stol-odmowa', { name: 'Halina', w: 60, h: 20 });
+  const s = new Stol(g);
+  const { hero } = s.dosiadz('Bob', { rodzaj: 'czlowiek' });
+  hero.status = 'dead';
+  hero.lang = 'en';
+  const r = s.zadeklaruj(g.heroes.indexOf(hero), { type: 'wait' });
+  assert.equal(r.ok, false);
+  assert.equal(r.kod, 'stol.skonczona');
+  assert.equal(r.powod, t('stol.skonczona', {}, 'en'));
+  hero.lang = 'pl';
+  assert.equal(s.zadeklaruj(g.heroes.indexOf(hero), { type: 'wait' }).powod, 'partia tego uczestnika skończona');
 });

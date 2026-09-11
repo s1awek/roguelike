@@ -4,6 +4,8 @@
 // odsyłacza, nie pusty odsyłacz. Dzięki temu strona nigdy nie wychodzi
 // z zaślepką w treści, a dopisanie adresu jest zmianą jednej linii.
 
+import { t } from '../src/i18n.js';
+
 export const AUTOR = {
   imie: 'Sławek',
   rok: 2026,
@@ -15,8 +17,8 @@ export const AUTOR = {
 export function podpisz(el) {
   if (!el) return;
   const czesci = [`${AUTOR.imie}, ${AUTOR.rok}`];
-  if (AUTOR.portfolio) czesci.push(`<a href="${AUTOR.portfolio}" rel="author">o autorze</a>`);
-  if (AUTOR.repo) czesci.push(`<a href="${AUTOR.repo}" rel="noreferrer">kod źródłowy</a>`);
+  if (AUTOR.portfolio) czesci.push(`<a href="${AUTOR.portfolio}" rel="author">${t('web.oAutorze')}</a>`);
+  if (AUTOR.repo) czesci.push(`<a href="${AUTOR.repo}" rel="noreferrer">${t('web.kod')}</a>`);
   el.innerHTML = czesci.join(' <span class="sep">·</span> ');
   el.hidden = false;
 }

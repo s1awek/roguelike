@@ -1,4 +1,4 @@
-// Języki gry (D-050). Angielski jest domyślny, polski do wyboru.
+// Języki gry (D-051). Angielski jest domyślny, polski do wyboru.
 //
 // Zasada, która trzyma to w ryzach: tłumaczenie odbywa się NA KRAWĘDZI.
 // Silnik, zapis gry i identyfikatory wewnętrzne (nazwy w tablicach, wygląd
