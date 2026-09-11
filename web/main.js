@@ -80,6 +80,16 @@ trudnosc = game.trudnosc;
 // Komunikat o wznowieniu NIE idzie do dziennika gry, bo dziennik jest częścią
 // zapisanego stanu - co odświeżenie dopisywałoby do niego kolejny wiersz.
 if (!resumed) game.message('wejscie');
+// Parametry testowe do oglądania konkretnego miejsca gry bez przechodzenia
+// całego lochu: `?pietro=N` przenosi bohatera na piętro N (w zakresie lochu),
+// `?amulet=1` daje mu Amulet do ręki. Działają na bieżącej partii, także
+// wznowionej - to celowe, właściciel chce oglądać SWOJĄ partię, nie nową.
+const pietroParam = Number(params.get('pietro'));
+if (game.status === 'playing' && Number.isInteger(pietroParam)
+  && pietroParam >= 1 && pietroParam <= game.maxDepth && pietroParam !== game.depth) {
+  game.enterLevel(pietroParam, pietroParam > game.depth ? 'down' : 'up');
+}
+if (params.get('amulet') === '1' && game.status === 'playing') game.player.hasAmulet = true;
 view.sync(game);
 renderer.resize(game);
 

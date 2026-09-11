@@ -54,6 +54,10 @@ serwera `--difficulty` (jeden stopień dla całego stołu). Stopień jest zapisa
 razem z partią; liczby są w księdze zasad, liczone z tej samej tablicy, z której
 korzysta gra.
 
+Do oglądania konkretnego miejsca gry bez przechodzenia całego lochu (przeglądarka):
+`?pietro=N` przenosi bohatera bieżącej partii na piętro N, `?amulet=1` daje mu
+Amulet - np. `?pietro=8&amulet=1` pokazuje od razu drogę powrotną.
+
 Znaki: `@` ty, `!` mikstura, `?` zwój, `)` broń, `[` pancerz, `%` jedzenie,
 `"` Amulet. Litery to potwory - małe słabsze, wielkie groźniejsze.
 
